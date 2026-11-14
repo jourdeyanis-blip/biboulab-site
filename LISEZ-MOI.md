@@ -100,7 +100,7 @@ Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré
 ## Paiement et formulaires
 
 - **Commande** : par défaut (`payment.mode: "email"`), valider la commande ouvre la messagerie du client avec le récapitulatif ; vous lui renvoyez un lien de paiement (Stripe Payment Links, PayPal, SumUp…). Aucun paiement n'est encaissé sur le site. Pour un paiement en ligne intégré, il faut un service marchand (Stripe Checkout, Shopify Buy Button, Snipcart…) : c'est une étape à part.
-- **Contact** : même principe (messagerie du visiteur). Pour recevoir les messages directement, créez un formulaire sur un service comme Formspree et collez son adresse dans `SITE.formEndpoint`.
+- **Contact** : le formulaire envoie directement un e-mail à la boîte de l'entreprise, sans ouvrir la messagerie du visiteur. Il passe par `envoyer-contact.php` (réglé dans `SITE.formEndpoint`) ; l'adresse destinataire et l'adresse d'expédition se changent en haut de ce fichier (`DESTINATAIRE`, `EXPEDITEUR`). Cela ne fonctionne que sur l'hébergement (PHP) : en local, le formulaire affichera une erreur.
 
 ## Animations et design : où régler quoi
 

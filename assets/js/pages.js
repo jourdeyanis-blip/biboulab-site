@@ -510,6 +510,7 @@
               ${fg("couleur", "Couleur souhaitée", { placeholder: "ex. noir mat" })}
             </div></div></div>
             ${fg("message", "Votre message", { required: true, area: true, full: true, placeholder: "Décrivez votre idée, l'usage prévu, la quantité…" })}
+            <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><label>Ne pas remplir<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
             <div class="fg full"><label class="check"><input type="checkbox" name="accord" required><span>J'accepte que ces informations servent à répondre à ma demande (<a href="confidentialite.html">confidentialité</a>).</span></label><p class="err-msg" role="alert"></p></div>
             <div class="full"><button class="btn btn-primary" type="submit" data-magnetic>Envoyer le message ${icon("arrow", "ic-arrow")}</button></div>
           </form>
@@ -530,7 +531,7 @@
       if (SITE.formEndpoint) {
         const btn = $("button[type=submit]", form); btn.disabled = true;
         try { const r = await fetch(SITE.formEndpoint, { method: "POST", headers: { Accept: "application/json" }, body: new FormData(form) }); if (!r.ok) throw 0; }
-        catch { btn.disabled = false; toast("L'envoi a échoué. Réessayez ou écrivez-moi par e-mail."); return; }
+        catch { btn.disabled = false; toast(`L'envoi a échoué. Réessayez ou écrivez-moi à ${SITE.email}.`); return; }
       } else location.href = mailto(subject, body);
       $("#contact-panel").innerHTML = `<div class="success" role="status">${tick}
         <h2>${viaMail ? "Votre message est prêt" : "Message envoyé"}</h2>

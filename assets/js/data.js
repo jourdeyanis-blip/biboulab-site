@@ -67,9 +67,10 @@ const SITE = {
     ]
   },
 
-  /* Formulaire de contact : collez ici l'adresse d'un service de formulaires
-     (ex. Formspree). Vide = le message s'ouvre dans la messagerie du visiteur. */
-  formEndpoint: "",
+  /* Formulaire de contact : adresse qui reçoit le formulaire et l'envoie par
+     e-mail à l'entreprise (envoyer-contact.php, fourni avec le site).
+     Vide = le message s'ouvre dans la messagerie du visiteur. */
+  formEndpoint: "envoyer-contact.php",
 
   /* true = affiche les petites mentions "contenu d'exemple" (avis, chiffres).
      Passez à false quand vos vrais contenus sont en place. */
