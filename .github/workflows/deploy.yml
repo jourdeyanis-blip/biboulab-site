@@ -1,6 +1,7 @@
 name: Déploiement O2switch
 
 # Chaque push sur la branche main publie le site sur l'hébergement O2switch.
+# Le compte FTP est déjà placé dans public_html : on envoie donc à la racine (/).
 on:
   push:
     branches: [main]
@@ -13,36 +14,21 @@ jobs:
       - name: Récupérer le code
         uses: actions/checkout@v4
 
-      - name: Diagnostic FTP (temporaire)
-        continue-on-error: true
+      - name: Installer lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      - name: Envoyer le site en FTPS
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
           FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
           FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
         run: |
-          C="curl -sS --ssl-reqd --insecure --user $FTP_USERNAME:$FTP_PASSWORD"
-          echo "=== Racine vue par le compte FTP ==="
-          $C "ftp://$FTP_SERVER/" -Q "PWD" -v 2>&1 | grep -E '^< (2|5)|^[d-][rwx-]{9}' || true
-          echo "=== Creation d'un dossier de test a la racine ==="
-          $C "ftp://$FTP_SERVER/" -Q "MKD diagtest" -v 2>&1 | grep -E '^< (2|5)|curl:' || true
-          echo "=== Nettoyage ==="
-          $C "ftp://$FTP_SERVER/" -Q "RMD diagtest" -v 2>&1 | grep -E '^< (2|5)|curl:' || true
-
-      - name: Envoyer le site en FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          local-dir: ./
-          server-dir: /home/tenu2670/public_html/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            .github/**
-            outils/**
-            .claude/**
-            LISEZ-MOI.md
-            .DS_Store
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "ftp://$FTP_SERVER" -e "
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 3;
+            mirror -R --verbose --parallel=2 \
+              -X '.git*' -X '.github/' -X 'outils/' -X '.claude/' \
+              -X 'LISEZ-MOI.md' -X '.DS_Store' \
+              . /;
+            quit"
