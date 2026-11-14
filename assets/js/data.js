@@ -12,7 +12,7 @@ const SITE = {
   name: "Biboulab",
   slogan: "Du fichier à l'objet, imprimé avec passion",
   url: "https://www.biboulab.fr",                 // (sert au sitemap et au SEO)
-  email: "contact@votre-domaine.fr",              // ⚠️ À REMPLACER
+  email: "biboulab@outlook.fr",
   logo: "",                                       // chemin d'une image de logo (ex. "assets/img/logo.svg"). Vide = logotype texte animé
 
   /* Boutiques externes — affichées dans le menu, le pied de page,
