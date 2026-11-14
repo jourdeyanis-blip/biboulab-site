@@ -1,0 +1,59 @@
+name: Déploiement préproduction (pprod.biboulab.fr)
+
+# Chaque push sur la branche preprod publie le site sur pprod.biboulab.fr.
+# Ce sous-domaine a son propre dossier sur O2switch (/pprod.biboulab.fr/public_html),
+# en dehors du public_html de la production : il faut donc un compte FTP dédié,
+# créé dans cPanel avec ce dossier comme répertoire de départ.
+# Secrets GitHub à créer : FTP_PREPROD_USERNAME et FTP_PREPROD_PASSWORD
+# (FTP_SERVER est le même que pour la production).
+on:
+  push:
+    branches: [preprod]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      # Même serveur que la production : on épingle la même empreinte de certificat.
+      - name: Vérifier l'empreinte du certificat du serveur
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          EMPREINTE_ATTENDUE: "20:8F:BD:39:C3:17:F5:1D:97:5F:C0:81:BF:69:E7:BB:F3:7D:36:F6"
+        run: |
+          VUE=$(openssl s_client -starttls ftp -connect "$FTP_SERVER:21" </dev/null 2>/dev/null \
+            | openssl x509 -noout -fingerprint -sha1 | cut -d= -f2)
+          echo "Empreinte vue : $VUE"
+          if [ "$VUE" != "$EMPREINTE_ATTENDUE" ]; then
+            echo "::error::Le certificat du serveur FTP a changé. Envoi annulé."
+            exit 1
+          fi
+
+      # La préproduction ne doit jamais être indexée par les moteurs de recherche.
+      - name: Interdire l'indexation de la préproduction
+        run: |
+          printf 'User-agent: *\nDisallow: /\n' > robots.txt
+
+      - name: Envoyer le site en FTPS
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_PREPROD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PREPROD_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "ftp://$FTP_SERVER" -e "
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 3;
+            rm -r -f /.git /.github /.claude /outils /LISEZ-MOI.md;
+            mirror -R --verbose --parallel=2 \
+              -x '^\.git(/|$)' -x '^\.github(/|$)' -x '^\.claude(/|$)' \
+              -x '^outils(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
+              . /;
+            quit"
