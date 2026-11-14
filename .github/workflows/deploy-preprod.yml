@@ -4,7 +4,7 @@ name: Déploiement préproduction (pprod.biboulab.fr)
 # Ce sous-domaine a son propre dossier sur O2switch (/pprod.biboulab.fr/public_html),
 # en dehors du public_html de la production : il faut donc un compte FTP dédié,
 # créé dans cPanel avec ce dossier comme répertoire de départ.
-# Secrets GitHub à créer : FTP_PREPROD_USERNAME et FTP_PREPROD_PASSWORD
+# Secrets GitHub à créer : FTP_PPROD_USERNAME et FTP_PPROD_PASSWORD
 # (FTP_SERVER est le même que pour la production).
 on:
   push:
@@ -43,8 +43,8 @@ jobs:
       - name: Envoyer le site en FTPS
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
-          FTP_USERNAME: ${{ secrets.FTP_PREPROD_USERNAME }}
-          FTP_PASSWORD: ${{ secrets.FTP_PREPROD_PASSWORD }}
+          FTP_USERNAME: ${{ secrets.FTP_PPROD_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PPROD_PASSWORD }}
         run: |
           lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "ftp://$FTP_SERVER" -e "
             set ssl:verify-certificate no;
