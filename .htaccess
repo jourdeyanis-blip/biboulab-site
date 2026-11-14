@@ -1,0 +1,31 @@
+# =====================================================================
+# BIBOULAB — réglages du serveur (Apache / O2switch)
+# =====================================================================
+
+# ---------- MODE « SITE EN CONSTRUCTION » ----------
+# Tant que ce bloc est présent, les visiteurs de www.biboulab.fr voient
+# construction.html à la place du site (code 503 : « temporairement
+# indisponible », les moteurs de recherche n'enregistrent rien).
+#
+# Le blocage ne vaut QUE pour le domaine de production ci-dessous : sur
+# une autre adresse (ex. preprod.biboulab.fr), le site complet s'affiche.
+#
+# POUR OUVRIR LE SITE : supprimez tout ce bloc, du commentaire
+# « DÉBUT CONSTRUCTION » à « FIN CONSTRUCTION », puis publiez.
+#
+# --- DÉBUT CONSTRUCTION ---
+ErrorDocument 503 /construction.html
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteCond %{HTTP_HOST} ^(www\.)?biboulab\.fr$ [NC]
+  RewriteCond %{ENV:REDIRECT_STATUS} !=503
+  RewriteCond %{REQUEST_URI} !^/construction\.html$
+  RewriteCond %{REQUEST_URI} !^/assets/(fonts|img)/
+  RewriteCond %{REQUEST_URI} !^/robots\.txt$
+  RewriteCond %{REQUEST_URI} !^/\.well-known/
+  RewriteRule ^ - [R=503,L]
+</IfModule>
+<IfModule mod_headers.c>
+  Header always set Retry-After "86400" "expr=%{REQUEST_STATUS} == 503"
+</IfModule>
+# --- FIN CONSTRUCTION ---

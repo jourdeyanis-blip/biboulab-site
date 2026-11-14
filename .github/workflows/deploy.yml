@@ -1,6 +1,7 @@
 name: Déploiement O2switch
 
 # Chaque push sur la branche main publie le site sur l'hébergement O2switch.
+# Le compte FTP est déjà placé dans public_html : on envoie donc à la racine (/).
 on:
   push:
     branches: [main]
@@ -13,21 +14,39 @@ jobs:
       - name: Récupérer le code
         uses: actions/checkout@v4
 
+      - name: Installer lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      # Le serveur O2switch utilise un certificat auto-signé : on ne peut pas le
+      # vérifier via une autorité. On épingle donc son empreinte (SHA-1) ; si elle
+      # change (renouvellement du certificat), l'envoi s'arrête par sécurité.
+      - name: Vérifier l'empreinte du certificat du serveur
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          EMPREINTE_ATTENDUE: "20:8F:BD:39:C3:17:F5:1D:97:5F:C0:81:BF:69:E7:BB:F3:7D:36:F6"
+        run: |
+          VUE=$(openssl s_client -starttls ftp -connect "$FTP_SERVER:21" </dev/null 2>/dev/null \
+            | openssl x509 -noout -fingerprint -sha1 | cut -d= -f2)
+          echo "Empreinte vue : $VUE"
+          if [ "$VUE" != "$EMPREINTE_ATTENDUE" ]; then
+            echo "::error::Le certificat du serveur FTP a changé. Envoi annulé."
+            exit 1
+          fi
+
       - name: Envoyer le site en FTPS
-        uses: SamKirkland/FTP-Deploy-Action@v4.3.5
-        with:
-          server: ${{ secrets.FTP_SERVER }}
-          username: ${{ secrets.FTP_USERNAME }}
-          password: ${{ secrets.FTP_PASSWORD }}
-          protocol: ftps
-          port: 21
-          local-dir: ./
-          server-dir: /home/tenu2670/public_html/
-          exclude: |
-            **/.git*
-            **/.git*/**
-            .github/**
-            outils/**
-            .claude/**
-            LISEZ-MOI.md
-            .DS_Store
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "ftp://$FTP_SERVER" -e "
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 3;
+            rm -r -f /.git /.github /.claude /outils /LISEZ-MOI.md;
+            mirror -R --verbose --parallel=2 \
+              -x '^\.git(/|$)' -x '^\.github(/|$)' -x '^\.claude(/|$)' \
+              -x '^outils(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
+              . /;
+            quit"
