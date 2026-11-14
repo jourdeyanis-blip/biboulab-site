@@ -22,7 +22,7 @@ jobs:
           protocol: ftps
           port: 21
           local-dir: ./
-          server-dir: /
+          server-dir: /home/tenu2670/public_html/
           exclude: |
             **/.git*
             **/.git*/**
