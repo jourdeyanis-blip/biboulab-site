@@ -44,8 +44,9 @@ jobs:
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 3;
+            rm -r -f /.git /.github /.claude /outils /LISEZ-MOI.md;
             mirror -R --verbose --parallel=2 \
-              -X '.git*' -X '.github/' -X 'outils/' -X '.claude/' \
-              -X 'LISEZ-MOI.md' -X '.DS_Store' \
+              -x '^\.git(/|$)' -x '^\.github(/|$)' -x '^\.claude(/|$)' \
+              -x '^outils(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
               . /;
             quit"
