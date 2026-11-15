@@ -100,10 +100,12 @@ Les commandes sont enregistrées dans la base de l'administration (`backend/db.s
 
 **Activer le paiement (à faire d'abord en préproduction, en mode test)**
 1. Dashboard Stripe › **Développeurs › Clés API** : copiez la clé secrète (`sk_test_…` pour les essais). Possible aussi : une **clé restreinte** (`rk_…`) limitée à *Checkout Sessions : Écriture*, à essayer d'abord en préproduction.
-2. Dashboard Stripe › **Développeurs › Webhooks › Ajouter une destination** :
-   - URL : `https://pprod.biboulab.fr/admin/paiement/webhook/` (en production : `https://www.biboulab.fr/admin/paiement/webhook/`) ;
+2. Dashboard Stripe › **Workbench › onglet Webhooks** (lien direct : https://dashboard.stripe.com/webhooks) › **Créer une destination d'événement** :
+   - source : **votre compte** ;
+   - format des événements : **Snapshot** (et non « Thin ») : le site lit le contenu complet de l'événement ;
    - événements : `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired` ;
-   - copiez le **secret de signature** (`whsec_…`).
+   - type de destination : **Endpoint de webhook**, URL : `https://pprod.biboulab.fr/admin/paiement/webhook/` (en production : `https://www.biboulab.fr/admin/paiement/webhook/`) ;
+   - sur la page du webhook créé, cliquez sur **Révéler** pour copier le **secret de signature** (`whsec_…`).
 3. cPanel › **Setup Python App** › votre application › *Environment variables* :
    - `STRIPE_SECRET_KEY` : la clé de l'étape 1 ;
    - `STRIPE_WEBHOOK_SECRET` : le secret de l'étape 2 ;
