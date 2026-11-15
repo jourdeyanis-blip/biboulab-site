@@ -1,0 +1,62 @@
+name: Déploiement préprod O2switch
+
+# Chaque push sur la branche preprod publie le site dans le sous-dossier /preprod/
+# de l'hébergement (même compte FTP que la prod) : https://www.biboulab.fr/preprod/
+# Le site de production à la racine n'est pas touché.
+on:
+  push:
+    branches: [preprod]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-preprod
+  cancel-in-progress: true
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Récupérer le code
+        uses: actions/checkout@v4
+
+      - name: Installer lftp
+        run: sudo apt-get update -qq && sudo apt-get install -y -qq lftp
+
+      # Même vérification que la prod : on épingle l'empreinte du certificat auto-signé.
+      - name: Vérifier l'empreinte du certificat du serveur
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          EMPREINTE_ATTENDUE: "20:8F:BD:39:C3:17:F5:1D:97:5F:C0:81:BF:69:E7:BB:F3:7D:36:F6"
+        run: |
+          VUE=$(openssl s_client -starttls ftp -connect "$FTP_SERVER:21" </dev/null 2>/dev/null \
+            | openssl x509 -noout -fingerprint -sha1 | cut -d= -f2)
+          echo "Empreinte vue : $VUE"
+          if [ "$VUE" != "$EMPREINTE_ATTENDUE" ]; then
+            echo "::error::Le certificat du serveur FTP a changé. Envoi annulé."
+            exit 1
+          fi
+
+      # La préprod ne doit pas être indexée : en-tête noindex + robots.txt qui bloque tout.
+      - name: Préparer la version préprod
+        run: |
+          printf 'Header set X-Robots-Tag "noindex, nofollow"\n' > .htaccess
+          printf 'User-agent: *\nDisallow: /\n' > robots.txt
+          rm -f sitemap.xml
+
+      - name: Envoyer le site en FTPS dans /preprod
+        env:
+          FTP_SERVER: ${{ secrets.FTP_SERVER }}
+          FTP_USERNAME: ${{ secrets.FTP_USERNAME }}
+          FTP_PASSWORD: ${{ secrets.FTP_PASSWORD }}
+        run: |
+          lftp -u "$FTP_USERNAME,$FTP_PASSWORD" "ftp://$FTP_SERVER" -e "
+            set ssl:verify-certificate no;
+            set ftp:ssl-force true;
+            set ftp:ssl-protect-data true;
+            set net:max-retries 3;
+            mkdir -p -f /preprod;
+            mirror -R --delete --verbose --parallel=2 \
+              -x '^\.git(/|$)' -x '^\.github(/|$)' -x '^\.claude(/|$)' \
+              -x '^outils(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
+              . /preprod;
+            quit"
