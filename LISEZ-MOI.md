@@ -83,7 +83,37 @@ La même page de gestion est disponible sur **https://www.biboulab.fr/admin/** (
 
 4. Cliquez sur **Restart** dans Setup Python App, puis ouvrez https://www.biboulab.fr/admin/.
 
-**Mettre à jour l'administration** (après une modification de `backend/` ou de `outils/admin.html`) :
+**Mise à jour automatique de l'administration** (à faire une fois par clone : production et préproduction)
+
+Le déploiement GitHub n'envoie que le site public. Pour l'administration, c'est le serveur qui vérifie GitHub toutes les 5 minutes et se met à jour tout seul : `backend/deployer.sh` ne fait rien tant que la branche n'a pas bougé ; sinon il récupère le code, installe les dépendances si `requirements.txt` a changé, applique les migrations, vérifie la configuration et redémarre l'application. Aucun accès SSH depuis GitHub n'est nécessaire (O2switch filtre le SSH par adresse IP, et celles de GitHub changent sans cesse).
+
+1. **Accès du serveur au dépôt** (dépôt privé uniquement) : cPanel › **Accès SSH** › *Gérer les clés SSH* › *Générer une nouvelle clé* (nom `github_biboulab`, sans mot de passe), puis copiez la **clé publique** dans GitHub › dépôt › Settings › **Deploy keys** › *Add deploy key* (lecture seule, sans cocher « Allow write access »). Dans le Terminal cPanel :
+
+   ```bash
+   printf 'Host github.com\n  IdentityFile ~/.ssh/github_biboulab\n  IdentitiesOnly yes\n' >> ~/.ssh/config
+   cd ~/biboulab && git remote set-url origin git@github.com:jourdeyanis-blip/biboulab-site.git && git fetch
+   ```
+
+   La dernière commande doit répondre sans erreur (acceptez l'empreinte de GitHub la première fois).
+2. **Chemin du Python de l'application** : en haut de la page de l'application dans cPanel › Setup Python App, la commande d'activation ressemble à `source /home/<compte>/virtualenv/biboulab/backend/3.11/bin/activate`. Le Python est le même chemin avec `python` au lieu de `activate`.
+3. **Premier passage à la main** dans le Terminal, pour vérifier :
+
+   ```bash
+   ~/biboulab/backend/deployer.sh /home/<compte>/virtualenv/biboulab/backend/3.11/bin/python --forcer
+   ```
+
+   Il doit finir par « OK : … en ligne ».
+4. **Tâche cron** : cPanel › **Tâches Cron** › *Ajouter une nouvelle tâche Cron*, « Une fois toutes les cinq minutes » (`*/5 * * * *`), commande :
+
+   ```bash
+   ~/biboulab/backend/deployer.sh /home/<compte>/virtualenv/biboulab/backend/3.11/bin/python >> ~/biboulab/backend/deploiement.log 2>&1
+   ```
+
+   Pour la préproduction, une seconde tâche identique avec `~/biboulab-pprod` et le Python de l'application de préproduction.
+
+Ensuite, chaque fusion sur `main` (ou `preprod`) met l'administration à jour dans les 5 minutes qui suivent. Le journal `backend/deploiement.log` garde la trace de chaque mise à jour. Si un fichier a été modifié à la main sur le serveur, la mise à jour s'arrête au lieu de l'écraser (« ÉCHEC » dans le journal) : `git status` montre lequel, `git checkout -- <fichier>` annule la modification, et le passage suivant reprend.
+
+**Mettre à jour à la main** (sans attendre, ou sans tâche cron) :
 
 ```bash
 cd ~/biboulab && git pull && cd backend && pip install -r requirements.txt && python manage.py migrate && touch tmp/restart.txt

@@ -33,7 +33,8 @@ jobs:
             exit 1
           fi
 
-      # backend/ (Django) ne va jamais dans le dossier public : il s'installe à part (LISEZ-MOI.md).
+      # backend/ (Django) ne va jamais dans le dossier public : le serveur le met à jour lui-même
+      # toutes les 5 minutes (backend/deployer.sh lancé par une tâche cron, voir LISEZ-MOI.md).
       # catalogue.js, contenu.js et sitemap.xml sont écrits par l'administration en ligne : on ne les envoie
       # que s'ils n'existent pas encore sur le serveur, pour ne jamais écraser ce qui a été saisi en ligne.
       - name: Envoyer le site en FTPS
