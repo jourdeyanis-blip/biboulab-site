@@ -47,12 +47,14 @@ const SITE = {
   /* Livraison (modifiable dans l'administration › Réglages › Livraison)
      carrier  : transporteur (colissimo, mondialrelay ou autre)
      point    : true = le client choisit un point de retrait (lien « finder » vers l'outil du transporteur)
-     tracking : adresse de suivi envoyée au client à l'expédition ; {numero} = numéro de suivi */
+     tracking : adresse de suivi envoyée au client à l'expédition ; {numero} = numéro de suivi
+     mondialRelayBrand : votre code enseigne Mondial Relay. Les modes « mondialrelay » avec point de
+       retrait affichent alors le widget officiel de choix du Point Relais. "BDTEST" est le code de
+       démonstration (le widget affiche un avertissement) ; vide = le client recopie le point à la main. */
   shipping: {
     freeFrom: 60, // livraison offerte à partir de ce montant (€)
+    mondialRelayBrand: "BDTEST",
     methods: [
-      { id: "colissimo-retrait", label: "Colissimo en point retrait", note: "Bureau de poste, relais ou consigne Pickup", price: 5.9, delay: "2 à 3 jours ouvrés",
-        carrier: "colissimo", point: true, finder: "https://localiser.laposte.fr/", tracking: "https://www.laposte.fr/outils/suivre-vos-envois?code={numero}" },
       { id: "relais", label: "Mondial Relay en point relais", note: "Point Relais ou Locker Mondial Relay", price: 4.9, delay: "3 à 5 jours ouvrés",
         carrier: "mondialrelay", point: true, finder: "https://www.mondialrelay.fr/trouver-le-point-relais-le-plus-proche-de-chez-moi/", tracking: "https://www.mondialrelay.fr/suivi-de-colis/?numeroExpedition={numero}" },
       { id: "colissimo", label: "Colissimo à domicile", note: "Dans votre boîte aux lettres, ou remis en main propre", price: 6.9, delay: "2 à 3 jours ouvrés",

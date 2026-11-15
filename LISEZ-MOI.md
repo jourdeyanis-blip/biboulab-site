@@ -160,8 +160,8 @@ Les modèles modifiés sont enregistrés dans la base de l'administration (`back
 
 **Livraison et expédition des commandes**
 
-Trois modes de livraison sont proposés au client (Réglages › Livraison : nom, prix, délai, transporteur, liens) :
-- **Colissimo en point retrait** (bureau de poste, relais ou consigne Pickup) et **Mondial Relay en point relais** : le client ouvre l'outil de recherche du transporteur depuis le panier, choisit son point et recopie son nom et son adresse dans le champ « Point de retrait choisi » (obligatoire, vérifié par le serveur). Sans contrat transporteur, il n'existe pas de carte de sélection intégrable au site ;
+Deux modes de livraison sont proposés au client (Réglages › Livraison : nom, prix, délai, transporteur, liens) :
+- **Mondial Relay en point relais** : le client choisit son Point Relais sur la carte du widget officiel Mondial Relay, directement dans le panier ; le point choisi (nom, numéro, adresse) est enregistré avec la commande (obligatoire, vérifié par le serveur). Le widget demande un code enseigne Mondial Relay (Réglages › Livraison). Sans code enseigne, ou si le widget ne se charge pas, le client ouvre l'outil de recherche du transporteur et recopie le nom et l'adresse du point dans le champ « Point de retrait choisi » ;
 - **Colissimo à domicile**.
 
 À chaque commande payée :
@@ -297,6 +297,7 @@ Les visiteurs qui ont activé « réduire les animations » obtiennent une versi
 ## Bon à savoir
 
 - **Cookies** : le site ne stocke que le panier, le thème et le choix cookies dans le navigateur. Si vous ajoutez une mesure d'audience, ne la chargez que si `UI.consent() === "accept"`.
+- **Point Relais Mondial Relay** : à l'étape « Livraison » du panier, le mode Mondial Relay en point relais affiche le widget officiel (carte OpenStreetMap) ; le point choisi est enregistré avec la commande. Renseignez votre code enseigne dans l'administration › Réglages › Livraison (`SITE.shipping.mondialRelayBrand`) : `BDTEST` est le code de démonstration et affiche un avertissement. Si le widget ne se charge pas, le client recopie le point à la main. Le widget n'est chargé (depuis `widget.mondialrelay.com`) que si le client choisit ce mode ; pensez à le mentionner dans la politique de confidentialité.
 - **Polices** : chargées depuis Google Fonts (mentionné dans la politique de confidentialité). Pour une conformité RGPD plus stricte, hébergez-les vous-même dans `assets/`.
 - **Référencement** : chaque page a son titre et sa description ; les fiches produits publient des données structurées `Product`. Le contenu étant généré en JavaScript, Google l'indexe, mais plus lentement qu'un site entièrement statique.
 - **Mise en ligne** : déposez tout le dossier chez un hébergeur de sites statiques (Netlify, OVH, GitHub Pages, o2switch…). Les dossiers `outils/`, `backend/` et `.claude/` ne vont pas dans le dossier public (`backend/` s'installe à part, voir « Administration en ligne »).

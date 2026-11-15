@@ -228,10 +228,10 @@ class PaiementTests(TestCase):
     def test_data_js_du_site_est_lisible(self):
         cat = boutique.catalogue()
         self.assertGreater(len(cat["produits"]), 0)
-        self.assertEqual(set(cat["livraison"]), {"colissimo-retrait", "relais", "colissimo"})
+        self.assertEqual(set(cat["livraison"]), {"relais", "colissimo"})
         self.assertTrue(cat["livraison"]["relais"]["point"])
         self.assertFalse(cat["livraison"]["colissimo"]["point"])
-        self.assertEqual(cat["livraison"]["colissimo-retrait"]["transporteur"], "colissimo")
+        self.assertEqual(cat["livraison"]["relais"]["transporteur"], "mondialrelay")
         self.assertEqual(cat["franco"], 6000)
 
     def test_prix_recalcules_depuis_le_catalogue(self):
@@ -594,7 +594,7 @@ class ExpeditionTests(TestCase):
         r = self.payer(point="")
         self.assertEqual(r.status_code, 400)
         self.assertIn("point de retrait", r.json()["erreur"])
-        self.assertEqual(self.payer("colissimo-retrait", point="  ").status_code, 400)
+        self.assertEqual(self.payer("relais", point="  ").status_code, 400)
         self.assertFalse(Commande.objects.exists())
 
     def test_point_enregistre_et_transmis_a_stripe(self):

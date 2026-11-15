@@ -653,6 +653,9 @@
           { title: "Livraison offerte", fields: [
             { k: "freeFrom", label: "À partir de (€)", type: "num", hint: "Montant du panier à partir duquel la livraison est gratuite" }
           ] },
+          { title: "Mondial Relay", fields: [
+            { k: "mondialRelayBrand", label: "Code enseigne Mondial Relay", opt: 1, ph: "BDTEST", hint: "Affiche le widget de choix du Point Relais pour les modes Mondial Relay en point de retrait. BDTEST = code de démonstration ; vide = le client recopie le point à la main" }
+          ] },
           { title: "Modes de livraison", fields: [
             { k: "methods", type: "list", itemName: "mode de livraison", add: "Ajouter un mode de livraison", title: (m) => m.label || "Nouveau mode",
               make: (a) => ({ id: uid("livraison", a), label: "", note: "", price: 0, delay: "", carrier: "colissimo", point: false, finder: "", tracking: "https://www.laposte.fr/outils/suivre-vos-envois?code={numero}" }), item: [

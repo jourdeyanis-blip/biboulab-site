@@ -260,6 +260,7 @@
           ${SITE.stores.map((s) => `<a class="store-btn" href="${esc(s.url)}" ${extAttrs} style="--sc:${s.color}">${storeLogo(s)}<span><b>${esc(s.name)}</b><small>${esc(s.tagline)}</small></span>${icon("ext")}<span class="sr">(nouvel onglet)</span></a>`).join("")}
         </div>
       </div>
+      ${SITE.shipping.methods.some((m) => m.carrier === "mondialrelay") ? `<div class="wrap ftr-ship"><span>Livraison en Point Relais® avec</span><img class="ship-logo" src="assets/img/mondial-relay.png" alt="Mondial Relay" width="207" height="72" loading="lazy"></div>` : ""}
       <div class="wrap ftr-bottom">
         <span>© ${new Date().getFullYear()} ${esc(SITE.name)} — ${esc(SITE.legal.owner)}, ${esc(SITE.legal.status)} · SIRET ${esc(SITE.legal.siret)}</span>
         ${SITE.legal.vat ? `<span>${esc(SITE.legal.vat)}</span>` : ""}

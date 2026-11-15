@@ -566,6 +566,21 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .radio-card b { display: block; }
 .radio-card small { color: var(--muted); }
 .radio-card .price { margin-left: auto; font-weight: 500; white-space: nowrap; }
+/* Logo transporteur : toujours sur pastille blanche (le logo Mondial Relay est prévu pour fond clair) */
+.ship-logo { height: 36px; width: auto; flex: none; padding: 5px 9px; background: #fff; border-radius: 8px; box-sizing: border-box; }
+.radio-card .ship-logo { margin-left: auto; }
+.radio-card .ship-logo + .price { margin-left: 0; }
+@media (max-width: 520px) { .radio-card .ship-logo { height: 30px; padding: 4px 7px; } }
+.ftr-ship { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0 0 20px; font-size: .875rem; color: var(--muted); }
+/* Widget Mondial Relay : le widget a son propre thème clair, on l'encadre sur fond blanc */
+.mr-zone { background: #fff; color: #1a1a1a; color-scheme: light; border-radius: 12px; border: 1px solid var(--line-2); overflow: hidden; min-height: 56px; }
+.mr-zone .muted { color: #555; }
+.mr-choice { display: flex; gap: 10px; align-items: flex-start; padding: 12px 16px; border-radius: 12px; border: 1px dashed var(--line-2); font-size: .9375rem; margin: 0 0 12px; color: var(--muted); }
+.mr-choice.on { border-style: solid; border-color: var(--ok); color: var(--text); }
+.mr-choice svg { width: 20px; height: 20px; flex: none; color: var(--ok); margin-top: 2px; }
+.mr-err { color: var(--err); font-size: .875rem; margin: 0 0 12px; }
+.mr-err:empty { display: none; }
+[data-theme="light"] .mr-err { color: #B91C1C; }
 .check { display: flex; gap: 12px; align-items: flex-start; font-size: .92rem; }
 .check input { width: 20px; height: 20px; margin-top: 3px; accent-color: var(--accent); flex: none; }
 .check a, .prose a, .notice a { text-decoration: underline; text-underline-offset: 3px; }
