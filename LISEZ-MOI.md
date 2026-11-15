@@ -1,7 +1,8 @@
 # Biboulab — site vitrine e-commerce
 
 Site statique (HTML + CSS + JavaScript, sans installation ni compilation).
-Tous les contenus modifiables sont regroupés dans **un seul fichier : `assets/js/data.js`**.
+Tous les contenus modifiables sont regroupés dans **un seul fichier : `assets/js/data.js`**,
+et se modifient sans toucher au code depuis la **page d'administration** (voir plus bas).
 
 ## Voir le site en local
 
@@ -11,9 +12,17 @@ node outils/serveur-local.js
 
 Puis ouvrir http://localhost:4173. (Un double-clic sur `index.html` fonctionne aussi.)
 
-## Ajouter des catégories et des objets (page d'administration)
+## Administrer le site (page d'administration)
 
-Lancez le serveur local, puis ouvrez **http://localhost:4173/admin** :
+En ligne sur **/admin/** (voir « Administration en ligne » plus bas), ou en local avec `node outils/serveur-local.js` puis **http://localhost:4173/admin**. Trois onglets :
+
+- **Catalogue** : catégories et objets (détail ci-dessous).
+- **Pages** : textes de la page À propos (histoire, photos de l'atelier, frise du process) et des quatre pages légales (mentions légales, CGV, confidentialité, rétractation). Chaque page se découpe en sections : intertitre, texte, encadré ou non ; ajoutez, réordonnez ou supprimez-les. Un aperçu se met à jour à côté pendant la saisie. Titre et description pour Google se règlent aussi ici.
+- **Réglages** : identité et contact (nom, slogan, e-mail, adresse du site, logo), **informations légales** (exploitant, SIRET, adresse, hébergeur, médiateur, mention TVA), page d'accueil (bandeau, chiffres, bandeau défilant), livraison, moyens de paiement, boutiques externes, couleurs de filament et avis clients.
+
+Dans les textes des pages : ligne vide = nouveau paragraphe, `- ` en début de ligne = puce, `**gras**`, `[lien](cgv.html)`, `### intertitre`. Les variables comme `{owner}`, `{siret}`, `{address}`, `{email}` sont remplacées par les informations légales des Réglages : changez votre SIRET une fois, toutes les pages suivent. Modifier une page légale met automatiquement à jour sa date « Dernière mise à jour ».
+
+### Catalogue
 
 ```bash
 node outils/serveur-local.js
@@ -23,10 +32,10 @@ node outils/serveur-local.js
 - **Sous-catégories** : bouton « Sous-catégorie » d'une catégorie, ou glissez une catégorie au milieu d'une autre. Autant de niveaux que vous voulez. Sur le site, le menu et l'accueil montrent les catégories principales ; la page d'une catégorie affiche ses sous-catégories en filtres et inclut leurs objets.
 - **Objets** : le « + » d'une catégorie y ajoute un objet ; remplissez nom, catégorie, prix, description, couleurs, tailles, puis ajoutez vos photos (elles sont réduites, converties en WebP et rangées dans `assets/img/produits/`).
 - **Catégories** : « Nouvelle catégorie », choisissez un nom, une icône, deux couleurs et un effet d'ambiance. Les boutons Monter et Descendre règlent l'ordre du menu et de l'accueil.
-- **Enregistrer** (ou Cmd/Ctrl + S) écrit dans `assets/js/data.js` et met à jour le sitemap. Une copie de l'ancien `data.js` est gardée dans `outils/sauvegardes/` à chaque enregistrement.
-- Pour publier : renvoyez chez votre hébergeur `assets/js/data.js`, `sitemap.xml` et les nouvelles photos de `assets/img/produits/`.
+- **Enregistrer** (ou Cmd/Ctrl + S) enregistre les trois onglets d'un coup : écrit dans `assets/js/data.js`, recopie titres et descriptions des pages légales dans leur fichier HTML et met à jour le sitemap. Une copie de l'ancien `data.js` est gardée dans `outils/sauvegardes/` à chaque enregistrement.
+- Pour publier : envoyez vos modifications sur la branche `main` du dépôt GitHub (le site est alors redéployé automatiquement sur O2switch), ou renvoyez chez votre hébergeur `assets/js/data.js`, les pages `.html` modifiées, `sitemap.xml` et les nouvelles images de `assets/img/`.
 
-Cette version locale enregistre dans `data.js` sur votre ordinateur. Pour gérer le catalogue directement sur le site en ligne, voir la section suivante.
+Cette version locale enregistre dans `data.js` sur votre ordinateur. Pour gérer catalogue, pages et réglages directement sur le site en ligne, voir la section suivante.
 
 ## Administration en ligne (Django)
 
@@ -39,7 +48,7 @@ La même page de gestion est disponible sur **https://www.biboulab.fr/admin/** (
 - Protection CSRF sur chaque enregistrement, politique de sécurité du contenu (CSP) stricte, page non indexable, interdite dans une iframe.
 - Les photos envoyées sont vérifiées (contenu réel d'image, nom contrôlé) et le dossier `assets/img/produits/` n'exécute jamais de code.
 
-**Ce que l'administration écrit sur le serveur** : `assets/js/catalogue.js` (catégories et objets), `sitemap.xml` et les photos de `assets/img/produits/`. Le déploiement GitHub n'écrase jamais ces fichiers. Tant que `catalogue.js` vaut `null`, le site utilise le catalogue de `data.js` ; dès le premier enregistrement en ligne, c'est le catalogue en ligne qui fait foi (modifier les produits dans `data.js` n'a alors plus d'effet en ligne). Les 30 versions précédentes de `catalogue.js` sont gardées dans `backend/sauvegardes/`.
+**Ce que l'administration écrit sur le serveur** : `assets/js/catalogue.js` (catégories et objets), `assets/js/contenu.js` (onglets Pages et Réglages : textes des pages, informations légales, livraison, paiement, couleurs, avis), `sitemap.xml` et les images de `assets/img/produits/` et `assets/img/atelier/`. Le déploiement GitHub n'écrase jamais ces fichiers. Tant que `catalogue.js` et `contenu.js` valent `null`, le site utilise `data.js` ; dès le premier enregistrement en ligne, ce sont eux qui font foi (modifier ces contenus dans `data.js` n'a alors plus d'effet en ligne). Les 30 versions précédentes de chacun sont gardées dans `backend/sauvegardes/`.
 
 **Installation chez O2switch (une seule fois par site)**
 
@@ -92,7 +101,7 @@ cd ~/biboulab && git pull && cd backend && pip install -r requirements.txt && py
 Avec `payment.mode: "stripe"` (dans `data.js`), le bouton **« Commander et payer »** du panier envoie le client sur la page de paiement sécurisée de Stripe (Stripe Checkout). Les coordonnées bancaires ne passent jamais par le site. C'est l'administration Django qui parle à Stripe : elle doit donc être installée (voir ci-dessus).
 
 **Comment ça marche**
-1. Le panier envoie à `/admin/paiement/session/` les **identifiants** des articles (objet, couleur, taille, quantité), le mode de livraison et l'adresse. Aucun prix : le serveur relit les prix dans `catalogue.js` (ou `data.js` tant que le catalogue en ligne n'a jamais été enregistré) et les frais de port dans `data.js`, puis crée la commande et la session Stripe.
+1. Le panier envoie à `/admin/paiement/session/` les **identifiants** des articles (objet, couleur, taille, quantité), le mode de livraison et l'adresse. Aucun prix : le serveur relit les prix dans `catalogue.js` (ou `data.js` tant que le catalogue en ligne n'a jamais été enregistré) et les frais de port dans `contenu.js` (ou `data.js` tant que les réglages n'ont jamais été enregistrés en ligne), puis crée la commande et la session Stripe.
 2. Le client paie chez Stripe, puis revient sur `panier.html` : panier vidé et message de confirmation. S'il annule, il retrouve son panier et son adresse.
 3. Stripe prévient le serveur par un **webhook** signé (`/admin/paiement/webhook/`) : c'est la seule preuve de paiement. La commande passe alors à « payée » et deux e-mails partent :
    - **pour vous** (adresse `COMMANDES_DESTINATAIRE`) : articles, couleurs, tailles, adresse de livraison et précision du client. Répondre à cet e-mail écrit directement au client ;
@@ -130,7 +139,7 @@ Les modèles modifiés sont enregistrés dans la base de l'administration (`back
 3. cPanel › **Setup Python App** › votre application › *Environment variables* :
    - `STRIPE_SECRET_KEY` : la clé de l'étape 1 ;
    - `STRIPE_WEBHOOK_SECRET` : le secret de l'étape 2 ;
-   - facultatif : `COMMANDES_DESTINATAIRE` (par défaut biboulab@outlook.fr) et `COMMANDES_EXPEDITEUR` (par défaut no-reply@biboulab.fr, à garder sur le domaine du site).
+   - facultatif : `COMMANDES_DESTINATAIRE` (par défaut biboulab@outlook.fr), `CONTACT_DESTINATAIRE` (formulaire de contact, par défaut la même adresse) et `COMMANDES_EXPEDITEUR` (par défaut no-reply@biboulab.fr, à garder sur le domaine du site).
 4. Mettez à jour l'administration (commande `git pull … migrate …` ci-dessus : elle installe la bibliothèque Stripe et crée la table des commandes), puis **Restart**.
 5. Faites une commande sur la préproduction avec la carte de test `4242 4242 4242 4242` (date future, n'importe quel code). Vérifiez : retour sur le site avec « paiement confirmé », e-mail de commande reçu, paiement visible dans le Dashboard (Transactions).
 
@@ -153,10 +162,11 @@ Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les vis
 
 | Fichier | Rôle |
 |---|---|
-| `assets/js/data.js` | **Le fichier à modifier** : marque, slogan, liens, catégories, produits, avis, textes « À propos », livraison, mentions légales |
+| `assets/js/data.js` | **Le fichier des contenus** (modifiable depuis l'administration) : marque, slogan, liens, catégories, produits, avis, textes « À propos », livraison, informations légales et textes des pages légales (`PAGES`) |
+| `assets/js/rich.js` | Mise en forme des textes des pages légales (paragraphes, puces, gras, liens, `{variables}`) |
 | `assets/css/style.css` | Design et animations. Couleurs et polices en haut du fichier (section 1) |
 | `assets/js/icons.js` | Icônes du site (catégories, boutons). Une ligne par icône |
-| `outils/admin.html` | Page de gestion des catégories et des objets (voir ci-dessus) |
+| `outils/admin.html` | Page d'administration : catalogue, pages et réglages (voir ci-dessus) |
 | `assets/js/app.js` | Moteur commun : menu, pied de page, thème, panier, curseur, préloader, transitions, cookies |
 | `assets/js/pages.js` | Contenu de chaque page (accueil, boutique, fiche produit, panier, contact…) |
 | `index.html` | Accueil |
@@ -171,18 +181,19 @@ Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les vis
 | `outils/` | Serveur local, page de gestion (`admin.html`) et générateur de sitemap |
 | `backend/` | Administration en ligne (Django) : jamais copiée dans `public_html` |
 | `assets/js/catalogue.js` | Catalogue écrit par l'administration en ligne (`null` = celui de `data.js`) |
+| `assets/js/contenu.js` | Pages et réglages écrits par l'administration en ligne (`null` = ceux de `data.js`) |
 
 ## À remplacer avant la mise en ligne
 
-Dans `data.js`, cherchez **`⚠️ À REMPLACER`** :
+Tout se fait depuis l'administration (ou dans `data.js`) :
 
 1. **Liens MakerWorld et Cults3D** : `SITE.stores` → remplacez `VOTRE_PSEUDO` dans les deux adresses.
 2. **E-mail et nom de domaine** : `SITE.email`, `SITE.url`.
-3. **Mentions légales** : `SITE.legal` (nom, SIRET, adresse, hébergeur, médiateur). Tant que `demo: true`, ces valeurs sont surlignées en orange sur les pages légales.
+3. **Mentions légales** : Réglages › Informations légales (nom, SIRET, adresse, hébergeur, médiateur). Tant que le mode démonstration est actif, ces valeurs sont surlignées en orange sur les pages légales.
 4. **Produits** : les 28 produits sont des exemples (noms, prix, descriptions).
 5. **Avis clients** : `REVIEWS` contient des avis fictifs. Publier de faux avis est interdit : remplacez-les par de vrais retours, ou videz la liste.
 6. **Chiffres de l'accueil** : `SITE.stats`.
-7. Passez ensuite **`demo: false`** pour masquer les mentions « contenu d'exemple ».
+7. Décochez ensuite **Réglages › Identité et contact › Mode démonstration** pour masquer les mentions « contenu d'exemple ».
 8. Relancez `node outils/generer-sitemap.js` (met à jour le sitemap avec votre domaine et vos produits).
 
 Les textes des pages légales sont des modèles adaptés à une micro-entreprise : faites-les relire avant publication (désignation d'un médiateur de la consommation obligatoire).
@@ -215,7 +226,7 @@ Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré
 ## Paiement et formulaires
 
 - **Commande** : avec `payment.mode: "stripe"`, le client paie en ligne par Stripe Checkout (voir « Paiement en ligne (Stripe) »). Avec `payment.mode: "email"`, valider la commande ouvre la messagerie du client avec le récapitulatif et vous lui renvoyez un moyen de paiement ; aucun paiement n'est alors encaissé sur le site.
-- **Contact** : le formulaire envoie directement un e-mail à la boîte de l'entreprise, sans ouvrir la messagerie du visiteur. Il passe par `envoyer-contact.php` (réglé dans `SITE.formEndpoint`) ; l'adresse destinataire et l'adresse d'expédition se changent en haut de ce fichier (`DESTINATAIRE`, `EXPEDITEUR`). Cela ne fonctionne que sur l'hébergement (PHP) : en local, le formulaire affichera une erreur.
+- **Contact** : le formulaire envoie directement un e-mail à la boîte de l'entreprise, sans ouvrir la messagerie du visiteur. Il passe par l'administration en ligne (adresse `/admin/contact/`, réglée dans Réglages › Identité et contact ou `SITE.formEndpoint`), qui envoie l'e-mail comme ceux des commandes : champs obligatoires, e-mail valide, champ piège anti-robots et 5 messages par heure et par visiteur au maximum. La boîte qui reçoit les messages est `CONTACT_DESTINATAIRE` (par défaut la même que `COMMANDES_DESTINATAIRE`) ; répondre au message écrit directement au visiteur. Avec le serveur local `node outils/serveur-local.js`, le formulaire affichera une erreur : l'envoi n'existe qu'en ligne.
 
 ## Animations et design : où régler quoi
 

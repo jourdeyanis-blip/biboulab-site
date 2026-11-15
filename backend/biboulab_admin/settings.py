@@ -13,6 +13,7 @@ Paiement en ligne (Stripe Checkout, voir LISEZ-MOI.md) :
   STRIPE_SECRET_KEY       clé secrète Stripe (sk_… ou clé restreinte rk_…) ; vide = paiement désactivé
   STRIPE_WEBHOOK_SECRET   secret de signature du webhook (whsec_…)
   COMMANDES_DESTINATAIRE  adresse prévenue à chaque commande payée
+  CONTACT_DESTINATAIRE    adresse qui reçoit le formulaire de contact (par défaut : COMMANDES_DESTINATAIRE)
   COMMANDES_EXPEDITEUR    expéditeur de cet e-mail (adresse du domaine du site)
 """
 import os
@@ -134,6 +135,8 @@ STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
 STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
 COMMANDES_DESTINATAIRE = os.environ.get("COMMANDES_DESTINATAIRE", "biboulab@outlook.fr")
 COMMANDES_EXPEDITEUR = os.environ.get("COMMANDES_EXPEDITEUR", "no-reply@biboulab.fr")
+# Boîte qui reçoit les messages du formulaire de contact (par défaut, la même que les commandes)
+CONTACT_DESTINATAIRE = os.environ.get("CONTACT_DESTINATAIRE", COMMANDES_DESTINATAIRE)
 # En ligne, les e-mails partent par le sendmail d'O2switch ; en local, ils s'affichent dans le terminal.
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend" if DEBUG else "gestion.courriel.SendmailBackend"
 SENDMAIL = os.environ.get("SENDMAIL", "/usr/sbin/sendmail")

@@ -116,9 +116,15 @@ def _sitemap(cats: list, prods: list) -> None:
     except OSError:
         return
     m = re.search(r'\burl:\s*"(https?://[^"]+)"', data_js)
-    if not m:
+    base = m.group(1) if m else None
+    try:   # adresse réglée dans l'administration en ligne (contenu.js), si elle existe
+        en_ligne = re.search(r'"url":\s*"(https?://[^"]+)"', (settings.SITE_ROOT / "assets" / "js" / "contenu.js").read_text("utf-8"))
+        base = en_ligne.group(1) if en_ligne else base
+    except OSError:
+        pass
+    if not base:
         return
-    base = m.group(1).rstrip("/")
+    base = base.rstrip("/")
     jour = date.today().isoformat()
     urls = [("", "1.0"), ("boutique.html", "0.9")]
     urls += [(f"categorie.html?c={c['slug']}", "0.8") for c in cats]
@@ -141,7 +147,10 @@ def type_image(data: bytes) -> str | None:
     return None
 
 
-def enregistrer_photo(nom: str, data: bytes) -> str:
+def enregistrer_photo(nom: str, data: bytes, dossier: str = "produits") -> str:
+    """Photo d'objet (assets/img/produits) ou de l'atelier, logo… (assets/img/atelier)."""
+    if dossier not in ("produits", "atelier"):
+        raise Invalide("Dossier d'image inconnu.")
     if not NOM_PHOTO.match(nom):
         raise Invalide("Nom de photo invalide.")
     if not data or len(data) > 12_000_000:
@@ -150,5 +159,5 @@ def enregistrer_photo(nom: str, data: bytes) -> str:
     ext = nom.rsplit(".", 1)[1].replace("jpg", "jpeg")
     if vrai is None or vrai != ext:
         raise Invalide("Ce fichier n'est pas une image valide.")
-    _ecrire(settings.SITE_ROOT / "assets" / "img" / "produits" / nom, data)
-    return f"assets/img/produits/{nom}"
+    _ecrire(settings.SITE_ROOT / "assets" / "img" / dossier / nom, data)
+    return f"assets/img/{dossier}/{nom}"

@@ -6,8 +6,9 @@ toujours relus ici, jamais repris de la requête.
 
 Sources, dans l'ordre :
   - assets/js/catalogue.js : catalogue écrit par l'administration en ligne ;
-  - assets/js/data.js      : catalogue d'origine (tant que catalogue.js vaut null),
-                             couleurs de filament et modes de livraison.
+  - assets/js/contenu.js   : réglages écrits par l'administration en ligne
+                             (modes de livraison, couleurs de filament) ;
+  - assets/js/data.js      : valeurs d'origine, tant que ces fichiers valent null.
 """
 import json
 import re
@@ -129,6 +130,15 @@ def _lire(nom: str) -> str:
         raise CatalogueIndisponible(f"Lecture de {nom} impossible.") from e
 
 
+def _contenu() -> dict:
+    """Contenus écrits par l'administration en ligne (contenu.js), ou {} s'il n'y en a pas."""
+    try:
+        v = lire_constante(_lire("contenu.js"), "CONTENU")
+    except CatalogueIndisponible:
+        return {}
+    return v if isinstance(v, dict) else {}
+
+
 def catalogue() -> dict:
     """Produits, couleurs et livraison, tels que le site les affiche."""
     data_js = _lire("data.js")
@@ -137,8 +147,9 @@ def catalogue() -> dict:
     except CatalogueIndisponible:
         en_ligne = None
     produits = en_ligne["products"] if isinstance(en_ligne, dict) and "products" in en_ligne else lire_constante(data_js, "PRODUCTS")
-    site = lire_constante(data_js, "SITE")
-    filaments = lire_constante(data_js, "FILAMENTS")
+    contenu = _contenu()
+    site = contenu["site"] if isinstance(contenu.get("site"), dict) else lire_constante(data_js, "SITE")
+    filaments = contenu["filaments"] if isinstance(contenu.get("filaments"), dict) else lire_constante(data_js, "FILAMENTS")
     try:
         livraison = site["shipping"]
         modes = {m["id"]: {"label": m["label"], "delai": m.get("delay", ""), "prix": centimes(m["price"])} for m in livraison["methods"]}
@@ -156,7 +167,9 @@ def catalogue() -> dict:
 def infos_site() -> dict:
     """Nom et adresse de la boutique (SITE dans data.js), pour les e-mails."""
     try:
-        site = lire_constante(_lire("data.js"), "SITE")
+        site = _contenu().get("site")
+        if not isinstance(site, dict):
+            site = lire_constante(_lire("data.js"), "SITE")
         return {"nom": str(site.get("name") or "Biboulab"), "url": str(site.get("url") or ""),
                 "slogan": str(site.get("slogan") or "")}
     except (CatalogueIndisponible, AttributeError):

@@ -15,7 +15,8 @@ from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
 from . import emails as courriels
-from .catalogue import Invalide, enregistrer, enregistrer_photo
+from . import contenu as contenus
+from .catalogue import Invalide, enregistrer, enregistrer_photo, verifier
 from .models import ModeleEmail
 from .securite import csp
 
@@ -151,7 +152,7 @@ def api_etat(request):
 @require_POST
 @admin_requis(api=True)
 def api_sauver(request):
-    if len(request.body) > 5_000_000:
+    if len(request.body) > 8_000_000:
         return JsonResponse({"erreur": "Données trop volumineuses."}, status=413)
     try:
         data = json.loads(request.body)
@@ -160,8 +161,15 @@ def api_sauver(request):
             raise KeyError
     except (ValueError, KeyError, TypeError):
         return JsonResponse({"erreur": "Données incomplètes."}, status=400)
+    # Pages et réglages (onglets « Pages » et « Réglages ») : envoyés avec le catalogue.
+    contenu = {k: data[k] for k in ("site", "filaments", "reviews", "about", "pages") if k in data}
     try:
+        if contenu:
+            verifier(cats, prods)                     # tout est vérifié avant la moindre écriture
+            contenus.verifier(contenu, prods)
         enregistrer(cats, prods)
+        if contenu:
+            contenus.enregistrer(contenu, prods)
     except Invalide as e:
         return JsonResponse({"erreur": str(e)}, status=400)
     except OSError:
@@ -173,7 +181,7 @@ def api_sauver(request):
 @admin_requis(api=True)
 def api_photo(request):
     try:
-        chemin = enregistrer_photo(request.GET.get("nom", ""), request.body)
+        chemin = enregistrer_photo(request.GET.get("nom", ""), request.body, request.GET.get("dossier") or "produits")
     except Invalide as e:
         return JsonResponse({"erreur": str(e)}, status=400)
     except OSError:

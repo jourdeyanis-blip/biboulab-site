@@ -5,7 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Administration | Biboulab</title>
-  <!-- Page de gestion. En local : node outils/serveur-local.js puis http://localhost:4173/admin
+  <!-- Page de gestion (catalogue, pages, réglages). En local : node outils/serveur-local.js puis http://localhost:4173/admin
        En ligne : servie par l'application Django (backend/) sur /admin/, après connexion (identifiant + mot de passe). -->
   <script>try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"}catch(e){document.documentElement.dataset.theme="dark"}</script>
   <link rel="stylesheet" href="../assets/css/style.css">
@@ -99,11 +99,51 @@
     .preview .cat { min-height: 200px; }
     .a-empty { height: 100%; display: grid; place-items: center; text-align: center; color: var(--muted); }
     .a-empty h1 { font: 500 1.25rem/1.3 var(--font-b); color: var(--text); margin-bottom: 8px; letter-spacing: 0; }
+    .a-tabs { display: flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--surface-2); }
+    .a-tabs button { min-height: 36px; padding: 0 14px; border-radius: 9px; font-size: .9375rem; color: var(--muted); transition: background-color .18s var(--ease), color .18s var(--ease); }
+    .a-tabs button:hover { color: var(--text); }
+    .a-tabs button[aria-pressed="true"] { background: var(--bg); color: var(--text); box-shadow: 0 1px 2px rgb(0 0 0 / .2); }
+    .p-intro { margin: 0; color: var(--muted); font-size: .875rem; }
+    .p-group { margin: 16px 8px 6px; color: var(--faint); font-size: .8125rem; }
+    .p-group:first-child { margin-top: 4px; }
+    .p-nav { display: grid; gap: 2px; }
+    .p-nav button { min-height: 40px; padding: 0 12px; border-radius: 8px; text-align: left; font-size: .9375rem; color: var(--muted); transition: background-color .18s var(--ease), color .18s var(--ease); }
+    .p-nav button:hover { background: var(--surface-2); color: var(--text); }
+    .p-nav button[aria-current="true"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+    .a-split { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 40px; max-width: 1480px; margin-inline: auto; align-items: start; }
+    .a-split .a-form { max-width: none; margin: 0; }
+    .a-prev { position: sticky; top: 0; max-height: calc(100vh - 140px); overflow-y: auto; padding: 8px 28px 28px; border: 1px solid var(--line); border-radius: var(--r); background: var(--bg); }
+    .a-prev-t { position: sticky; top: -8px; margin: -8px -28px 0; padding: 12px 28px; background: var(--bg); border-bottom: 1px solid var(--line); color: var(--faint); font-size: .8125rem; z-index: 1; }
+    .a-prev .page-head { padding: 24px 0 0; } .a-prev h1 { font-size: 2rem; }
+    .a-form .form { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+    @media (max-width: 560px) { .a-form .form { grid-template-columns: minmax(0, 1fr); } }
+    .li-list { display: grid; grid-template-columns: minmax(0, 1fr); gap: 12px; }
+    .li-card { border: 1px solid var(--line); border-radius: var(--r); padding: 16px; background: var(--surface); }
+    .li-card .form { gap: 12px; }
+    .li-head { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; }
+    .li-head b { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .li-head .rm { width: 36px; height: 36px; }
+    .li-head .up .ic { transform: rotate(180deg); }
+    .li-solo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
+    .li-solo > .fg { grid-column: auto; }
+    .li-solo .acts { display: flex; flex-direction: column; }
+    .li-solo .rm { width: 36px; height: 36px; }
+    .li-solo .up .ic { transform: rotate(180deg); }
+    .textarea.long { min-height: 180px; }
+    .vars { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 8px; }
+    .vars button { min-height: 28px; padding: 0 8px; border-radius: 6px; border: 1px solid var(--line-2); font: .8125rem ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--muted); transition: background-color .18s var(--ease), color .18s var(--ease); }
+    .vars button:hover { background: var(--surface-2); color: var(--text); }
+    .syntax { padding: 12px 16px; border-radius: var(--r-s); background: var(--surface-2); font-size: .8125rem; color: var(--muted); line-height: 1.6; }
+    .syntax code { font: .9em ui-monospace, SFMono-Regular, Menlo, monospace; color: var(--text); }
+    .swatch { width: 48px; height: 48px; flex: none; border-radius: var(--r-s); border: 1px solid var(--line-2); background: var(--sw); }
+    @media (max-width: 1200px) { .a-split { grid-template-columns: minmax(0, 1fr); } .a-prev { position: static; max-height: none; } }
     @media (max-width: 860px) {
       body { overflow: auto; height: auto; display: block; }
       .a-top { flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 8px 12px; }
       .a-top .sub { display: none; }
-      .a-shell { grid-template-columns: 1fr; }
+      .a-shell { grid-template-columns: minmax(0, 1fr); }
+      .a-prev { padding: 8px 16px 16px; } .a-prev-t { margin: -8px -16px 0; padding: 12px 16px; }
+      .a-tabs { order: 5; width: 100%; } .a-tabs button { flex: 1; }
       .a-side { border-right: 0; border-bottom: 1px solid var(--line); }
       .a-list { max-height: 280px; } .a-main { padding: 24px 16px; overflow: visible; }
       .third, .preview { grid-template-columns: 1fr; }
@@ -115,6 +155,11 @@
   <header class="a-top">
     <a class="logo" href="../index.html" target="_blank" rel="noopener" title="Ouvrir le site"><span class="logo-a">Biboulab</span></a>
     <span class="sub">Administration</span>
+    <nav class="a-tabs" id="tabs" aria-label="Sections de l'administration">
+      <button type="button" data-mode="cat">Catalogue</button>
+      <button type="button" data-mode="pages">Pages</button>
+      <button type="button" data-mode="site">Réglages</button>
+    </nav>
     <span class="sub" id="counts"></span>
     <p class="a-status" id="status" role="status"><i></i><span></span></p>
     <a class="btn btn-ghost" id="emails" href="emails/" hidden>E-mails de commande</a>
@@ -133,12 +178,15 @@
   </div>
 
   <script src="../assets/js/catalogue.js"></script>
+  <script src="../assets/js/contenu.js"></script>
   <script src="../assets/js/data.js"></script>
   <script src="../assets/js/icons.js"></script>
+  <script src="../assets/js/rich.js"></script>
   <script>
   (() => {
     "use strict";
-    const { SITE, FILAMENTS, CATEGORIES, PRODUCTS } = window.SHOP;
+    const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT, PAGES } = window.SHOP;
+    const RICH = window.SHOP_RICH;
     const ICONS = window.SHOP_ICONS;
     /* Icônes proposées pour une catégorie (les 8 d'origine + les icônes génériques) */
     const CAT_ICONS = ["noel", "figurine", "deco", "halloween", "architecture", "bureau", "cuisine", "reparation", "cube", "box", "etoile", "coeur", "cadeau", "jeu", "plante", "lumiere", "auto", "musique", "animal"].filter((n) => ICONS[n]);
@@ -168,7 +216,10 @@
       cats: structuredClone(CATEGORIES), prods: structuredClone(PRODUCTS),
       fresh: new Set(),    // éléments créés dans cette session : leur identifiant suit encore le nom
       manualId: new Set(), // … sauf si l'identifiant a été retouché à la main
-      dirty: false, canSave: false
+      dirty: false, canSave: false,
+      mode: "cat", panel: null, // onglet affiché : catalogue, pages ou réglages
+      site: structuredClone(SITE), about: structuredClone(ABOUT), pages: structuredClone(PAGES || {}), reviews: structuredClone(REVIEWS || []),
+      fils: Object.entries(FILAMENTS).map(([key, f]) => ({ key, ...f }))  // couleurs de filament, sous forme de liste
     };
     st.cats.forEach((c) => st.open.add(c));
     const catOf = (slug) => st.cats.find((c) => c.slug === slug);
@@ -187,10 +238,11 @@
     /* ---------- Barre du haut ---------- */
     function status(kind, text) { const el = $("#status"); el.className = "a-status " + kind; $("span", el).textContent = text; }
     function touch() { st.dirty = true; status("dirty", "Modifications non enregistrées"); $("#save").disabled = !st.canSave; counts(); }
-    function counts() { const c = st.cats.length, p = st.prods.length; $("#counts").textContent = `${c} catégorie${c > 1 ? "s" : ""} · ${p} objet${p > 1 ? "s" : ""}`; }
+    function counts() { if (st.mode !== "cat") { $("#counts").textContent = ""; return; } const c = st.cats.length, p = st.prods.length; $("#counts").textContent = `${c} catégorie${c > 1 ? "s" : ""} · ${p} objet${p > 1 ? "s" : ""}`; }
 
     /* ---------- Arborescence : catégories, et leurs objets en dessous ---------- */
     function tools() {
+      if (st.mode !== "cat") return panelTools();
       $("#tools").innerHTML = `
         <button class="btn btn-primary" type="button" id="add">${icon("plus")} Nouvelle catégorie</button>
         <div class="field">${icon("search")}<label class="sr" for="q">Rechercher</label><input class="input" id="q" type="search" placeholder="Rechercher" autocomplete="off" value="${esc(st.q)}"></div>
@@ -201,6 +253,7 @@
       $("#close-all").addEventListener("click", () => { st.open.clear(); list(); });
     }
     function list() {
+      if (st.mode !== "cat") return panelNav();
       const q = slugify(st.q);
       const match = (p) => slugify(p.name + " " + p.id).includes(q);
       const hit = (c) => !q || slugify(c.name).includes(q) || inCat(c).some(match) || kidsOf(c).some(hit);
@@ -314,6 +367,7 @@
         ${o.hint ? `<p class="hint">${o.hint}</p>` : ""}</div>`;
 
     function form() {
+      if (st.mode !== "cat") return panelForm();
       const it = cur(), main = $("#main");
       if (!it) {
         main.innerHTML = `<div class="a-empty"><div><h1>Choisissez un élément dans l'arborescence</h1><p>Le + d'une catégorie y ajoute un objet. Glissez-déposez pour réordonner, déplacer ou créer des sous-catégories</p></div></div>`;
@@ -344,8 +398,8 @@
           <input type="file" id="file" accept="image/*" multiple hidden>
         </section>
         <section class="a-sec"><h2>Couleurs de filament proposées</h2>
-          <div class="picks">${Object.entries(FILAMENTS).map(([k, f]) => `<label class="fil"><input type="checkbox" data-color="${esc(k)}"${p.colors.includes(k) ? " checked" : ""}><i style="--sw:${esc(f.hex)}"></i>${esc(f.name)}</label>`).join("")}</div>
-          <p class="hint">La première couleur cochée est celle choisie par défaut</p>
+          <div class="picks">${st.fils.map((f) => `<label class="fil"><input type="checkbox" data-color="${esc(f.key)}"${p.colors.includes(f.key) ? " checked" : ""}><i style="--sw:${esc(f.hex)}"></i>${esc(f.name)}</label>`).join("")}</div>
+          <p class="hint">La première couleur cochée est celle choisie par défaut. La liste des couleurs se règle dans Réglages › Couleurs de filament</p>
         </section>
         <section class="a-sec"><h2>Tailles</h2>
           <div class="rows" id="sizes">${p.sizes.map((s, i) => `<div class="rowline"><input class="input" data-size="${i}" data-f="label" value="${esc(s.label)}" placeholder="15 cm" aria-label="Nom de la taille ${i + 1}"><input class="input" type="number" step="0.1" min="0" data-size="${i}" data-f="extra" value="${esc(s.extra)}" aria-label="Supplément en euros"><button class="rm" type="button" data-rm-size="${i}" aria-label="Retirer la taille ${i + 1}">${icon("trash")}</button></div>`).join("")}</div>
@@ -407,6 +461,7 @@
     /* ---------- Saisie : chaque champ met à jour l'élément en direct ---------- */
     const main = $("#main");
     main.addEventListener("input", (e) => {
+      if (st.mode !== "cat") return panelInput(e);
       const t = e.target, it = cur(); if (!it) return;
       const idKey = isP() ? "id" : "slug";
       if (t.dataset.k) {
@@ -436,6 +491,7 @@
       touch(); list(); preview();
     });
     main.addEventListener("click", (e) => {
+      if (st.mode !== "cat") return panelClick(e);
       const b = e.target.closest("button"); if (!b) return; const it = cur();
       const act = b.dataset.act;
       if (act === "del") return remove();
@@ -452,6 +508,7 @@
 
     /* ---------- Photos : réduites à 1200 px, converties en WebP, rangées dans assets/img/produits ---------- */
     main.addEventListener("change", async (e) => {
+      if (e.target.id === "pfile") return panelUpload(e);
       if (e.target.id !== "file") return;
       const p = cur(), files = [...e.target.files]; if (!p || !files.length) return;
       if (!ID.test(p.id)) return alert("Donnez d'abord un nom à l'objet.");
@@ -471,11 +528,351 @@
       } catch (err) { status("bad", err.message || "Envoi de la photo impossible"); }
     });
 
+    /* =====================================================================
+       PAGES ET RÉGLAGES
+       Chaque panneau décrit ses champs ; le formulaire, la saisie et les
+       listes (ajouter, monter, descendre, supprimer) sont communs.
+       ===================================================================== */
+    const SYNTAX = `<div class="syntax">Ligne vide : nouveau paragraphe · <code>- texte</code> : puce · <code>**texte**</code> : <b>gras</b> · <code>[texte](cgv.html)</code> : lien · <code>### Titre</code> : intertitre<br>Les <code>{variables}</code> sont remplacées par vos réglages. Cliquez pour insérer à l'endroit du curseur :
+      <div class="vars">${Object.entries(RICH.VARS).map(([k, d]) => `<button type="button" data-var="${k}" title="${esc(d)}">{${k}}</button>`).join("")}</div></div>`;
+    const frDate = () => new Date().toLocaleDateString("fr-FR", { day: "numeric", month: "long", year: "numeric" });
+    const uid = (base, list, key = "id") => uniqueId(base, list.map((x) => x[key]));
+
+    const legalPanel = (k) => ({
+      group: "Pages légales", label: () => st.pages[k].menu || st.pages[k].title || k, root: () => st.pages[k], link: `../${k}.html`, legal: true, preview: "legal",
+      intro: "Le texte de la page, section par section. La date de mise à jour passe automatiquement à aujourd'hui dès que vous modifiez une page légale",
+      secs: [
+        { title: "En-tête et référencement", fields: [
+          { k: "title", label: "Titre de la page" },
+          { k: "menu", label: "Lien dans le pied de page", hint: "Nom court affiché en bas de toutes les pages" },
+          { k: "kicker", label: "Surtitre", opt: 1, ph: "Informations légales" },
+          { k: "description", label: "Description pour les moteurs de recherche", type: "area", hint: "Environ 150 caractères. Affichée sous le titre dans Google" }
+        ] },
+        { title: "Contenu", html: SYNTAX, fields: [
+          { k: "sections", type: "list", itemName: "section", add: "Ajouter une section", title: (s, i) => s.title || `Section ${i + 1}`, make: () => ({ title: "", box: false, text: "" }), item: [
+            { k: "title", label: "Intertitre", full: 1, opt: 1 },
+            { k: "text", label: "Texte", type: "long" },
+            { k: "box", label: "Encadrer cette section (pour un formulaire type, un bloc d'adresse…)", type: "check" }
+          ] }
+        ] }
+      ]
+    });
+
+    const PANELS = {
+      about: { mode: "pages", group: "Pages", label: () => "À propos", root: () => st.about, link: "../a-propos.html",
+        intro: "Les textes de la page À propos. Le bouton mène au formulaire de demande sur mesure",
+        secs: [
+          { title: "En-tête", fields: [
+            { k: "kicker", label: "Surtitre", ph: "À propos" },
+            { k: "cta", label: "Texte du bouton", ph: "Parler de votre projet" },
+            { k: "title", label: "Titre principal", full: 1 }
+          ] },
+          { title: "Votre histoire", fields: [
+            { k: "story", type: "list", item: "area", itemName: "paragraphe", add: "Ajouter un paragraphe", make: () => "", hint: "Le premier paragraphe est affiché en plus grand" }
+          ] },
+          { title: "L'atelier en images", fields: [
+            { k: "photosKicker", label: "Surtitre" },
+            { k: "photosTitle", label: "Titre" },
+            { k: "photos", type: "list", fixed: 1, itemName: "photo", title: (ph, i) => ph.caption || `Photo ${i + 1}`, item: [
+              { k: "src", label: "Photo", type: "photo", hint: "Sans photo, un visuel d'illustration est affiché" },
+              { k: "caption", label: "Légende" },
+              { k: "alt", label: "Description pour les malvoyants", hint: "Ce que montre la photo" }
+            ] }
+          ] },
+          { title: "Le process (frise)", fields: [
+            { k: "processKicker", label: "Surtitre" },
+            { k: "processTitle", label: "Titre", hint: "Les mots entre *étoiles* sont en dégradé" },
+            { k: "process", type: "list", itemName: "étape", add: "Ajouter une étape", title: (s, i) => `${i + 1}. ${s.title || "Nouvelle étape"}`, make: () => ({ title: "", text: "" }), item: [
+              { k: "title", label: "Nom de l'étape", full: 1 },
+              { k: "text", label: "Description", type: "area" }
+            ] }
+          ] }
+        ] },
+      ...Object.fromEntries(Object.keys(st.pages).map((k) => [k, { mode: "pages", ...legalPanel(k) }])),
+
+      identite: { mode: "site", group: "Boutique", label: () => "Identité et contact", root: () => st.site, link: "../index.html",
+        secs: [
+          { title: "Identité", fields: [
+            { k: "name", label: "Nom de la boutique" },
+            { k: "slogan", label: "Slogan", hint: "Affiché dans le pied de page" },
+            { k: "email", label: "E-mail de contact", type: "email", hint: "Reçoit les commandes et les messages" },
+            { k: "url", label: "Adresse du site", type: "url", ph: "https://www.biboulab.fr", hint: "Sert au plan du site et au référencement" },
+            { k: "logo", label: "Logo", type: "photo", folder: "atelier", hint: "Vide : le nom de la boutique est affiché en logotype animé" }
+          ] },
+          { title: "Formulaire de contact", fields: [
+            { k: "formEndpoint", label: "Adresse d'envoi du formulaire", opt: 1, full: 1, ph: "/admin/contact/", hint: "/admin/contact/ : envoi direct par e-mail par l'administration en ligne. Vide : le message s'ouvre dans la messagerie du visiteur" }
+          ] },
+          { title: "Mode démonstration", fields: [
+            { k: "demo", type: "check", label: "Afficher les mentions « contenu d'exemple » et surligner les informations légales à remplacer", hint: "Décochez quand vos vrais contenus sont en place" }
+          ] }
+        ] },
+      legal: { mode: "site", group: "Boutique", label: () => "Informations légales", root: () => st.site.legal, link: "../mentions-legales.html", legal: true,
+        intro: "Ces valeurs remplissent les {variables} des pages légales et le pied de page",
+        secs: [
+          { title: "L'entreprise", fields: [
+            { k: "owner", label: "Prénom et nom de l'exploitant", hint: "{owner}" },
+            { k: "status", label: "Statut juridique", hint: "{status}" },
+            { k: "siret", label: "SIRET", hint: "{siret}" },
+            { k: "phone", label: "Téléphone", hint: "{phone}" },
+            { k: "address", label: "Adresse", full: 1, hint: "{address}" },
+            { k: "vat", label: "Mention TVA", full: 1, hint: "{vat} · affichée en bas de chaque page" }
+          ] },
+          { title: "Prestataires", fields: [
+            { k: "host", label: "Hébergeur (nom, adresse, téléphone)", type: "area", hint: "{host}" },
+            { k: "mediator", label: "Médiateur de la consommation", type: "area", hint: "{mediator} · obligatoire pour vendre à des particuliers" }
+          ] },
+          { title: "Date", fields: [
+            { k: "updated", label: "Dernière mise à jour des pages légales", hint: "{updated} · mise à jour automatiquement quand vous modifiez une page légale" }
+          ] }
+        ] },
+      accueil: { mode: "site", group: "Boutique", label: () => "Page d'accueil", root: () => st.site, link: "../index.html",
+        secs: [
+          { title: "Bandeau principal", fields: [
+            { k: "hero.eyebrow", label: "Surtitre", full: 1 },
+            { k: "hero.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé néon" },
+            { k: "hero.lead", label: "Texte d'introduction", type: "area" },
+            { k: "hero.cta", label: "Bouton principal" },
+            { k: "hero.cta2", label: "Bouton secondaire" }
+          ] },
+          { title: "Chiffres animés", fields: [
+            { k: "stats", type: "list", itemName: "chiffre", add: "Ajouter un chiffre", title: (s) => `${s.prefix}${s.value}${s.suffix} ${s.label}`, make: () => ({ value: 0, prefix: "", suffix: "", label: "" }), item: [
+              { k: "value", label: "Nombre", type: "num" },
+              { k: "label", label: "Légende" },
+              { k: "prefix", label: "Avant le nombre", opt: 1, ph: "+" },
+              { k: "suffix", label: "Après le nombre", opt: 1, ph: " h" }
+            ] }
+          ] },
+          { title: "Bandeau défilant", fields: [
+            { k: "marquee", label: "Mots du bandeau", type: "lines", hint: "Un par ligne" }
+          ] }
+        ] },
+      livraison: { mode: "site", group: "Vente", label: () => "Livraison", root: () => st.site.shipping,
+        secs: [
+          { title: "Livraison offerte", fields: [
+            { k: "freeFrom", label: "À partir de (€)", type: "num", hint: "Montant du panier à partir duquel la livraison est gratuite" }
+          ] },
+          { title: "Modes de livraison", fields: [
+            { k: "methods", type: "list", itemName: "mode de livraison", add: "Ajouter un mode de livraison", title: (m) => m.label || "Nouveau mode", make: (a) => ({ id: uid("livraison", a), label: "", price: 0, delay: "" }), item: [
+              { k: "label", label: "Nom", full: 1 },
+              { k: "price", label: "Prix (€)", type: "num" },
+              { k: "delay", label: "Délai", ph: "2 à 4 jours ouvrés" },
+              { k: "id", label: "Identifiant", idf: 1 }
+            ] }
+          ] }
+        ] },
+      paiement: { mode: "site", group: "Vente", label: () => "Paiement", root: () => st.site.payment,
+        intro: "Moyens de paiement proposés à l'étape 3 de la commande. La commande vous est envoyée par e-mail, vous renvoyez ensuite le moyen de paiement",
+        secs: [
+          { title: "Moyens de paiement", fields: [
+            { k: "methods", type: "list", itemName: "moyen de paiement", add: "Ajouter un moyen de paiement", title: (m) => m.label || "Nouveau moyen", make: (a) => ({ id: uid("paiement", a), label: "", note: "" }), item: [
+              { k: "label", label: "Nom", full: 1 },
+              { k: "note", label: "Précision", full: 1 },
+              { k: "id", label: "Identifiant", idf: 1 }
+            ] }
+          ] }
+        ] },
+      boutiques: { mode: "site", group: "Vente", label: () => "Boutiques externes", root: () => st.site,
+        intro: "Liens affichés dans le menu, le pied de page, l'accueil et chaque fiche produit",
+        secs: [
+          { title: "Plateformes", fields: [
+            { k: "stores", type: "list", itemName: "boutique", add: "Ajouter une boutique", title: (s) => s.name || "Nouvelle boutique", make: (a) => ({ id: uid("boutique", a), name: "", url: "", color: "#8B5CF6", mono: "", logo: "", tagline: "" }), item: [
+              { k: "name", label: "Nom" },
+              { k: "url", label: "Adresse de votre profil", type: "url" },
+              { k: "tagline", label: "Accroche", full: 1 },
+              { k: "color", label: "Couleur", type: "color" },
+              { k: "mono", label: "Initiales (sans logo)", ph: "MW" },
+              { k: "logo", label: "Logo", type: "photo", folder: "atelier", opt: 1 },
+              { k: "id", label: "Identifiant", idf: 1, hint: "Une fiche produit peut avoir un lien direct vers cette boutique" }
+            ] }
+          ] }
+        ] },
+      filaments: { mode: "site", group: "Catalogue", label: () => "Couleurs de filament", root: () => st,
+        intro: "Couleurs que vous pouvez cocher sur chaque objet",
+        secs: [
+          { title: "Couleurs", fields: [
+            { k: "fils", type: "list", itemName: "couleur", add: "Ajouter une couleur", title: (f) => f.name || "Nouvelle couleur", make: (a) => ({ key: uniqueId("couleur", a.map((x) => x.key)).replace(/-/g, ""), name: "", hex: "#8B5CF6" }), item: [
+              { k: "name", label: "Nom" },
+              { k: "hex", label: "Teinte", type: "color", hint: "#RRVVBB, ou un dégradé CSS" },
+              { k: "key", label: "Identifiant", idf: 1, hint: "Minuscules et chiffres, sans tiret" }
+            ] }
+          ] }
+        ] },
+      avis: { mode: "site", group: "Catalogue", label: () => "Avis clients", root: () => st, link: "../index.html",
+        intro: "Publier de faux avis est interdit. La section n'est pas affichée tant que la liste est vide",
+        secs: [
+          { title: "Avis", fields: [
+            { k: "reviews", type: "list", itemName: "avis", add: "Ajouter un avis", title: (r) => `${"★".repeat(r.stars || 0)} ${r.name || "Nouvel avis"}`, make: () => ({ name: "", product: "", stars: 5, text: "" }), item: [
+              { k: "name", label: "Prénom du client" },
+              { k: "product", label: "Objet acheté" },
+              { k: "stars", label: "Note sur 5", type: "num", max: 5 },
+              { k: "text", label: "Avis", type: "area" }
+            ] }
+          ] }
+        ] }
+    };
+    const panelsOf = (mode) => Object.entries(PANELS).filter(([, p]) => p.mode === mode);
+
+    /* Accès à une valeur par son chemin, ex. ["hero", "title"] ou ["sections", 2, "text"] */
+    const root = () => PANELS[st.panel].root();
+    const getP = (p) => p.reduce((o, k) => (o == null ? o : o[k]), root());
+    const setP = (p, v) => { getP(p.slice(0, -1))[p[p.length - 1]] = v; };
+    const fieldAt = (p) => { // retrouve la définition d'un champ à partir de son chemin
+      let fields = PANELS[st.panel].secs.flatMap((s) => s.fields), f = null;
+      for (let i = 0; i < p.length; i++) {
+        if (f && f.type === "list") { if (!Array.isArray(f.item)) return { k: p[i], type: f.item }; fields = f.item; f = null; continue; } // p[i] : numéro de l'élément
+        f = fields.find((x) => String(x.k).split(".")[0] === String(p[i]));
+        if (!f) return null;
+        i += String(f.k).split(".").length - 1;
+      }
+      return f;
+    };
+
+    function fld(f, base) {
+      const p = [...base, ...String(f.k).split(".")], v = getP(p), type = f.type || "text", id = "x-" + p.join("_");
+      const dp = `data-p="${esc(JSON.stringify(p))}" data-t="${type}"`;
+      const full = f.full || ["area", "long", "lines", "list", "photo"].includes(type) ? " full" : "";
+      const label = f.label ? `<label for="${id}">${f.label}${f.opt ? " <small>(facultatif)</small>" : ""}</label>` : "";
+      const hint = f.hint ? `<p class="hint">${esc(f.hint)}</p>` : "";
+      switch (type) {
+        case "check": return `<div class="fg full"><label class="check"><input type="checkbox" id="${id}" ${dp}${v ? " checked" : ""}><span>${f.label}</span></label>${hint}</div>`;
+        case "area": case "long": case "lines":
+          return `<div class="fg${full}">${label}<textarea class="textarea${type === "long" ? " long" : ""}" id="${id}" ${dp} placeholder="${esc(f.ph || "")}">${esc(type === "lines" ? (v || []).join("\n") : v)}</textarea>${hint}</div>`;
+        case "num": return `<div class="fg${full}">${label}<input class="input" id="${id}" ${dp} type="number" inputmode="decimal" step="any" min="0"${f.max ? ` max="${f.max}"` : ""} value="${esc(v)}">${hint}</div>`;
+        case "color": {
+          const ok = /^#[0-9a-f]{6}$/i.test(v);
+          return `<div class="fg${full}">${label}<div class="tint">${ok ? `<input type="color" ${dp} value="${esc(v)}" aria-label="Choisir la couleur">` : `<span class="swatch" style="--sw:${esc(v)}"></span>`}<input class="input" id="${id}" ${dp} value="${esc(v)}"></div>${hint}</div>`;
+        }
+        case "photo":
+          return `<div class="fg${full}">${label}<div class="rowline img">${v ? `<img src="../${esc(v)}" alt="">` : `<img alt="">`}<input class="input" id="${id}" ${dp} value="${esc(v)}" placeholder="assets/img/…"><button class="rm" type="button" data-up="${esc(JSON.stringify(p))}" data-folder="${f.folder || "atelier"}" title="Envoyer une image" aria-label="Envoyer une image" ${st.canSave ? "" : "disabled"}>${icon("plus")}</button></div>${hint}</div>`;
+        case "list": {
+          const arr = v || [], lp = esc(JSON.stringify(p)), n = arr.length;
+          const acts = (i) => f.fixed ? "" : `<button class="rm up" type="button" data-op="up" data-lp="${lp}" data-i="${i}" ${i ? "" : "disabled"} aria-label="Monter">${icon("chevron")}</button><button class="rm" type="button" data-op="down" data-lp="${lp}" data-i="${i}" ${i < n - 1 ? "" : "disabled"} aria-label="Descendre">${icon("chevron")}</button><button class="rm" type="button" data-op="del" data-lp="${lp}" data-i="${i}" aria-label="Supprimer">${icon("trash")}</button>`;
+          const items = arr.map((it, i) => Array.isArray(f.item)
+            ? `<div class="li-card"><div class="li-head"><b data-title="${i}">${esc(f.title ? f.title(it, i) : `${f.itemName} ${i + 1}`)}</b>${acts(i)}</div><div class="form">${f.item.map((sf) => fld(sf, [...p, i])).join("")}</div></div>`
+            : `<div class="li-solo">${fld({ k: i, type: f.item, label: "" }, p)}<div class="acts">${acts(i)}</div></div>`).join("");
+          return `<div class="fg full">${label}${hint}<div class="li-list">${items || `<p class="hint">Aucun élément</p>`}</div>
+            ${f.fixed ? "" : `<button class="btn btn-ghost btn-sm" type="button" data-op="add" data-lp="${lp}" style="margin-top:12px">${icon("plus")} ${esc(f.add)}</button>`}</div>`;
+        }
+        default: {
+          const holder = getP(p.slice(0, -1)), ro = f.idf && !st.fresh.has(holder);
+          return `<div class="fg${full}">${label}<input class="input" id="${id}" ${dp} type="${type === "email" || type === "url" ? type : "text"}" value="${esc(v)}" placeholder="${esc(f.ph || "")}" autocomplete="off"${ro ? " readonly" : ""}>${f.idf && !f.hint ? `<p class="hint">${ro ? "Fixé à la création" : "Minuscules, chiffres et tirets"}</p>` : hint}</div>`;
+        }
+      }
+    }
+
+    function panelTools() {
+      const intro = st.mode === "pages" ? "Les textes de vos pages. Chaque modification s'affiche dans l'aperçu à côté" : "Coordonnées, informations légales, livraison, paiement et autres réglages du site";
+      $("#tools").innerHTML = `<p class="p-intro">${intro}</p>`;
+    }
+    function panelNav() {
+      let last = null, out = "";
+      for (const [k, p] of panelsOf(st.mode)) {
+        if (p.group !== last) { if (last !== null) out += "</div>"; out += `<p class="p-group">${esc(p.group)}</p><div class="p-nav">`; last = p.group; }
+        out += `<button type="button" data-panel="${k}" aria-current="${k === st.panel}">${esc(p.label())}</button>`;
+      }
+      $("#list").innerHTML = out + "</div>";
+    }
+    function panelForm() {
+      const P = PANELS[st.panel], main = $("#main"), y = main.scrollTop;
+      const form = `<form class="a-form" novalidate>
+        <header class="a-head"><div><h1>${esc(P.label())}</h1><p>${P.intro ? esc(P.intro) + ". " : ""}${P.link ? `<a href="${P.link}" target="_blank" rel="noopener" style="text-decoration:underline">Voir sur le site</a>` : ""}</p></div></header>
+        ${P.secs.map((s) => `<section class="a-sec"><h2>${esc(s.title)}</h2>${s.html || ""}<div class="form"${s.html ? ' style="margin-top:16px"' : ""}>${s.fields.map((f) => fld(f, [])).join("")}</div></section>`).join("")}
+        <input type="file" id="pfile" accept="image/*" hidden></form>`;
+      main.innerHTML = P.preview ? `<div class="a-split">${form}<aside class="a-prev" aria-label="Aperçu"><p class="a-prev-t">Aperçu · enregistrez pour publier</p><div id="pv"></div></aside></div>` : form;
+      main.scrollTop = y;
+      panelPreview();
+    }
+    function panelPreview() {
+      const box = $("#pv"); if (!box) return;
+      const d = PANELS[st.panel].root();
+      box.innerHTML = `<section class="page-head"><p class="kicker">${esc(d.kicker)}</p><h1>${esc(d.title)}</h1><p class="muted" style="margin-top:14px">Dernière mise à jour : ${esc(st.site.legal.updated)}</p></section><section class="prose">${RICH.page(d, st.site)}</section>`;
+    }
+    let lastArea = null;
+    function panelInput(e) {
+      const t = e.target; if (!t.dataset.p) return;
+      const p = JSON.parse(t.dataset.p), type = t.dataset.t;
+      const v = type === "check" ? t.checked : type === "num" ? (t.value === "" ? 0 : +t.value.replace(",", ".")) : type === "lines" ? t.value.split("\n") : t.value;
+      setP(p, v);
+      /* nouvel élément de liste : son identifiant suit son nom tant qu'on n'y a pas touché */
+      const holder = getP(p.slice(0, -1)), key = p[p.length - 1], idk = holder && "key" in holder && "hex" in holder ? "key" : "id";
+      if (holder && st.fresh.has(holder) && typeof holder[idk] === "string") {
+        if (key === idk) st.manualId.add(holder);
+        else if (["label", "name"].includes(key) && !st.manualId.has(holder)) {
+          const arr = getP(p.slice(0, -2)), base = slugify(v) || (idk === "key" ? "couleur" : "element");
+          holder[idk] = uniqueId(idk === "key" ? base.replace(/-/g, "") : base, arr.filter((x) => x !== holder).map((x) => x[idk]));
+          if (idk === "key") holder.key = holder.key.replace(/-/g, ""); // les couleurs n'acceptent pas de tiret
+          const inp = $(`[data-p="${CSS.escape(JSON.stringify([...p.slice(0, -1), idk]))}"]`, $("#main")); if (inp) inp.value = holder[idk];
+        }
+      }
+      if (type === "color") $$(`[data-p="${CSS.escape(t.dataset.p)}"]`, $("#main")).forEach((x) => { if (x !== t && (x.type !== "color" || /^#[0-9a-f]{6}$/i.test(v))) x.value = v; });
+      if (type === "photo") { const img = t.parentElement.querySelector("img"); if (img) img.src = v ? "../" + v : ""; }
+      /* titre de la carte de liste mis à jour en direct */
+      const card = t.closest(".li-card"); if (card) { const lp = p.slice(0, -1), f = fieldAt(lp.slice(0, -1)), b = $("[data-title]", card); if (f && f.title && b) b.textContent = f.title(getP(lp), lp[lp.length - 1]); }
+      if (PANELS[st.panel].legal && p[p.length - 1] !== "updated" && st.site.legal.updated !== frDate()) { st.site.legal.updated = frDate(); }
+      touch(); panelPreview();
+      if (["title", "menu"].includes(p[0])) panelNav();
+    }
+    function panelClick(e) {
+      const nav = e.target.closest("[data-var]");
+      if (nav) { // insère une {variable} dans le dernier texte touché
+        const a = lastArea && document.body.contains(lastArea) ? lastArea : null; if (!a) return;
+        const s = a.selectionStart ?? a.value.length, txt = `{${nav.dataset.var}}`;
+        a.value = a.value.slice(0, s) + txt + a.value.slice(a.selectionEnd ?? s); a.focus(); a.selectionStart = a.selectionEnd = s + txt.length;
+        a.dispatchEvent(new Event("input", { bubbles: true })); return;
+      }
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.up) { upTo = { p: JSON.parse(b.dataset.up), folder: b.dataset.folder }; return $("#pfile").click(); }
+      if (!b.dataset.op) return;
+      const lp = JSON.parse(b.dataset.lp), arr = getP(lp), i = +b.dataset.i, f = fieldAt(lp);
+      if (b.dataset.op === "add") { const it = f.make(arr); arr.push(it); if (it && typeof it === "object") st.fresh.add(it); }
+      if (b.dataset.op === "del") { const it = arr[i], has = typeof it === "string" ? it.trim() : Object.values(it).some((x) => x && String(x).trim());
+        if (has && !confirm(`Supprimer cet élément (${f.itemName}) ?\nLa suppression est effective après « Enregistrer ».`)) return;
+        arr.splice(i, 1); }
+      if (b.dataset.op === "up" && i > 0) [arr[i - 1], arr[i]] = [arr[i], arr[i - 1]];
+      if (b.dataset.op === "down" && i < arr.length - 1) [arr[i + 1], arr[i]] = [arr[i], arr[i + 1]];
+      if (PANELS[st.panel].legal && st.site.legal.updated !== frDate()) st.site.legal.updated = frDate();
+      touch(); panelForm();
+      if (b.dataset.op === "add") { // place le curseur dans le nouvel élément
+        const del = $$(`[data-op="del"][data-lp="${CSS.escape(b.dataset.lp)}"]`, $("#main")).pop(), box = del && del.closest(".li-card, .li-solo");
+        const input = box && $("input.input:not([readonly]), textarea", box); if (input) { input.focus(); input.scrollIntoView({ block: "center" }); }
+      }
+    }
+    let upTo = null;
+    async function panelUpload(e) {
+      const file = e.target.files[0]; if (!file || !upTo) return;
+      status("dirty", "Envoi de l'image");
+      try {
+        const bmp = await createImageBitmap(file), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+        const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+        cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+        const blob = await new Promise((ok) => cv.toBlob(ok, "image/webp", 0.86));
+        const name = `${slugify(file.name.replace(/\.\w+$/, "")) || "image"}-${Date.now().toString(36)}.${blob.type === "image/webp" ? "webp" : "png"}`;
+        const r = await call("photo", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: blob }, `&dossier=${encodeURIComponent(upTo.folder)}&nom=${encodeURIComponent(name)}`);
+        const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
+        setP(upTo.p, out.chemin); touch(); panelForm();
+      } catch (err) { status("bad", err.message || "Envoi de l'image impossible"); }
+      e.target.value = "";
+    }
+    $("#main").addEventListener("focusin", (e) => { if (e.target.matches("textarea, input.input")) lastArea = e.target; });
+    $("#list").addEventListener("click", (e) => {
+      const b = e.target.closest("[data-panel]"); if (!b) return;
+      st.panel = b.dataset.panel; hash(); panelNav(); panelForm(); $("#main").scrollTop = 0;
+    });
+    function setMode(mode, panel) {
+      st.mode = mode;
+      if (mode !== "cat") st.panel = panel && PANELS[panel] && PANELS[panel].mode === mode ? panel : panelsOf(mode)[0][0];
+      $$("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === mode));
+      hash(); render(); $("#main").scrollTop = 0;
+    }
+    const hash = () => history.replaceState(null, "", st.mode === "cat" ? "#" : `#${st.mode}/${st.panel}`);
+    $("#tabs").addEventListener("click", (e) => { const b = e.target.closest("[data-mode]"); if (b && b.dataset.mode !== st.mode) setMode(b.dataset.mode); });
+
     /* ---------- Enregistrement ---------- */
     function problems() {
+      const bad = contentProblems(); if (bad) return bad;
       const seenC = new Set(), seenP = new Set();
       for (const c of st.cats) {
-        const where = () => { st.sel = c; };
+        const where = () => { st.mode = "cat"; st.sel = c; };
         if (!c.name.trim()) return where(), "Une catégorie n'a pas de nom";
         if (!ID.test(c.slug)) return where(), `Identifiant de catégorie invalide : « ${c.slug} »`;
         if (seenC.has(c.slug)) return where(), `Deux catégories ont l'identifiant « ${c.slug} »`;
@@ -483,7 +880,7 @@
         seenC.add(c.slug);
       }
       for (const p of st.prods) {
-        const where = () => { st.sel = p; const k = catOf(p.category); if (k) st.open.add(k); st.q = ""; };
+        const where = () => { st.mode = "cat"; st.sel = p; const k = catOf(p.category); if (k) st.open.add(k); st.q = ""; };
         if (!p.name.trim()) return where(), "Un objet n'a pas de nom";
         if (!ID.test(p.id)) return where(), `Identifiant d'objet invalide : « ${p.id} »`;
         if (seenP.has(p.id)) return where(), `Deux objets ont l'identifiant « ${p.id} »`;
@@ -494,13 +891,57 @@
       }
       return "";
     }
+    /* Contrôles des pages et réglages : en cas de problème, on affiche le bon panneau */
+    function contentProblems() {
+      const at = (panel, msg) => { st.mode = PANELS[panel].mode; st.panel = panel; hash(); return msg; };
+      const S = st.site, IDR = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+      if (!S.name.trim()) return at("identite", "Le nom de la boutique est obligatoire");
+      if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(S.email.trim())) return at("identite", "L'e-mail de contact n'est pas valide");
+      if (!/^https?:\/\/\S+$/.test(S.url.trim())) return at("identite", "L'adresse du site doit commencer par https://");
+      const lists = [["livraison", S.shipping.methods, "mode de livraison"], ["paiement", S.payment.methods, "moyen de paiement"], ["boutiques", S.stores, "boutique"]];
+      for (const [panel, arr, what] of lists) {
+        if (panel !== "boutiques" && !arr.length) return at(panel, `Il faut au moins un ${what}`);
+        const seen = new Set();
+        for (const m of arr) {
+          if (!String(m.label ?? m.name).trim()) return at(panel, `Un élément (${what}) n'a pas de nom`);
+          if (!IDR.test(m.id)) return at(panel, `Identifiant invalide : « ${m.id} » (minuscules, chiffres et tirets)`);
+          if (seen.has(m.id)) return at(panel, `Deux éléments ont l'identifiant « ${m.id} »`);
+          if (m.price !== undefined && !(m.price >= 0)) return at(panel, `Prix invalide pour « ${m.label} »`);
+          seen.add(m.id);
+        }
+      }
+      if (!st.fils.length) return at("filaments", "Il faut au moins une couleur de filament");
+      const keys = new Set();
+      for (const f of st.fils) {
+        if (!f.name.trim()) return at("filaments", "Une couleur n'a pas de nom");
+        if (!/^[a-z0-9]+$/.test(f.key)) return at("filaments", `Identifiant de couleur invalide : « ${f.key} » (minuscules et chiffres)`);
+        if (keys.has(f.key)) return at("filaments", `Deux couleurs ont l'identifiant « ${f.key} »`);
+        keys.add(f.key);
+      }
+      for (const p of st.prods) { const gone = p.colors.find((c) => !keys.has(c)); if (gone) return at("filaments", `La couleur « ${gone} » est encore utilisée par « ${p.name} » : décochez-la sur l'objet avant de la supprimer`); }
+      for (const r of st.reviews) { if (!r.name.trim()) return at("avis", "Un avis n'a pas de nom de client"); if (!(r.stars >= 1 && r.stars <= 5)) return at("avis", `La note de « ${r.name} » doit aller de 1 à 5`); }
+      if (!st.about.title.trim()) return at("about", "La page À propos n'a pas de titre");
+      for (const [k, d] of Object.entries(st.pages)) if (!d.title.trim()) return at(k, "Cette page n'a pas de titre");
+      return "";
+    }
+    function contentPayload() {
+      const site = structuredClone(st.site);
+      site.marquee = site.marquee.map((m) => m.trim()).filter(Boolean);
+      const about = structuredClone(st.about);
+      about.story = about.story.map((t) => t.trim()).filter(Boolean);
+      return {
+        site, about, pages: st.pages,
+        filaments: Object.fromEntries(st.fils.map((f) => [f.key, { name: f.name, hex: f.hex }])),
+        reviews: st.reviews.map((r) => ({ ...r, stars: Math.round(r.stars) }))
+      };
+    }
     async function save() {
       const bad = problems();
       if (bad) { render(); return status("bad", bad); }
       st.prods.forEach((p) => { p.images = p.images.filter(Boolean); p.popularity = Math.max(0, Math.min(100, Math.round(p.popularity || 0))); });
       $("#save").disabled = true; status("dirty", "Enregistrement");
       try {
-        const r = await call("sauver", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ categories: st.cats, products: st.prods }) });
+        const r = await call("sauver", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ categories: st.cats, products: st.prods, ...contentPayload() }) });
         const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
         st.dirty = false; st.fresh.clear(); st.manualId.clear();
         status("saved", `Enregistré à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`);
@@ -511,10 +952,10 @@
     addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (st.dirty && st.canSave) save(); } });
     addEventListener("beforeunload", (e) => { if (st.dirty) e.preventDefault(); });
 
-    function render() { counts(); tools(); list(); form(); }
+    function render() { $$("#tabs button").forEach((b) => b.setAttribute("aria-pressed", b.dataset.mode === st.mode)); counts(); tools(); list(); form(); }
 
-    /* ---------- Démarrage ---------- */
-    render();
+    /* ---------- Démarrage (l'adresse #pages/cgv rouvre directement un panneau) ---------- */
+    { const [m, pn] = location.hash.slice(1).split("/"); if (m === "pages" || m === "site") setMode(m, pn); else render(); }
     status("", "Aucune modification");
     if (ONLINE) { const em = $("#emails"); em.hidden = false; em.addEventListener("click", (e) => { if (st.dirty && !confirm("Des modifications du catalogue ne sont pas enregistrées. Quitter quand même ?")) e.preventDefault(); else st.dirty = false; }); }
     if (ONLINE) { const lo = $("#logout"); lo.hidden = false; lo.addEventListener("click", async () => { if (st.dirty && !confirm("Des modifications ne sont pas enregistrées. Se déconnecter quand même ?")) return; st.dirty = false; try { await call("deconnexion", { method: "POST" }); } catch {} location.reload(); }); }

@@ -5,7 +5,7 @@
    ===================================================================== */
 (() => {
   "use strict";
-  const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT } = window.SHOP;
+  const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT, PAGES = {} } = window.SHOP;
   const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM } = window.UI;
   const main = $("#main");
   const params = new URLSearchParams(location.search);
@@ -456,25 +456,25 @@
   function about() {
     main.innerHTML = `
       <section class="wrap page-head">
-        <p class="kicker" data-reveal>À propos</p>
+        <p class="kicker" data-reveal>${esc(ABOUT.kicker || "À propos")}</p>
         <h1 data-reveal>${esc(ABOUT.title)}</h1>
       </section>
       <section class="wrap split">
         <div data-reveal="left">${ABOUT.story.map((t, i) => `<p${i ? ' class="muted"' : ' style="font-size:1.15rem"'}>${esc(t)}</p>`).join("")}
-          <a class="btn btn-primary" href="contact.html?sur-mesure=1" data-magnetic style="margin-top:12px">Parler de votre projet ${icon("arrow", "ic-arrow")}</a></div>
+          <a class="btn btn-primary" href="contact.html?sur-mesure=1" data-magnetic style="margin-top:12px">${esc(ABOUT.cta || "Parler de votre projet")} ${icon("arrow", "ic-arrow")}</a></div>
         <div class="split-media" data-reveal="right"><div data-parallax=".1">${printer("a")}</div></div>
       </section>
 
       <section class="section" aria-labelledby="ph-t"><div class="wrap">
-        <header class="sec-h" data-reveal><div><p class="kicker">L'atelier en images</p><h2 id="ph-t">Ma Bambu Lab et ses bobines</h2></div>
-          ${SITE.demo && ABOUT.photos.some((x) => !x.src) ? '<span class="demo-note">Visuels d\'illustration — ajoutez vos photos dans data.js</span>' : ""}</header>
+        <header class="sec-h" data-reveal><div><p class="kicker">${esc(ABOUT.photosKicker || "")}</p><h2 id="ph-t">${esc(ABOUT.photosTitle || "")}</h2></div>
+          ${SITE.demo && ABOUT.photos.some((x) => !x.src) ? '<span class="demo-note">Visuels d\'illustration — ajoutez vos photos depuis l\'administration</span>' : ""}</header>
         <div class="photos">${ABOUT.photos.map((ph, i) => `<figure data-reveal="scale" style="--i:${i}">
           ${ph.src ? `<img src="${esc(ph.src)}" alt="${esc(ph.alt)}" loading="lazy" decoding="async">` : i === 0 ? printer("f") : UI.art({ id: "atelier" + i, name: ph.alt, category: (CATEGORIES[i === 1 ? 1 : 7] || CATEGORIES[0]).slug }, i)}
           <figcaption>${esc(ph.caption)}</figcaption></figure>`).join("")}</div>
       </div></section>
 
       <section class="section" style="padding-top:0" aria-labelledby="pr-t"><div class="wrap">
-        <header class="sec-h" data-reveal style="justify-content:center;text-align:center"><div><p class="kicker" style="justify-content:center">Le process</p><h2 id="pr-t">Du modèle 3D à <span class="grad-text">la finition</span></h2></div></header>
+        <header class="sec-h" data-reveal style="justify-content:center;text-align:center"><div><p class="kicker" style="justify-content:center">${esc(ABOUT.processKicker || "")}</p><h2 id="pr-t">${esc(ABOUT.processTitle || "").replace(/\*(.+?)\*/g, '<span class="grad-text">$1</span>')}</h2></div></header>
         <ol class="timeline">
           ${ABOUT.process.map((s, i) => `<li class="tl-item" data-reveal><span class="tl-num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></li>`).join("")}
         </ol>
@@ -718,11 +718,14 @@
   }
 
   /* ================= PAGES LÉGALES =================
-     Les <span data-fill="..."> sont remplis avec les valeurs de data.js. */
+     Textes dans data.js (PAGES), modifiables depuis l'administration.
+     Mise en forme et {variables} : assets/js/rich.js */
   function legal() {
-    const values = { ...SITE.legal, name: SITE.name, email: SITE.email, url: SITE.url, freeFrom: euro(SITE.shipping.freeFrom), methods: SITE.shipping.methods.map((m) => `${m.label} (${euro(m.price)}, ${m.delay})`).join(" ; ") };
-    $$("[data-fill]").forEach((el) => { el.textContent = values[el.dataset.fill] ?? ""; if (SITE.demo && el.dataset.fill in SITE.legal && el.dataset.fill !== "updated" && el.dataset.fill !== "status") { el.classList.add("todo"); el.title = "Valeur d'exemple à remplacer dans data.js"; } });
-    $$("a[data-mail]").forEach((a) => { a.href = "mailto:" + SITE.email; a.textContent = SITE.email; });
+    const doc = PAGES[document.body.dataset.doc], R = window.SHOP_RICH;
+    if (!doc || !R) return;
+    main.innerHTML = `<section class="wrap page-head"><p class="kicker">${esc(doc.kicker)}</p><h1>${esc(doc.title)}</h1><p class="muted" style="margin-top:14px">Dernière mise à jour : ${esc(SITE.legal.updated)}</p></section>
+      <section class="wrap prose">${R.page(doc, SITE)}</section>`;
+    setMeta(doc.title, doc.description || ""); // titre d'onglet et description (utile quand le texte vient de l'administration en ligne)
   }
 
   /* ================= Aiguillage ================= */

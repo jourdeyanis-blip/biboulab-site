@@ -104,6 +104,58 @@ class AdminTests(TestCase):
         self.assertEqual(r.status_code, 200)
         self.assertTrue((self.site / "assets" / "img" / "produits" / "vase-1.png").exists())
 
+    def contenus(self):
+        """Pages et réglages tels que la page d'administration les envoie (repris de data.js)."""
+        from decimal import Decimal
+        from gestion.boutique import lire_constante
+        src = (Path(__file__).resolve().parents[2] / "assets" / "js" / "data.js").read_text("utf-8")
+        brut = {k: lire_constante(src, n) for k, n in (("site", "SITE"), ("filaments", "FILAMENTS"), ("reviews", "REVIEWS"), ("about", "ABOUT"), ("pages", "PAGES"))}
+        return json.loads(json.dumps(brut, default=lambda d: int(d) if isinstance(d, Decimal) and d == int(d) else float(d)))
+
+    def test_enregistrement_des_pages_et_reglages(self):
+        self.connecter()
+        jeton = self.jeton()
+        contenu = self.contenus()
+        contenu["pages"]["cgv"]["sections"][0]["text"] = "Nouveau texte </script><b>"
+        contenu["site"]["legal"]["siret"] = "123 456 789 00012"
+        r = self.c.post("/api/sauver/", data=json.dumps({**CATALOGUE, **contenu}), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        self.assertEqual(r.status_code, 200, r.content)
+        js = (self.site / "assets" / "js" / "contenu.js").read_text("utf-8")
+        self.assertTrue(js.splitlines()[1].startswith("window.CONTENU = {"))
+        self.assertNotIn("</script>", js)
+        self.assertIn("123 456 789 00012", js)
+        relu = json.loads(js.split("window.CONTENU = ", 1)[1].rstrip().rstrip(";"))
+        self.assertEqual(relu["pages"]["cgv"]["sections"][0]["text"], "Nouveau texte </script><b>")
+
+    def test_contenus_dangereux_refuses_sans_rien_ecrire(self):
+        self.connecter()
+        jeton = self.jeton()
+        pieges = [
+            ("site", lambda c: c["site"]["stores"][0].__setitem__("color", "red;background:url(x)")),
+            ("site", lambda c: c["site"]["stores"][0].__setitem__("url", "javascript:alert(1)")),
+            ("site", lambda c: c["site"].__setitem__("logo", "../../backend/x.php")),
+            ("about", lambda c: c["about"]["photos"][0].__setitem__("src", "https://ailleurs.example/x.png")),
+            ("filaments", lambda c: c["filaments"]["rouge"].__setitem__("hex", "red\";}")),
+            ("site", lambda c: c["site"]["shipping"]["methods"][0].__setitem__("price", -1)),
+            ("pages", lambda c: c["pages"].pop("cgv")),
+        ]
+        for nom, piege in pieges:
+            contenu = self.contenus()
+            piege(contenu)
+            r = self.c.post("/api/sauver/", data=json.dumps({**CATALOGUE, **contenu}), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+            self.assertEqual(r.status_code, 400, nom)
+        self.assertFalse((self.site / "assets" / "js" / "contenu.js").exists())
+        self.assertFalse((self.site / "assets" / "js" / "catalogue.js").exists())   # rien n'est écrit si une partie est refusée
+
+    def test_photo_de_l_atelier(self):
+        self.connecter()
+        jeton = self.jeton()
+        r = self.c.post("/api/photo/?dossier=atelier&nom=atelier-1.png", data=b"\x89PNG\r\n\x1a\n0000", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        self.assertEqual(r.json()["chemin"], "assets/img/atelier/atelier-1.png")
+        self.assertTrue((self.site / "assets" / "img" / "atelier" / "atelier-1.png").exists())
+        r = self.c.post("/api/photo/?dossier=../js&nom=x.png", data=b"\x89PNG\r\n\x1a\n0000", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        self.assertEqual(r.status_code, 400)
+
     def test_adresses_api_sous_admin(self):
         """En ligne, l'application est montée sous /admin : l'API doit pointer vers /admin/api/."""
         self.connecter()
@@ -206,6 +258,18 @@ class PaiementTests(TestCase):
                 {"id": "boule-flocon", "name": "Boule", "price": 3, "colors": ["rouge"], "sizes": [{"label": "Ø 8 cm", "extra": 1.5}]}]}) + ";", "utf-8")
         self.payer(panier=[PANIER[0]])
         self.assertEqual(self.params()["line_items"][0]["price_data"]["unit_amount"], 450)
+
+    def test_livraison_reglee_en_ligne_prioritaire(self):
+        """Les frais de port modifiés dans l'administration en ligne (contenu.js) font foi pour Stripe."""
+        from gestion.boutique import lire_constante
+        site = lire_constante((self.site / "assets" / "js" / "data.js").read_text("utf-8"), "SITE")
+        site = json.loads(json.dumps(site, default=float))
+        site["shipping"]["methods"] = [{"id": "retrait", "label": "Retrait à l'atelier", "price": 0, "delay": "sur rendez-vous"},
+                                       {"id": "relais", "label": "Point relais", "price": 5.5, "delay": "3 jours"}]
+        (self.site / "assets" / "js" / "contenu.js").write_text("window.CONTENU = " + json.dumps({"site": site}) + ";", "utf-8")
+        self.assertEqual(set(boutique.catalogue()["livraison"]), {"retrait", "relais"})
+        self.payer()
+        self.assertEqual(self.params()["shipping_options"][0]["shipping_rate_data"]["fixed_amount"]["amount"], 550)
 
     def test_paniers_refuses(self):
         cas = [
@@ -412,3 +476,62 @@ class EmailsAdminTests(PaiementTests):
     for _nom in [n for n in dir(PaiementTests) if n.startswith("test_")]:
         locals()[_nom] = None
     del _nom
+
+
+# ---------- Formulaire de contact ----------
+@override_settings(SECURE_SSL_REDIRECT=False, CONTACT_DESTINATAIRE="boutique@example.com", COMMANDES_EXPEDITEUR="no-reply@biboulab.fr")
+class ContactTests(TestCase):
+    MESSAGE = {"prenom": "Ada", "nom": "Lovelace", "email": "ada@example.com", "message": "Bonjour,\nune pièce sur mesure ?", "accord": "on"}
+
+    def setUp(self):
+        cache.clear()
+        self.c = Client()
+
+    def envoyer(self, **champs):
+        return self.c.post("/contact/", {**self.MESSAGE, **champs}, **HOTE)
+
+    def test_message_envoye_a_la_boutique(self):
+        r = self.envoyer(personnalisation="on", dimensions="12 × 8 cm", couleur="noir mat")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json(), {"ok": True})
+        m = mail.outbox[0]
+        self.assertEqual(m.to, ["boutique@example.com"])
+        self.assertEqual(m.from_email, "no-reply@biboulab.fr")
+        self.assertEqual(m.reply_to, ["Ada Lovelace <ada@example.com>"])
+        self.assertEqual(m.subject, "Demande de personnalisation — Ada Lovelace")
+        self.assertIn("Dimensions : 12 × 8 cm", m.body)
+        self.assertIn("une pièce sur mesure ?", m.body)
+
+    def test_champs_obligatoires_et_email(self):
+        self.assertEqual(self.envoyer(message="").status_code, 422)
+        self.assertEqual(self.envoyer(accord="").status_code, 422)
+        self.assertEqual(self.envoyer(email="pas-un-email").status_code, 422)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_injection_d_en_tetes_impossible(self):
+        self.envoyer(prenom="Ada\r\nBcc: victime@example.com", nom="Lovelace")
+        m = mail.outbox[0]
+        self.assertNotIn("\n", m.subject)
+        self.assertNotIn("victime", " ".join(m.recipients()))
+
+    def test_robot_ignore_sans_envoi(self):
+        r = self.envoyer(site_web="http://spam.example")
+        self.assertEqual(r.status_code, 200)   # le robot croit avoir réussi
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_limite_de_5_messages_par_heure(self):
+        for _ in range(5):
+            self.assertEqual(self.envoyer().status_code, 200)
+        self.assertEqual(self.envoyer().status_code, 429)
+        self.assertEqual(len(mail.outbox), 5)
+
+    def test_autre_origine_et_get_refuses(self):
+        r = self.c.post("/contact/", self.MESSAGE, HTTP_HOST="www.biboulab.fr", HTTP_ORIGIN="https://pirate.example", secure=True)
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.c.get("/contact/", **HOTE).status_code, 405)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_le_site_pointe_vers_django(self):
+        src = (DEPOT / "assets" / "js" / "data.js").read_text("utf-8")
+        self.assertIn('formEndpoint: "/admin/contact/"', src)
+        self.assertFalse((DEPOT / "envoyer-contact.php").exists())

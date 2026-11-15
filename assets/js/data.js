@@ -72,9 +72,9 @@ const SITE = {
   },
 
   /* Formulaire de contact : adresse qui reçoit le formulaire et l'envoie par
-     e-mail à l'entreprise (envoyer-contact.php, fourni avec le site).
+     e-mail à l'entreprise (administration en ligne Django : /admin/contact/).
      Vide = le message s'ouvre dans la messagerie du visiteur. */
-  formEndpoint: "envoyer-contact.php",
+  formEndpoint: "/admin/contact/",
 
   /* true = affiche les petites mentions "contenu d'exemple" (avis, chiffres).
      Passez à false quand vos vrais contenus sont en place. */
@@ -89,6 +89,7 @@ const SITE = {
     phone: "00 00 00 00 00",
     host: "Nom de l'hébergeur, adresse de l'hébergeur, téléphone",
     mediator: "Nom du médiateur de la consommation — site web du médiateur",
+    vat: "TVA non applicable, art. 293 B du CGI",
     updated: "14 novembre 2026"
   }
 };
@@ -321,7 +322,13 @@ const REVIEWS = [];
 
 /* ---------- 6. Page « À propos » ---------- */
 const ABOUT = {
+  kicker: "À propos",
   title: "Un atelier, une imprimante, beaucoup de bobines",
+  cta: "Parler de votre projet",
+  photosKicker: "L'atelier en images",
+  photosTitle: "Ma Bambu Lab et ses bobines",
+  processKicker: "Le process",
+  processTitle: "Du modèle 3D à *la finition*",   // les mots entre *étoiles* sont en dégradé
   story: [
     "Tout a commencé avec une pièce cassée et l'envie têtue de la refaire moi-même. Une imprimante plus tard, je ne réparais plus seulement : j'inventais, je testais, j'offrais.",
     "Aujourd'hui, Biboulab est une micro-entreprise où chaque objet passe entre mes mains : je modélise, je règle, j'imprime sur ma Bambu Lab, puis je contrôle et je finis chaque pièce avant de l'emballer.",
@@ -344,9 +351,83 @@ const ABOUT = {
   ]
 };
 
+/* ---------- 7. Pages légales ----------
+   Modifiables depuis l'administration (onglet « Pages »).
+   Dans les textes : ligne vide = paragraphe, « - » = puce, **gras**, [lien](page.html),
+   et {owner}, {siret}, {address}, {email}… = valeurs des réglages (voir assets/js/rich.js). */
+const PAGES = {
+  "mentions-legales": {
+    menu: "Mentions légales",
+    kicker: "Informations légales",
+    title: "Mentions légales",
+    description: "Mentions légales du site Biboulab : éditeur, SIRET, hébergeur et propriété intellectuelle.",
+    sections: [
+      { title: "Éditeur du site", box: true, text: "**{name}** — {owner}, {status}\nSIRET : {siret}\nAdresse : {address}\nTéléphone : {phone}\nE-mail : {email}\nTVA non applicable, article 293 B du Code général des impôts.\n\nDirecteur de la publication : {owner}." },
+      { title: "Hébergeur", box: false, text: "{host}" },
+      { title: "Propriété intellectuelle", box: false, text: "Les textes, photographies, visuels et modèles 3D présentés sur ce site sont, sauf mention contraire, la propriété de {owner}. Toute reproduction ou réutilisation sans autorisation écrite préalable est interdite." },
+      { title: "Liens externes", box: false, text: "Ce site contient des liens vers des plateformes tierces (MakerWorld, Cults3D). Ces sites disposent de leurs propres conditions d'utilisation et politiques de confidentialité, sur lesquelles {name} n'exerce aucun contrôle." },
+      { title: "Médiation de la consommation", box: false, text: "Conformément à l'article L612-1 du Code de la consommation, tout consommateur peut recourir gratuitement à un médiateur en cas de litige non résolu à l'amiable : {mediator}." },
+      { title: "Contact", box: false, text: "Pour toute question : {email} ou via la [page de contact](contact.html)." }
+    ]
+  },
+  cgv: {
+    menu: "Conditions générales de vente",
+    kicker: "Informations légales",
+    title: "Conditions générales de vente",
+    description: "Conditions générales de vente Biboulab : commande, prix, paiement, livraison, droit de rétractation et garanties légales.",
+    sections: [
+      { title: "1. Objet", box: false, text: "Les présentes conditions régissent les ventes conclues entre {name} ({owner}, {status}, SIRET {siret}, {address}), ci-après « le vendeur », et toute personne effectuant un achat sur ce site, ci-après « le client ». Toute commande implique l'acceptation sans réserve des présentes conditions." },
+      { title: "2. Produits", box: false, text: "Les produits sont des objets fabriqués par impression 3D, en petites séries ou à la commande. Ce procédé artisanal peut laisser apparaître de fines lignes de couches et de légères variations de teinte ou d'aspect par rapport aux visuels du site, qui ne constituent pas des défauts.\n\nSauf mention contraire sur la fiche produit, les objets ne sont pas destinés au contact alimentaire, ne sont pas des jouets pour enfants de moins de 3 ans et ne doivent pas être exposés à une forte chaleur (au-delà de 50 °C environ pour le PLA)." },
+      { title: "3. Prix", box: false, text: "Les prix sont indiqués en euros. TVA non applicable, article 293 B du Code général des impôts. Les frais de livraison sont indiqués avant la validation de la commande. Le vendeur peut modifier ses prix à tout moment ; le prix applicable est celui affiché lors de la validation de la commande." },
+      { title: "4. Commande", box: false, text: "Le client sélectionne ses articles, renseigne ses coordonnées de livraison, choisit un mode de livraison et de paiement, puis valide sa commande après avoir accepté les présentes conditions. La vente est conclue à la confirmation de la commande par le vendeur, envoyée par e-mail." },
+      { title: "5. Paiement", box: false, text: "Le paiement est exigible à la commande, par l'un des moyens proposés lors de la validation. La fabrication débute à réception du paiement. Les produits restent la propriété du vendeur jusqu'au paiement complet." },
+      { title: "6. Fabrication et livraison", box: false, text: "Les produits étant fabriqués à la commande, un délai de fabrication s'ajoute au délai de transport ; il est indiqué sur chaque fiche produit. Modes de livraison proposés en France métropolitaine : {methods}. La livraison est offerte à partir de {freeFrom} d'achat. À défaut de délai indiqué, la livraison intervient au plus tard 30 jours après la commande.\n\nEn cas de colis endommagé, le client est invité à émettre des réserves auprès du transporteur et à prévenir le vendeur sous 3 jours, photos à l'appui." },
+      { title: "7. Droit de rétractation", box: false, text: "Le client consommateur dispose de 14 jours à compter de la réception pour se rétracter, sans avoir à motiver sa décision. Ce droit ne s'applique pas aux biens confectionnés selon les spécifications du client ou nettement personnalisés (article L221-28, 3° du Code de la consommation). Les modalités et le formulaire figurent sur la page [Droit de rétractation](retractation.html)." },
+      { title: "8. Garanties légales", box: false, text: "Le client bénéficie de la garantie légale de conformité (articles L217-3 et suivants du Code de la consommation), pendant deux ans à compter de la délivrance du bien, et de la garantie des vices cachés (articles 1641 à 1649 du Code civil). Pour les mettre en œuvre, contactez le vendeur à l'adresse {email}." },
+      { title: "9. Responsabilité", box: false, text: "Le vendeur ne saurait être tenu responsable d'un usage du produit non conforme à sa destination ou aux précautions indiquées sur la fiche produit. Pour les pièces de réparation, il appartient au client de vérifier la compatibilité avec son appareil avant l'installation." },
+      { title: "10. Données personnelles", box: false, text: "Les données collectées sont nécessaires au traitement des commandes. Voir la [politique de confidentialité](confidentialite.html)." },
+      { title: "11. Litiges et médiation", box: false, text: "Les présentes conditions sont soumises au droit français. En cas de litige, le client s'adresse d'abord au vendeur pour rechercher une solution amiable. À défaut, il peut saisir gratuitement le médiateur de la consommation : {mediator}." }
+    ]
+  },
+  confidentialite: {
+    menu: "Confidentialité & cookies",
+    kicker: "Informations légales",
+    title: "Confidentialité et cookies",
+    description: "Politique de confidentialité et de cookies Biboulab : données collectées, finalités, durées de conservation et droits RGPD.",
+    sections: [
+      { title: "Responsable du traitement", box: false, text: "{owner} — {name}, {address}. Contact : {email}." },
+      { title: "Données collectées et finalités", box: false, text: "- **Formulaire de contact** : nom, e-mail, contenu du message — pour répondre à votre demande (base légale : votre consentement).\n- **Commande** : nom, prénom, adresse postale, e-mail, détail de la commande — pour préparer, expédier et facturer votre commande (base légale : exécution du contrat et obligations comptables).\n\nAucune donnée n'est vendue ni utilisée à des fins publicitaires." },
+      { title: "Destinataires", box: false, text: "Vos données sont traitées par {owner} uniquement, et transmises aux seuls prestataires nécessaires : transporteur, prestataire de paiement, hébergeur du site et service de messagerie." },
+      { title: "Durées de conservation", box: false, text: "- Demandes de contact : 3 ans maximum après le dernier échange.\n- Commandes et factures : 10 ans (obligation comptable)." },
+      { title: "Vos droits", box: false, text: "Conformément au RGPD et à la loi Informatique et Libertés, vous disposez d'un droit d'accès, de rectification, d'effacement, de limitation, d'opposition et de portabilité de vos données. Pour l'exercer, écrivez à {email}. Vous pouvez également introduire une réclamation auprès de la CNIL (www.cnil.fr)." },
+      { title: "Cookies et stockage local", box: false, text: "Ce site ne dépose **aucun cookie publicitaire ni traceur de mesure d'audience**. Il utilise uniquement le stockage local de votre navigateur, strictement nécessaire au fonctionnement :\n\n- le contenu de votre panier ;\n- votre préférence de thème (clair ou sombre) ;\n- votre choix concernant les cookies.\n\nCes informations restent sur votre appareil et ne nous sont pas transmises. Vous pouvez les effacer à tout moment depuis les réglages de votre navigateur, et revoir votre choix via le lien « Gérer les cookies » en bas de page." },
+      { title: "Services tiers", box: false, text: "Les polices de caractères sont chargées depuis Google Fonts : votre adresse IP est techniquement transmise à Google lors de ce chargement. Les liens vers MakerWorld et Cults3D mènent vers des sites tiers qui appliquent leurs propres politiques." }
+    ]
+  },
+  retractation: {
+    menu: "Droit de rétractation",
+    kicker: "Informations légales",
+    title: "Droit de rétractation",
+    description: "Droit de rétractation Biboulab : délai de 14 jours, modalités de retour, exceptions pour les produits personnalisés et modèle de formulaire.",
+    sections: [
+      { title: "Votre droit", box: false, text: "Vous avez le droit de vous rétracter de votre commande, sans donner de motif, dans un délai de **14 jours** à compter du jour où vous (ou un tiers désigné par vous, autre que le transporteur) prenez physiquement possession du bien." },
+      { title: "Comment l'exercer", box: false, text: "Informez-nous de votre décision par une déclaration dénuée d'ambiguïté, par e-mail à {email} ou par courrier à : {owner}, {address}. Vous pouvez utiliser le modèle de formulaire ci-dessous, sans obligation." },
+      { title: "Retour et remboursement", box: false, text: "- Renvoyez le bien, dans son état d'origine, au plus tard 14 jours après nous avoir communiqué votre décision.\n- Les frais directs de renvoi sont à votre charge.\n- Nous vous remboursons l'ensemble des sommes versées, y compris les frais de livraison standard, au plus tard 14 jours après avoir été informés de votre décision. Le remboursement peut être différé jusqu'à réception du bien ou d'une preuve d'expédition.\n- Le remboursement utilise le même moyen de paiement que celui de la commande, sauf accord différent de votre part." },
+      { title: "Exceptions", box: false, text: "Conformément à l'article L221-28, 3° du Code de la consommation, le droit de rétractation ne s'applique pas aux biens **confectionnés selon vos spécifications ou nettement personnalisés** : pièces sur mesure, modélisations à la demande, gravures et personnalisations." },
+      { title: "Modèle de formulaire de rétractation", box: true, text: "À l'attention de {owner} — {name}, {address} — {email}\n\nJe vous notifie par la présente ma rétractation du contrat portant sur la vente du bien ci-dessous :\n\nCommandé le : ……………… / reçu le : ………………\nNuméro de commande : ………………\nNom du client : ………………\nAdresse du client : ………………\n\nDate : ………………\nSignature (uniquement en cas de notification sur papier) :" }
+    ]
+  }
+};
+
 /* ---------- Export (ne pas modifier) ---------- */
-/* Si l'administration en ligne a enregistré un catalogue (assets/js/catalogue.js), il remplace celui-ci. */
+/* Si l'administration en ligne a enregistré un catalogue (assets/js/catalogue.js) ou des
+   contenus (assets/js/contenu.js : réglages, pages, couleurs, avis), ils remplacent ceux-ci. */
 const LIVE = typeof window !== "undefined" && window.CATALOGUE && window.CATALOGUE.categories && window.CATALOGUE.products ? window.CATALOGUE : null;
-const SHOP = { SITE, FILAMENTS, CATEGORIES: LIVE ? LIVE.categories : CATEGORIES, PRODUCTS: LIVE ? LIVE.products : PRODUCTS, REVIEWS, ABOUT };
+const LIVE_C = typeof window !== "undefined" && window.CONTENU && typeof window.CONTENU === "object" ? window.CONTENU : {};
+const SHOP = {
+  SITE: LIVE_C.site || SITE, FILAMENTS: LIVE_C.filaments || FILAMENTS,
+  CATEGORIES: LIVE ? LIVE.categories : CATEGORIES, PRODUCTS: LIVE ? LIVE.products : PRODUCTS,
+  REVIEWS: LIVE_C.reviews || REVIEWS, ABOUT: LIVE_C.about || ABOUT, PAGES: LIVE_C.pages || PAGES
+};
 if (typeof window !== "undefined") window.SHOP = SHOP;
 if (typeof module !== "undefined") module.exports = SHOP;
