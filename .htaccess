@@ -23,9 +23,21 @@ ErrorDocument 503 /construction.html
   RewriteCond %{REQUEST_URI} !^/assets/(fonts|img)/
   RewriteCond %{REQUEST_URI} !^/robots\.txt$
   RewriteCond %{REQUEST_URI} !^/\.well-known/
+  # L'administration (/admin/) reste accessible, ainsi que les fichiers du site
+  # pour un navigateur déjà connecté à l'administration (cookie de session).
+  RewriteCond %{REQUEST_URI} !^/admin(/|$)
+  RewriteCond %{HTTP_COOKIE} !(^|;\s*)__Host-bbadm=
   RewriteRule ^ - [R=503,L]
 </IfModule>
 <IfModule mod_headers.c>
   Header always set Retry-After "86400" "expr=%{REQUEST_STATUS} == 503"
 </IfModule>
 # --- FIN CONSTRUCTION ---
+
+# ---------- Catalogue écrit par l'administration en ligne ----------
+# Le navigateur revérifie toujours ce fichier : une modification est visible tout de suite.
+<IfModule mod_headers.c>
+  <FilesMatch "^catalogue\.js$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>

@@ -26,7 +26,67 @@ node outils/serveur-local.js
 - **Enregistrer** (ou Cmd/Ctrl + S) écrit dans `assets/js/data.js` et met à jour le sitemap. Une copie de l'ancien `data.js` est gardée dans `outils/sauvegardes/` à chaque enregistrement.
 - Pour publier : renvoyez chez votre hébergeur `assets/js/data.js`, `sitemap.xml` et les nouvelles photos de `assets/img/produits/`.
 
-La page de gestion ne fonctionne que sur votre ordinateur. Le dossier `outils/` n'a pas besoin d'être mis en ligne.
+Cette version locale enregistre dans `data.js` sur votre ordinateur. Pour gérer le catalogue directement sur le site en ligne, voir la section suivante.
+
+## Administration en ligne (Django, connexion forte)
+
+La même page de gestion est disponible sur **https://www.biboulab.fr/admin/** (et https://pprod.biboulab.fr/admin/). Elle est servie par une petite application Django (dossier `backend/`) qui tourne chez O2switch, à côté du site.
+
+**Sécurité de la connexion**
+- Trois éléments obligatoires : identifiant, mot de passe (12 caractères minimum, haché en Argon2id) et **code à 6 chiffres** d'une application d'authentification (Google Authenticator, Microsoft Authenticator, Aegis, 1Password…). Un code ne sert qu'une fois.
+- 10 **codes de secours** à usage unique, si le téléphone est perdu.
+- **Blocage 15 minutes après 5 échecs** (par adresse IP), même avec le bon mot de passe ensuite.
+- Session : HTTPS obligatoire, cookie `__Host-` (Secure, HttpOnly, SameSite=Strict), déconnexion après 1 h sans action et au plus 8 h après la connexion.
+- Protection CSRF sur chaque enregistrement, politique de sécurité du contenu (CSP) stricte, page non indexable, interdite dans une iframe.
+- Les photos envoyées sont vérifiées (contenu réel d'image, nom contrôlé) et le dossier `assets/img/produits/` n'exécute jamais de code.
+
+**Ce que l'administration écrit sur le serveur** : `assets/js/catalogue.js` (catégories et objets), `sitemap.xml` et les photos de `assets/img/produits/`. Le déploiement GitHub n'écrase jamais ces fichiers. Tant que `catalogue.js` vaut `null`, le site utilise le catalogue de `data.js` ; dès le premier enregistrement en ligne, c'est le catalogue en ligne qui fait foi (modifier les produits dans `data.js` n'a alors plus d'effet en ligne). Les 30 versions précédentes de `catalogue.js` sont gardées dans `backend/sauvegardes/`.
+
+**Installation chez O2switch (une seule fois par site)**
+
+1. Dans cPanel › **Terminal**, récupérez le dépôt dans votre dossier personnel (hors `public_html`) :
+
+   ```bash
+   git clone https://github.com/jourdeyanis-blip/biboulab-site.git ~/biboulab
+   ```
+
+   (Dépôt privé : créez une clé de déploiement en lecture seule dans GitHub › Settings › Deploy keys, ou utilisez cPanel › Git Version Control.) Pour la préproduction, faites un second clone sur la branche `preprod` : `git clone -b preprod … ~/biboulab-pprod`.
+
+2. cPanel › **Setup Python App** › *Create Application* :
+   - Python : 3.11 ou plus récent
+   - Application root : `biboulab/backend`
+   - Application URL : `www.biboulab.fr` / `admin`
+   - Application startup file : `passenger_wsgi.py`, entry point : `application`
+   - Variables d'environnement :
+     - `DJANGO_SECRET_KEY` : une longue valeur aléatoire (générez-la avec `python3 -c "import secrets; print(secrets.token_urlsafe(50))"`), différente pour la préproduction
+     - `SITE_ROOT` : `/home/<compte>/public_html` (préproduction : `/home/<compte>/pprod.biboulab.fr/public_html`)
+     - `DJANGO_ALLOWED_HOSTS` : `www.biboulab.fr,biboulab.fr` (préproduction : `pprod.biboulab.fr`)
+
+3. Dans le Terminal, activez l'environnement Python (la commande exacte est affichée en haut de la page de l'application dans cPanel), puis :
+
+   ```bash
+   cd ~/biboulab/backend
+   pip install -r requirements.txt
+   python manage.py migrate
+   python manage.py creer_admin
+   ```
+
+   `creer_admin` demande l'identifiant et le mot de passe, puis affiche un **QR code à scanner** avec l'application d'authentification et les **10 codes de secours** : notez-les hors ligne, ils ne seront plus jamais affichés.
+
+4. Cliquez sur **Restart** dans Setup Python App, puis ouvrez https://www.biboulab.fr/admin/.
+
+**Mettre à jour l'administration** (après une modification de `backend/` ou de `outils/admin.html`) :
+
+```bash
+cd ~/biboulab && git pull && cd backend && pip install -r requirements.txt && python manage.py migrate && touch tmp/restart.txt
+```
+
+**En cas de problème**
+- Téléphone perdu : connectez-vous avec un code de secours, puis relancez `python manage.py creer_admin` (nouveau QR code, nouveaux codes de secours, les anciens sont révoqués).
+- Compte bloqué après des erreurs : attendez 15 minutes, ou `python manage.py axes_reset`.
+- Boucle de redirection à l'ouverture de `/admin/` : ajoutez la variable `DJANGO_SSL_REDIRECT=0` (Apache impose déjà le HTTPS).
+- Tests automatiques : `DJANGO_SECRET_KEY=test python manage.py test`.
+- Essai sur votre ordinateur : `DJANGO_DEBUG=1 python manage.py runserver`, puis http://localhost:8000/.
 
 ## Site en construction
 
@@ -55,7 +115,9 @@ Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les vis
 | `mentions-legales.html`, `cgv.html`, `confidentialite.html`, `retractation.html` | Pages légales |
 | `sitemap.xml`, `robots.txt` | Référencement (générés par `outils/generer-sitemap.js`) |
 | `assets/img/` | Favicon ; déposez ici photos et logos |
-| `outils/` | Serveur local et générateur de sitemap |
+| `outils/` | Serveur local, page de gestion (`admin.html`) et générateur de sitemap |
+| `backend/` | Administration en ligne (Django) : jamais copiée dans `public_html` |
+| `assets/js/catalogue.js` | Catalogue écrit par l'administration en ligne (`null` = celui de `data.js`) |
 
 ## À remplacer avant la mise en ligne
 
@@ -130,4 +192,4 @@ Les visiteurs qui ont activé « réduire les animations » obtiennent une versi
 - **Cookies** : le site ne stocke que le panier, le thème et le choix cookies dans le navigateur. Si vous ajoutez une mesure d'audience, ne la chargez que si `UI.consent() === "accept"`.
 - **Polices** : chargées depuis Google Fonts (mentionné dans la politique de confidentialité). Pour une conformité RGPD plus stricte, hébergez-les vous-même dans `assets/`.
 - **Référencement** : chaque page a son titre et sa description ; les fiches produits publient des données structurées `Product`. Le contenu étant généré en JavaScript, Google l'indexe, mais plus lentement qu'un site entièrement statique.
-- **Mise en ligne** : déposez tout le dossier chez un hébergeur de sites statiques (Netlify, OVH, GitHub Pages, o2switch…). Les dossiers `outils/` et `.claude/` ne sont pas nécessaires en ligne.
+- **Mise en ligne** : déposez tout le dossier chez un hébergeur de sites statiques (Netlify, OVH, GitHub Pages, o2switch…). Les dossiers `outils/`, `backend/` et `.claude/` ne vont pas dans le dossier public (`backend/` s'installe à part, voir « Administration en ligne »).

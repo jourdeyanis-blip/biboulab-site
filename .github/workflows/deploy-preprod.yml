@@ -40,6 +40,9 @@ jobs:
         run: |
           printf 'User-agent: *\nDisallow: /\n' > robots.txt
 
+      # backend/ (Django) ne va jamais dans le dossier public : il s'installe à part (LISEZ-MOI.md).
+      # catalogue.js et sitemap.xml sont écrits par l'administration en ligne : on ne les envoie
+      # que s'ils n'existent pas encore sur le serveur, pour ne jamais écraser le catalogue en ligne.
       - name: Envoyer le site en FTPS
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -51,9 +54,12 @@ jobs:
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 3;
-            rm -r -f /.git /.github /.claude /outils /LISEZ-MOI.md;
+            rm -r -f /.git /.github /.claude /outils /backend /LISEZ-MOI.md;
             mirror -R --verbose --parallel=2 \
               -x '^\.git(/|$)' -x '^\.github(/|$)' -x '^\.claude(/|$)' \
-              -x '^outils(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
+              -x '^outils(/|$)' -x '^backend(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
+              -x '^assets/js/catalogue\.js$' -x '^sitemap\.xml$' \
               . /;
+            mirror -R --only-missing --no-recursion --verbose -I catalogue.js assets/js /assets/js;
+            mirror -R --only-missing --no-recursion --verbose -I sitemap.xml . /;
             quit"

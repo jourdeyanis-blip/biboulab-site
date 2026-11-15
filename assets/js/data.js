@@ -333,6 +333,8 @@ const ABOUT = {
 };
 
 /* ---------- Export (ne pas modifier) ---------- */
-const SHOP = { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT };
+/* Si l'administration en ligne a enregistré un catalogue (assets/js/catalogue.js), il remplace celui-ci. */
+const LIVE = typeof window !== "undefined" && window.CATALOGUE && window.CATALOGUE.categories && window.CATALOGUE.products ? window.CATALOGUE : null;
+const SHOP = { SITE, FILAMENTS, CATEGORIES: LIVE ? LIVE.categories : CATEGORIES, PRODUCTS: LIVE ? LIVE.products : PRODUCTS, REVIEWS, ABOUT };
 if (typeof window !== "undefined") window.SHOP = SHOP;
 if (typeof module !== "undefined") module.exports = SHOP;

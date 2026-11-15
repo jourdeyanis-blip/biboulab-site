@@ -4,8 +4,9 @@
            ou   http://localhost:4173/admin    (ajouter catégories et objets)
 
    La page de gestion enregistre directement dans assets/js/data.js.
-   Elle ne fonctionne que sur cet ordinateur : rien de tout cela n'existe
-   sur le site en ligne.                                                  */
+   Elle ne fonctionne que sur cet ordinateur. L'administration du site en
+   ligne utilise la même page, servie par l'application Django du dossier
+   backend/ (mot de passe + code à usage unique).                    */
 const http = require("http"), fs = require("fs"), path = require("path"), vm = require("vm");
 const { execFile } = require("child_process");
 const root = path.join(__dirname, "..");

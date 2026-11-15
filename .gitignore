@@ -1,3 +1,10 @@
 .DS_Store
 outils/sauvegardes/
 .claude/settings.local.json
+# Administration Django : base de données, sauvegardes, environnement Python
+backend/db.sqlite3
+backend/sauvegardes/
+backend/.venv/
+__pycache__/
+*.pyc
+backend/tmp/
