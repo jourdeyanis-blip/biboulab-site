@@ -420,9 +420,10 @@
           ${F("date", "Date de mise en ligne", { v: p.date, type: "date", hint: "Sert au tri « Nouveautés »" })}
           ${F("popularity", "Popularité de 0 à 100", { v: p.popularity, type: "number", num: 1, step: "1", max: 100, hint: "Sert au tri « Popularité »" })}
         </div></div></section>
-        <section class="a-sec"><h2>Liens et 3D</h2><div class="form">
+        <section class="a-sec"><h2>Liens</h2><div class="form">
           ${F("makerworld", "Lien MakerWorld du modèle", { v: p.makerworld, opt: 1, ph: "https://makerworld.com/…" })}
-          ${F("cults3d", "Lien Cults3D du modèle", { v: p.cults3d, opt: 1, ph: "https://cults3d.com/…" })}        </div></section>`;
+          ${F("cults3d", "Lien Cults3D du modèle", { v: p.cults3d, opt: 1, ph: "https://cults3d.com/…" })}
+        </div></section>`;
     }
 
     function catForm(c) {
