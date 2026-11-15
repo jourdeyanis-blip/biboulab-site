@@ -35,14 +35,16 @@ function texte(string $v, int $max): string {
     return trim(mb_substr($v, 0, $max));
 }
 
+$prenom  = ligne((string)($_POST['prenom'] ?? ''), 100);
 $nom     = ligne((string)($_POST['nom'] ?? ''), 100);
+$complet = trim("$prenom $nom");
 $email   = ligne((string)($_POST['email'] ?? ''), 150);
 $message = texte((string)($_POST['message'] ?? ''), 5000);
 $perso   = !empty($_POST['personnalisation']);
 $dim     = ligne((string)($_POST['dimensions'] ?? ''), 100);
 $couleur = ligne((string)($_POST['couleur'] ?? ''), 100);
 
-if ($nom === '' || $message === '' || empty($_POST['accord'])) reponse(422, false, 'Champs obligatoires manquants.');
+if ($prenom === '' || $nom === '' || $message === '' || empty($_POST['accord'])) reponse(422, false, 'Champs obligatoires manquants.');
 if (!filter_var($email, FILTER_VALIDATE_EMAIL)) reponse(422, false, 'Adresse e-mail invalide.');
 
 /* Limite par visiteur (fichier temporaire, par adresse IP) */
@@ -54,15 +56,15 @@ if (is_file($cle)) {
 }
 if (count($envois) >= MAX_PAR_HEURE) reponse(429, false, 'Trop de messages envoyés. Réessayez plus tard.');
 
-$sujet = ($perso ? 'Demande de personnalisation' : 'Message') . ' — ' . $nom;
+$sujet = ($perso ? 'Demande de personnalisation' : 'Message') . ' — ' . $complet;
 $corps = "Nouveau message depuis le site " . NOM_SITE . "\n\n"
-       . "Nom : $nom\nE-mail : $email\n"
+       . "Prénom : $prenom\nNom : $nom\nE-mail : $email\n"
        . ($perso ? "Type : demande de personnalisation\nDimensions : " . ($dim ?: '—') . "\nCouleur : " . ($couleur ?: '—') . "\n" : '')
        . "\nMessage :\n$message\n";
 
 $entetes = [
     'From' => NOM_SITE . ' <' . EXPEDITEUR . '>',
-    'Reply-To' => $nom !== '' ? mb_encode_mimeheader($nom, 'UTF-8') . " <$email>" : $email,
+    'Reply-To' => mb_encode_mimeheader($complet, 'UTF-8') . " <$email>",
     'MIME-Version' => '1.0',
     'Content-Type' => 'text/plain; charset=UTF-8',
     'X-Mailer' => 'PHP/' . PHP_VERSION,
