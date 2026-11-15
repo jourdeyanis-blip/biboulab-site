@@ -119,6 +119,7 @@ Les visiteurs qui ont activé « réduire les animations » obtiennent une versi
 ## Bon à savoir
 
 - **Cookies** : le site ne stocke que le panier, le thème et le choix cookies dans le navigateur. Si vous ajoutez une mesure d'audience, ne la chargez que si `UI.consent() === "accept"`.
+- **Point Relais Mondial Relay** : à l'étape « Livraison » du panier, le mode « Point Relais » affiche le widget officiel Mondial Relay (carte OpenStreetMap). Renseignez votre code enseigne dans `SITE.shipping.mondialRelay.brand` (`assets/js/data.js`) : `"BDTEST  "` est le code de démonstration et affiche un avertissement. Le widget n'est chargé (depuis `widget.mondialrelay.com`) que si le client choisit ce mode ; pensez à le mentionner dans la politique de confidentialité.
 - **Polices** : chargées depuis Google Fonts (mentionné dans la politique de confidentialité). Pour une conformité RGPD plus stricte, hébergez-les vous-même dans `assets/`.
 - **Référencement** : chaque page a son titre et sa description ; les fiches produits publient des données structurées `Product`. Le contenu étant généré en JavaScript, Google l'indexe, mais plus lentement qu'un site entièrement statique.
 - **Mise en ligne** : déposez tout le dossier chez un hébergeur de sites statiques (Netlify, OVH, GitHub Pages, o2switch…). Les dossiers `outils/` et `.claude/` ne sont pas nécessaires en ligne.

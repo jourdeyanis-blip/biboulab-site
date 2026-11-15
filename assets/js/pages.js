@@ -544,7 +544,56 @@
   /* ================= PANIER & COMMANDE (3 étapes) ================= */
   function cartPage() {
     const methods = SITE.shipping.methods, pays = SITE.payment.methods;
-    const st = { step: 1, ship: methods[0].id, pay: pays[0].id, info: {} };
+    const st = { step: 1, ship: methods[0].id, pay: pays[0].id, info: {}, relay: null, relayDown: false };
+    const MR = SITE.shipping.mondialRelay;
+    const needRelay = () => st.ship === "relais" && !!MR;
+    const relayText = (r) => `${r.nom} (n° ${r.id}) — ${r.adresse}, ${r.cp} ${r.ville}`;
+
+    /* ----- Widget Mondial Relay (chargé seulement si le mode "Point Relais" est choisi) ----- */
+    const loadScript = (src) => new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.append(s); });
+    let mrLoading = null;
+    const loadMR = () => mrLoading || (mrLoading = (async () => {
+      if (!$("#leaflet-css")) { const l = document.createElement("link"); l.id = "leaflet-css"; l.rel = "stylesheet"; l.href = "assets/vendor/leaflet/leaflet.css"; document.head.append(l); }
+      if (!window.jQuery) await loadScript("assets/vendor/jquery-2.2.4.min.js");
+      if (!window.L) await loadScript("assets/vendor/leaflet/leaflet.js");
+      if (!window.jQuery.fn.MR_ParcelShopPicker) await loadScript("https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.min.js");
+    })().catch((e) => { mrLoading = null; throw e; }));
+    const showRelay = () => {
+      const c = $("#mr-choice"); if (!c) return;
+      c.innerHTML = st.relay ? `${icon("check")}<span><b>Point Relais choisi :</b> ${esc(relayText(st.relay))}</span>` : "Recherchez puis sélectionnez votre Point Relais® ci-dessous.";
+      c.classList.toggle("on", !!st.relay);
+      const e = $("#mr-err"); if (e && st.relay) e.textContent = "";
+    };
+    function mountRelay() {
+      const zone = $("#mr-zone"); if (!zone) return;
+      showRelay();
+      const cp = ($("#f-cp") || {}).value || st.info.cp || "";
+      loadMR().then(() => {
+        if (!zone.isConnected) return;
+        st.relayDown = false;
+        window.jQuery(zone).MR_ParcelShopPicker({
+          Target: "#mr-target",
+          Brand: MR.brand,
+          Country: MR.country || "FR",
+          ColLivMod: MR.colLivMod || "24R",
+          NbResults: MR.nbResults || 7,
+          PostCode: /^\d{5}$/.test(cp) ? cp : "",
+          AutoSelect: st.relay ? `${st.relay.pays}-${st.relay.id}` : "",
+          Responsive: true,
+          ShowResultsOnMap: true,
+          Theme: "mondialrelay",
+          OnParcelShopSelected: (d) => {
+            const t = (v) => String(v || "").replace(/''/g, "'").trim();
+            st.relay = { id: t(d.ID), nom: t(d.Nom), adresse: [t(d.Adresse1), t(d.Adresse2)].filter(Boolean).join(" "), cp: t(d.CP), ville: t(d.Ville), pays: t(d.Pays) || "FR" };
+            showRelay();
+          }
+        });
+      }).catch(() => {
+        if (!zone.isConnected) return;
+        st.relayDown = true;
+        zone.innerHTML = `<p class="notice" style="margin:0">Le sélecteur Mondial Relay ne s'est pas chargé. Indiquez le Point Relais souhaité dans « Précision pour la commande », ou réessayez dans un instant.</p>`;
+      });
+    }
     const totals = () => { const sub = Cart.subtotal(), m = methods.find((x) => x.id === st.ship), free = sub >= SITE.shipping.freeFrom, fee = free ? 0 : m.price; return { sub, m, free, fee, total: sub + fee }; };
     const stepsHTML = () => `<ol class="steps" aria-label="Étapes de la commande">${["Panier", "Livraison", "Paiement"].map((l, i) => `<li class="${i + 1 === st.step ? "on" : i + 1 < st.step ? "past" : ""}"${i + 1 === st.step ? ' aria-current="step"' : ""}><i aria-hidden="true"></i><span>${l}</span></li>`).join("")}</ol>`;
     const optText = (l) => [l.color && FILAMENTS[l.color] ? FILAMENTS[l.color].name : null, l.size].filter(Boolean).join(" · ");
@@ -584,8 +633,8 @@
           ${summary(t, `<button class="btn btn-primary" type="button" data-go="2">Choisir la livraison ${icon("arrow", "ic-arrow")}</button><a class="back" href="boutique.html">Continuer mes achats</a>`)}`;
       } else if (st.step === 2) {
         const i = st.info;
-        body = `<form class="co-main" id="ship-form" novalidate>
-            <h2 class="h-sub">Adresse de livraison</h2>
+        body = `<div class="co-main"><form id="ship-form" novalidate>
+            <h2 class="h-sub">${needRelay() ? "Vos coordonnées" : "Adresse de livraison"}</h2>
             <div class="form">
               ${fg("prenom", "Prénom", { required: true, auto: "given-name", value: i.prenom })}
               ${fg("nom", "Nom", { required: true, auto: "family-name", value: i.nom })}
@@ -598,6 +647,12 @@
             <h2 class="h-sub" style="margin-top:32px">Mode de livraison <small class="muted" style="font:500 .85rem var(--font-b)">(France métropolitaine)</small></h2>
             ${methods.map((m) => `<label class="radio-card"><input type="radio" name="ship" value="${m.id}" ${m.id === st.ship ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.delay)}</small></span><span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>`).join("")}
           </form>
+          ${needRelay() ? `<div class="mr-box"><h2 class="h-sub" style="margin-top:32px">Votre Point Relais®</h2>
+            <p class="mr-choice" id="mr-choice" aria-live="polite"></p>
+            <p class="mr-err" id="mr-err" role="alert"></p>
+            <input type="hidden" id="mr-target">
+            <div class="mr-zone" id="mr-zone"><p class="muted" style="padding:16px;margin:0">Chargement du sélecteur Mondial Relay…</p></div></div>` : ""}
+          </div>
           ${summary(t, `<button class="btn btn-primary" type="submit" form="ship-form">Passer au paiement ${icon("arrow", "ic-arrow")}</button><button class="back" type="button" data-go="1">← Retour au panier</button>`)}`;
       } else if (st.step === 3) {
         body = `<form class="co-main" id="pay-form" novalidate>
@@ -605,13 +660,14 @@
             ${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est envoyée par e-mail et je vous retourne un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
             ${pays.map((m) => `<label class="radio-card"><input type="radio" name="pay" value="${m.id}" ${m.id === st.pay ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.note)}</small></span></label>`).join("")}
             <h2 class="h-sub" style="margin-top:32px">Livraison</h2>
-            <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})</p>
+            <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})${needRelay() && st.relay ? `<br>${esc(relayText(st.relay))}` : ""}</p>
             <div class="fg" style="margin-top:22px"><label class="check"><input type="checkbox" name="cgv" required><span>J'ai lu et j'accepte les <a href="cgv.html" target="_blank" rel="noopener">conditions générales de vente</a> et je reconnais que ma commande implique une obligation de paiement.</span></label><p class="err-msg" role="alert"></p></div>
           </form>
           ${summary(t, `<button class="btn btn-primary" type="submit" form="pay-form">Valider la commande · ${euro(t.total)}</button><button class="back" type="button" data-go="2">← Retour à la livraison</button>`)}`;
       }
       main.innerHTML = st.step === 4 ? st.done : `<section class="wrap page-head" style="padding-bottom:0"><h1 tabindex="-1">${["Votre panier", "Livraison", "Paiement"][st.step - 1]}</h1>${stepsHTML()}</section><section class="wrap checkout">${body}</section>`;
       enhance(main);
+      if (st.step === 2 && needRelay()) mountRelay();
       if (focus) { scrollTo({ top: 0, behavior: RM ? "auto" : "smooth" }); const h = $("h1, h2", main); if (h) h.focus({ preventScroll: true }); }
     }
 
@@ -627,13 +683,17 @@
     main.addEventListener("submit", (e) => {
       e.preventDefault();
       if (!validate(e.target)) return;
-      if (e.target.id === "ship-form") { Object.assign(st.info, Object.fromEntries(new FormData(e.target))); st.step = 3; render(true); return; }
+      if (e.target.id === "ship-form") {
+        Object.assign(st.info, Object.fromEntries(new FormData(e.target)));
+        if (needRelay() && !st.relay && !st.relayDown) { const m = $("#mr-err"); if (m) { m.textContent = "Sélectionnez un Point Relais® pour continuer."; m.scrollIntoView({ block: "center", behavior: RM ? "auto" : "smooth" }); } return; }
+        st.step = 3; render(true); return;
+      }
       /* Validation finale : on prépare l'e-mail de commande */
       const t = totals(), i = st.info, ref = "GF-" + Date.now().toString(36).toUpperCase().slice(-6);
       const pay = pays.find((m) => m.id === st.pay);
       const text = [`Commande ${ref}`, "", ...Cart.lines().map((l) => `- ${l.qty} × ${l.p.name}${optText(l) ? ` (${optText(l)})` : ""} : ${euro(l.total)}`), "",
         `Sous-total : ${euro(t.sub)}`, `Livraison (${t.m.label}) : ${t.free ? "offerte" : euro(t.fee)}`, `TOTAL : ${euro(t.total)}`, "",
-        `Paiement souhaité : ${pay.label}`, "", "Livraison :", `${i.prenom} ${i.nom}`, i.adresse, `${i.cp} ${i.ville}`, i.email, i.note ? `Précision : ${i.note}` : ""].join("\n");
+        `Paiement souhaité : ${pay.label}`, "", ...(needRelay() && st.relay ? ["Point Relais Mondial Relay :", relayText(st.relay), ""] : []), needRelay() ? "Client :" : "Livraison :", `${i.prenom} ${i.nom}`, i.adresse, `${i.cp} ${i.ville}`, i.email, i.note ? `Précision : ${i.note}` : ""].join("\n");
       const link = mailto(`Commande ${ref} — ${SITE.name}`, text);
       st.done = `<section class="wrap section"><div class="success" role="status">${tick}
         <h1 tabindex="-1">Commande ${ref} prête à partir</h1>
