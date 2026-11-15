@@ -1,9 +1,10 @@
 /* Petit serveur local pour prévisualiser le site ET le gérer :
        node outils/serveur-local.js
    puis ouvrir  http://localhost:4173          (le site)
-           ou   http://localhost:4173/admin    (ajouter catégories et objets)
+           ou   http://localhost:4173/admin    (catégories, objets, pages, réglages)
 
-   La page de gestion enregistre directement dans assets/js/data.js.
+   La page de gestion enregistre directement dans assets/js/data.js
+   (et recopie titres et descriptions des pages légales dans leur HTML).
    Elle ne fonctionne que sur cet ordinateur : rien de tout cela n'existe
    sur le site en ligne.                                                  */
 const http = require("http"), fs = require("fs"), path = require("path"), vm = require("vm");
@@ -12,7 +13,6 @@ const root = path.join(__dirname, "..");
 const port = process.env.PORT || 4173;
 const dataFile = path.join(root, "assets/js/data.js");
 const backupDir = path.join(__dirname, "sauvegardes");
-const photoDir = path.join(root, "assets/img/produits");
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8", ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".glb": "model/gltf-binary", ".woff2": "font/woff2", ".woff": "font/woff" };
 
 /* ---------- Écriture de data.js ---------- */
@@ -65,9 +65,68 @@ function check(categories, products) {
   return "";
 }
 
-function save(categories, products) {
-  const problem = check(categories, products);
+/* Écriture lisible d'une valeur : sur une ligne si elle est courte, sinon dépliée */
+function pretty(v, ind = "") {
+  const flat = js(v);
+  if (!v || typeof v !== "object" || ind.length + flat.length <= 110) return flat;
+  const ni = ind + "  ";
+  if (Array.isArray(v)) return `[\n${v.map((x) => ni + pretty(x, ni)).join(",\n")}\n${ind}]`;
+  return `{\n${Object.entries(v).map(([k, x]) => `${ni}${isKey(k) ? k : JSON.stringify(k)}: ${pretty(x, ni)}`).join(",\n")}\n${ind}}`;
+}
+
+/* Contrôle des réglages, pages, couleurs et avis envoyés par la page de gestion */
+const str = (v) => typeof v === "string";
+function checkContent({ site, filaments, reviews, about, pages }, products) {
+  if (!site || !str(site.name) || !site.name.trim()) return "Le nom de la boutique est obligatoire.";
+  if (!str(site.email) || !str(site.url) || !site.legal || typeof site.legal !== "object") return "Réglages incomplets.";
+  for (const k of ["stores", "stats", "marquee"]) if (!Array.isArray(site[k])) return "Réglages incomplets.";
+  if (!site.hero || !site.shipping || !Array.isArray(site.shipping.methods) || !site.payment || !Array.isArray(site.payment.methods)) return "Réglages incomplets.";
+  if (!site.shipping.methods.length) return "Il faut au moins un mode de livraison.";
+  if (!site.payment.methods.length) return "Il faut au moins un moyen de paiement.";
+  for (const list of [site.shipping.methods, site.payment.methods, site.stores]) {
+    const seen = new Set();
+    for (const m of list) {
+      if (!m || !ID.test(m.id || "")) return `Identifiant invalide : « ${m && m.id} » (minuscules, chiffres et tirets).`;
+      if (seen.has(m.id)) return `Deux éléments portent l'identifiant « ${m.id} ».`;
+      seen.add(m.id);
+    }
+  }
+  if (!filaments || typeof filaments !== "object" || !Object.keys(filaments).length) return "Il faut au moins une couleur de filament.";
+  for (const [k, f] of Object.entries(filaments)) if (!/^[a-z0-9]+$/.test(k) || !f || !str(f.name) || !str(f.hex)) return `Couleur de filament invalide : « ${k} ».`;
+  for (const p of products) for (const c of p.colors) if (!(c in filaments)) return `L'objet « ${p.name} » utilise la couleur « ${c} », qui n'existe plus.`;
+  if (!Array.isArray(reviews)) return "Avis incomplets.";
+  for (const r of reviews) if (!r || !str(r.name) || !(r.stars >= 1 && r.stars <= 5)) return "Un avis client est incomplet (nom et note de 1 à 5).";
+  if (!about || !str(about.title) || !Array.isArray(about.story) || !Array.isArray(about.photos) || !about.photos.length || !Array.isArray(about.process)) return "Page « À propos » incomplète.";
+  if (!pages || typeof pages !== "object") return "Pages incomplètes.";
+  for (const [k, d] of Object.entries(pages)) {
+    if (!LEGAL_FILES.includes(k)) return `Page inconnue : « ${k} ».`;
+    if (!d || !str(d.title) || !d.title.trim() || !Array.isArray(d.sections)) return `La page « ${k} » est incomplète.`;
+  }
+  return "";
+}
+const LEGAL_FILES = ["mentions-legales", "cgv", "confidentialite", "retractation"];
+
+/* Titre et description des pages légales : on les recopie dans l'en-tête HTML (référencement) */
+const attr = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function syncHeads(pages, siteName) {
+  for (const [k, d] of Object.entries(pages)) {
+    const file = path.join(root, k + ".html");
+    if (!fs.existsSync(file)) continue;
+    const before = fs.readFileSync(file, "utf8"), title = attr(`${d.title} | ${siteName}`), desc = attr(d.description || "");
+    const after = before
+      .replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`)
+      .replace(/(<meta name="description" content=")[^"]*(")/, (m, a, b) => a + desc + b)
+      .replace(/(<meta property="og:title" content=")[^"]*(")/, (m, a, b) => a + title + b)
+      .replace(/(<meta property="og:description" content=")[^"]*(")/, (m, a, b) => a + desc + b);
+    if (after !== before) fs.writeFileSync(file, after);
+  }
+}
+
+function save(payload) {
+  const { categories, products } = payload;
+  const problem = check(categories, products) || checkContent(payload, products);
   if (problem) throw new Error(problem);
+  const { site, filaments, reviews, about, pages } = payload;
   const before = fs.readFileSync(dataFile, "utf8");
   const catsJs = `const CATEGORIES = [\n${categories.map((c) => layout(c, CAT_ROWS)).join(",\n")}\n];`;
   const names = Object.fromEntries(categories.map((c) => [c.slug, c.name]));
@@ -79,15 +138,28 @@ function save(categories, products) {
     last = p.category;
     return head + layout(p, PROD_ROWS);
   }).join(",\n")}\n];`;
-  const reC = /const CATEGORIES = \[[\s\S]*?\n\];/, reP = /const PRODUCTS = \[[\s\S]*?\n\];/;
-  if (!reC.test(before) || !reP.test(before)) throw new Error("data.js n'a plus la forme attendue : les blocs CATEGORIES et PRODUCTS sont introuvables.");
-  const after = before.replace(reC, () => catsJs).replace(reP, () => prodsJs);
+  const blocks = [
+    [/const SITE = \{[\s\S]*?\n\};/, `const SITE = ${pretty(site)};`],
+    [/const FILAMENTS = \{[\s\S]*?\n\};/, `const FILAMENTS = {\n${Object.entries(filaments).map(([k, f]) => `  ${k}: ${js(f)}`).join(",\n")}\n};`],
+    [/const CATEGORIES = \[[\s\S]*?\n\];/, catsJs],
+    [/const PRODUCTS = \[[\s\S]*?\n\];/, prodsJs],
+    [/const REVIEWS = (?:\[\]|\[[\s\S]*?\n\]);/, `const REVIEWS = ${reviews.length ? `[\n${reviews.map((r) => "  " + js(r)).join(",\n")}\n]` : "[]"};`],
+    [/const ABOUT = \{[\s\S]*?\n\};/, `const ABOUT = ${pretty(about)};`],
+    [/const PAGES = \{[\s\S]*?\n\};/, `const PAGES = ${pretty(pages)};`]
+  ];
+  let after = before;
+  for (const [re, txt] of blocks) {
+    if (!re.test(after)) throw new Error(`data.js n'a plus la forme attendue : le bloc ${txt.slice(6, txt.indexOf(" ="))} est introuvable.`);
+    after = after.replace(re, () => txt);
+  }
 
   /* On vérifie que le nouveau fichier se lit correctement avant de remplacer l'ancien */
   const box = { module: { exports: null } };
   vm.runInNewContext(after, box);
   const out = box.module.exports;
-  if (!out || out.PRODUCTS.length !== products.length || out.CATEGORIES.length !== categories.length) throw new Error("Le fichier généré est incohérent, rien n'a été modifié.");
+  if (!out || out.PRODUCTS.length !== products.length || out.CATEGORIES.length !== categories.length
+    || JSON.stringify(out.SITE) !== JSON.stringify(site) || JSON.stringify(out.PAGES) !== JSON.stringify(pages) || JSON.stringify(out.ABOUT) !== JSON.stringify(about))
+    throw new Error("Le fichier généré est incohérent, rien n'a été modifié.");
 
   fs.mkdirSync(backupDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
@@ -95,6 +167,7 @@ function save(categories, products) {
   const old = fs.readdirSync(backupDir).filter((f) => /^data-.*\.js$/.test(f)).sort();
   old.slice(0, Math.max(0, old.length - 30)).forEach((f) => fs.unlinkSync(path.join(backupDir, f))); // on garde les 30 dernières
   fs.writeFileSync(dataFile, after);
+  syncHeads(pages, site.name);
   execFile(process.execPath, [path.join(__dirname, "generer-sitemap.js")], () => {}); // sitemap à jour
 }
 
@@ -115,17 +188,17 @@ async function api(req, res, url) {
   if (req.method !== "POST" || !trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
   try {
     if (url.pathname === "/api/sauver") {
-      const { categories, products } = JSON.parse((await read(req, 5e6)).toString("utf8"));
-      save(categories, products);
+      save(JSON.parse((await read(req, 8e6)).toString("utf8")));
       return send(res, 200, { ok: true });
     }
     if (url.pathname === "/api/photo") {
       const name = path.basename(url.searchParams.get("nom") || "");
       if (!/^[a-z0-9][a-z0-9-]*\.(webp|png|jpe?g)$/.test(name)) return send(res, 400, { erreur: "Nom de photo invalide." });
+      const folder = url.searchParams.get("dossier") === "atelier" ? "atelier" : "produits"; // photos d'objets ou de l'atelier
       const data = await read(req, 12e6);
-      fs.mkdirSync(photoDir, { recursive: true });
-      fs.writeFileSync(path.join(photoDir, name), data);
-      return send(res, 200, { ok: true, chemin: `assets/img/produits/${name}` });
+      fs.mkdirSync(path.join(root, "assets/img", folder), { recursive: true });
+      fs.writeFileSync(path.join(root, "assets/img", folder, name), data);
+      return send(res, 200, { ok: true, chemin: `assets/img/${folder}/${name}` });
     }
     send(res, 404, { erreur: "Action inconnue." });
   } catch (e) { send(res, 400, { erreur: e.message || "Enregistrement impossible." }); }

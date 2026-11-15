@@ -195,10 +195,7 @@
         <nav aria-label="Informations"><h2>Informations</h2><ul>
           <li><a href="a-propos.html">À propos</a></li>
           <li><a href="contact.html">Contact &amp; sur-mesure</a></li>
-          <li><a href="mentions-legales.html">Mentions légales</a></li>
-          <li><a href="cgv.html">Conditions générales de vente</a></li>
-          <li><a href="confidentialite.html">Confidentialité &amp; cookies</a></li>
-          <li><a href="retractation.html">Droit de rétractation</a></li>
+          ${Object.entries(window.SHOP.PAGES || {}).map(([k, d]) => `<li><a href="${k}.html">${esc(d.menu || d.title)}</a></li>`).join("")}
           <li><button type="button" data-cookies style="color:var(--muted);font-size:.9375rem">Gérer les cookies</button></li>
         </ul></nav>
         <div><h2>Retrouvez-moi aussi sur</h2>
@@ -207,7 +204,7 @@
       </div>
       <div class="wrap ftr-bottom">
         <span>© ${new Date().getFullYear()} ${esc(SITE.name)} — ${esc(SITE.legal.owner)}, ${esc(SITE.legal.status)} · SIRET ${esc(SITE.legal.siret)}</span>
-        <span>TVA non applicable, art. 293 B du CGI</span>
+        ${SITE.legal.vat ? `<span>${esc(SITE.legal.vat)}</span>` : ""}
       </div>
       <div class="ftr-big" aria-hidden="true">${esc(SITE.name)}</div>`;
     document.body.append(footer);
