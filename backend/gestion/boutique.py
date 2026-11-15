@@ -152,7 +152,9 @@ def catalogue() -> dict:
     filaments = contenu["filaments"] if isinstance(contenu.get("filaments"), dict) else lire_constante(data_js, "FILAMENTS")
     try:
         livraison = site["shipping"]
-        modes = {m["id"]: {"label": m["label"], "delai": m.get("delay", ""), "prix": centimes(m["price"])} for m in livraison["methods"]}
+        modes = {m["id"]: {"label": m["label"], "delai": m.get("delay", ""), "prix": centimes(m["price"]),
+                           "transporteur": str(m.get("carrier") or ""), "point": m.get("point") is True,
+                           "suivi": str(m.get("tracking") or "")} for m in livraison["methods"]}
         franco = centimes(livraison["freeFrom"])
         return {
             "produits": {p["id"]: p for p in produits},
@@ -234,7 +236,8 @@ def calculer(panier, mode_livraison) -> dict:
     frais = 0 if sous_total >= cat["franco"] else mode["prix"]
     return {
         "lignes": lignes,
-        "livraison": {"id": mode_livraison, "label": mode["label"], "delai": mode["delai"], "prix": frais},
+        "livraison": {"id": mode_livraison, "label": mode["label"], "delai": mode["delai"], "prix": frais,
+                      "transporteur": mode["transporteur"], "point": mode["point"], "suivi": mode["suivi"]},
         "sous_total": sous_total,
         "total": sous_total + frais,
     }

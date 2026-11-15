@@ -6,6 +6,7 @@ urlpatterns = [
     path("", views.panneau, name="panneau"),
     path("connexion/", views.connexion, name="connexion"),
     path("emails/", views.modeles_emails, name="emails"),
+    path("commandes/", views.commandes, name="commandes"),
     path("emails/logo.png", views.logo_email, name="emails_logo"),
     path("api/etat/", views.api_etat, name="api_etat"),
     path("api/sauver/", views.api_sauver, name="api_sauver"),

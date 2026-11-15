@@ -1,4 +1,5 @@
-"""E-mails envoyés quand une commande est payée : un pour le vendeur, un pour le client.
+"""E-mails de commande : à la commande payée, un pour le vendeur et un pour le client ;
+à l'expédition, un pour le client avec le lien de suivi.
 
 Les modèles se modifient dans l'administration (/admin/emails/) et sont alors
 enregistrés en base (ModeleEmail). Sans modification, ce sont les modèles par
@@ -30,10 +31,13 @@ log = logging.getLogger(__name__)
 MODELES = {
     "client": "Confirmation envoyée au client",
     "vendeur": "Nouvelle commande, envoyée à vous",
+    "expedition": "Colis expédié, envoyé au client",
 }
 VARIABLES = [
     ("ref", "Référence de la commande (BL-…)"),
     ("nom", "Prénom et nom du client"),
+    ("prenom", "Prénom du client seul"),
+    ("nom_famille", "Nom du client seul"),
     ("email", "Adresse e-mail du client"),
     ("adresse", "Adresse de livraison (rue)"),
     ("code_postal", "Code postal"),
@@ -49,6 +53,11 @@ VARIABLES = [
     ("livraison.label", "Mode de livraison (ex. Point relais)"),
     ("livraison.delai", "Délai de livraison (ex. 3 à 5 jours ouvrés)"),
     ("livraison.prix", "Frais de port (ex. 4,90 €) ou « offerte »"),
+    ("livraison.transporteur", "Transporteur : Colissimo, Mondial Relay (ou vide)"),
+    ("point_retrait", "Point de retrait choisi par le client (vide en livraison à domicile : à utiliser dans {% if point_retrait %} … {% endif %})"),
+    ("numero_suivi", "Numéro de suivi du colis (e-mail d'expédition)"),
+    ("lien_suivi", "Lien de suivi du colis (e-mail d'expédition)"),
+    ("lien_commandes", "Page Commandes de l'administration (pour indiquer l'expédition)"),
     ("total", "Total payé"),
     ("boutique", "Nom de la boutique (data.js)"),
     ("site_url", "Adresse du site (data.js)"),
@@ -136,18 +145,25 @@ def verifier(objet: str, corps: str) -> tuple[str, str]:
     return apercu
 
 
+TRANSPORTEURS = {"colissimo": "Colissimo", "mondialrelay": "Mondial Relay"}
+
+
 def contexte(cde: Commande) -> dict:
     """Variables des modèles, montants déjà mis en forme."""
     site = infos_site()
     liv = cde.livraison
+    prenom, nom_famille = cde.coordonnees()
     return {
-        "ref": cde.ref, "nom": cde.nom, "email": cde.email, "note": cde.note,
+        "ref": cde.ref, "nom": cde.nom, "prenom": prenom, "nom_famille": nom_famille, "email": cde.email, "note": cde.note,
+        "point_retrait": cde.point_retrait, "numero_suivi": cde.numero_suivi, "lien_suivi": cde.lien_suivi(),
+        "lien_commandes": site["url"].rstrip("/") + "/admin/commandes/" if site["url"] else "",
         "adresse": cde.adresse, "code_postal": cde.code_postal, "ville": cde.ville,
         "lignes": [{"quantite": l["quantite"], "nom": l["nom"], "options": l["options"],
                     "unitaire": euros(l["unitaire"]), "total": euros(l["unitaire"] * l["quantite"])} for l in cde.lignes],
         "sous_total": euros(cde.sous_total), "total": euros(cde.total),
         "livraison": {"label": liv["label"], "delai": liv.get("delai", ""),
-                      "prix": euros(liv["prix"]) if liv["prix"] else "offerte"},
+                      "prix": euros(liv["prix"]) if liv["prix"] else "offerte",
+                      "transporteur": TRANSPORTEURS.get(liv.get("transporteur", ""), "")},
         "boutique": site["nom"], "site_url": site["url"],
     }
 
@@ -155,11 +171,14 @@ def contexte(cde: Commande) -> dict:
 def exemple() -> Commande:
     """Commande fictive pour les aperçus (jamais enregistrée)."""
     return Commande(
-        ref="BL-EXEMPLE1", nom="Ada Lovelace", email="client@example.com", note="Pour un anniversaire",
-        adresse="1 rue des Lilas", code_postal="75011", ville="Paris",
+        ref="BL-EXEMPLE1", nom="Ada Lovelace", prenom="Ada", nom_famille="Lovelace", email="client@example.com",
+        note="Pour un anniversaire", adresse="1 rue des Lilas", code_postal="75011", ville="Paris",
+        point_retrait="Tabac de la Gare, 12 rue de la Gare, 75011 Paris", numero_suivi="6A12345678901",
         lignes=[{"nom": "Dragon articulé", "options": "Arc-en-ciel · 45 cm", "unitaire": 2790, "quantite": 1},
                 {"nom": "Renne articulé", "options": "Or soie", "unitaire": 1250, "quantite": 2}],
-        livraison={"label": "Point relais", "delai": "3 à 5 jours ouvrés", "prix": 0},
+        livraison={"label": "Mondial Relay en point relais", "delai": "3 à 5 jours ouvrés", "prix": 0,
+                   "transporteur": "mondialrelay", "point": True,
+                   "suivi": "https://www.mondialrelay.fr/suivi-de-colis/?numeroExpedition={numero}"},
         sous_total=5290, total=5290,
     )
 
@@ -179,16 +198,23 @@ def preparer(objet: str, corps: str, destinataire: str, repondre_a: str) -> Emai
     return msg
 
 
-def _envoyer(nom: str, ctx: dict, destinataire: str, repondre_a: str) -> None:
+def _envoyer(nom: str, ctx: dict, destinataire: str, repondre_a: str) -> bool:
     try:
         objet, corps = rendre(*source(nom)[:2], ctx)
         preparer(objet, corps, destinataire, repondre_a).send()
-        log.info("Commande %s : e-mail envoyé au %s", ctx["ref"], nom)
+        log.info("Commande %s : e-mail « %s » envoyé", ctx["ref"], nom)
+        return True
     except Exception:   # modèle cassé ou envoi en échec : le webhook ne doit jamais échouer, la commande reste enregistrée
-        log.exception("Commande %s : e-mail au %s non envoyé", ctx["ref"], nom)
+        log.exception("Commande %s : e-mail « %s » non envoyé", ctx["ref"], nom)
+        return False
 
 
 def envoyer_commande_payee(cde: Commande) -> None:
     ctx = contexte(cde)
     _envoyer("vendeur", ctx, settings.COMMANDES_DESTINATAIRE, cde.email)
     _envoyer("client", ctx, cde.email, settings.COMMANDES_DESTINATAIRE)
+
+
+def envoyer_expedition(cde: Commande) -> bool:
+    """Prévient le client que son colis est parti, avec le lien de suivi. Renvoie False si l'envoi a échoué."""
+    return _envoyer("expedition", contexte(cde), cde.email, settings.COMMANDES_DESTINATAIRE)

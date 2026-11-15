@@ -17,7 +17,9 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 from . import emails as courriels
 from . import contenu as contenus
 from .catalogue import Invalide, enregistrer, enregistrer_photo, verifier
-from .models import ModeleEmail
+from django.utils import timezone
+
+from .models import Commande, ModeleEmail
 from .securite import csp
 
 ERREUR = "Identifiant ou mot de passe incorrect."
@@ -140,6 +142,58 @@ def logo_email(request):
     if not courriels.LOGO.is_file():
         raise Http404
     return FileResponse(open(courriels.LOGO, "rb"), content_type="image/png")
+
+
+# ---------- Commandes à expédier ----------
+NUMERO_SUIVI = re.compile(r"^[A-Z0-9]{8,20}$")
+VUES = {
+    "a-expedier": ("À expédier", (Commande.PAYEE,)),
+    "expediees": ("Expédiées", (Commande.EXPEDIEE,)),
+    "attente": ("Paiement en attente", (Commande.ATTENTE,)),
+}
+
+
+def _fiche(cde: Commande) -> dict:
+    ctx = courriels.contexte(cde)
+    return {"cde": cde, "lignes": ctx["lignes"], "total": ctx["total"], "livraison": ctx["livraison"],
+            "lien_suivi": ctx["lien_suivi"],
+            "etiquette": [("Prénom", ctx["prenom"]), ("Nom", ctx["nom_famille"]), ("Adresse", cde.adresse),
+                          ("Code postal", cde.code_postal), ("Ville", cde.ville), ("E-mail", cde.email)]}
+
+
+@require_http_methods(["GET", "POST"])
+@admin_requis()
+def commandes(request):
+    """Commandes payées : coordonnées prêtes à recopier pour l'étiquette, puis numéro de suivi
+    → statut « Expédiée » et e-mail au client avec le lien de suivi."""
+    vue = request.GET.get("vue") if request.GET.get("vue") in VUES else "a-expedier"
+    message = erreur = ""
+    if request.method == "POST":
+        cde = Commande.objects.filter(ref=request.POST.get("ref", "")[:20], statut__in=Commande.REGLEES).first()
+        numero = re.sub(r"[\s-]+", "", request.POST.get("numero_suivi", ""))[:40].upper()
+        if not cde:
+            erreur = "Commande introuvable ou pas encore payée."
+        elif not NUMERO_SUIVI.match(numero):
+            erreur = f"Numéro de suivi invalide pour {cde.ref} : 8 à 20 lettres et chiffres (ex. 6A12345678901)."
+        else:
+            deja = cde.statut == Commande.EXPEDIEE
+            cde.numero_suivi, cde.statut = numero, Commande.EXPEDIEE
+            cde.expediee_le = cde.expediee_le or timezone.now()
+            cde.save(update_fields=["numero_suivi", "statut", "expediee_le"])
+            if courriels.envoyer_expedition(cde):
+                message = f"{cde.ref} : {'numéro corrigé, ' if deja else 'marquée comme expédiée, '}e-mail de suivi envoyé à {cde.email}."
+            else:
+                erreur = f"{cde.ref} est marquée comme expédiée, mais l'e-mail au client n'a pas pu partir. Réessayez plus tard avec le même numéro."
+
+    liste = Commande.objects.filter(statut__in=VUES[vue][1])
+    liste = liste.order_by("payee_le", "creee_le") if vue == "a-expedier" else liste.order_by("-expediee_le", "-creee_le")
+    nonce = secrets.token_urlsafe(16)
+    response = render(request, "gestion/commandes.html", {
+        "vues": [(k, v[0], Commande.objects.filter(statut__in=v[1]).count()) for k, v in VUES.items()],
+        "vue": vue, "fiches": [_fiche(c) for c in liste[:100]], "message": message, "erreur": erreur, "nonce": nonce,
+    }, status=400 if erreur and not message else 200)
+    response["Content-Security-Policy"] = csp(nonce)
+    return response
 
 
 # ---------- API du panneau (JSON) ----------

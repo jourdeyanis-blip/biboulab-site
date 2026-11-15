@@ -180,7 +180,7 @@ DEPOT = Path(__file__).resolve().parents[2]
 PANIER = [{"id": "boule-flocon", "color": "rouge", "size": "Ø 8 cm", "qty": 2, "price": 0.01},   # le prix envoyé est ignoré
           {"id": "renne-articule", "color": "or", "size": None, "qty": 1}]
 CLIENT = {"prenom": "Ada", "nom": "Lovelace", "email": "ada@example.com", "adresse": "1 rue des Lilas",
-          "cp": "75011", "ville": "Paris", "note": "Merci !"}
+          "cp": "75011", "ville": "Paris", "note": "Merci !", "point": "Tabac de la Gare, 12 rue de la Gare, 75011 Paris"}
 WHSEC = "whsec_test_secret"
 
 
@@ -228,7 +228,10 @@ class PaiementTests(TestCase):
     def test_data_js_du_site_est_lisible(self):
         cat = boutique.catalogue()
         self.assertGreater(len(cat["produits"]), 0)
-        self.assertEqual(set(cat["livraison"]), {"lettre", "relais", "colissimo"})
+        self.assertEqual(set(cat["livraison"]), {"colissimo-retrait", "relais", "colissimo"})
+        self.assertTrue(cat["livraison"]["relais"]["point"])
+        self.assertFalse(cat["livraison"]["colissimo"]["point"])
+        self.assertEqual(cat["livraison"]["colissimo-retrait"]["transporteur"], "colissimo")
         self.assertEqual(cat["franco"], 6000)
 
     def test_prix_recalcules_depuis_le_catalogue(self):
@@ -325,7 +328,12 @@ class PaiementTests(TestCase):
         self.assertIn(cde.ref, client.subject)
         self.assertIn("Bonjour Ada Lovelace", client.body)
         self.assertIn("Total payé : 35,20 €", client.body)
-        self.assertIn("Point relais, 3 à 5 jours ouvrés", client.body)
+        self.assertIn("Mondial Relay en point relais, 3 à 5 jours ouvrés", client.body)
+        self.assertIn("Point de retrait choisi :\nTabac de la Gare", client.body)
+        self.assertNotIn("1 rue des Lilas", client.body)          # livré au point, pas au domicile
+        self.assertIn("Prénom : Ada\nNom : Lovelace\nAdresse : 1 rue des Lilas\nCode postal : 75011\nVille : Paris", vendeur.body)
+        self.assertIn("Point de retrait choisi : Tabac de la Gare", vendeur.body)
+        self.assertIn("/admin/commandes/", vendeur.body)
         self.assertEqual(client.reply_to, [settings.COMMANDES_DESTINATAIRE])
 
     def test_webhook_retrouve_la_commande_par_sa_reference(self):
@@ -394,7 +402,8 @@ class PaiementTests(TestCase):
         sortie = StringIO()
         call_command("apercu_emails", stdout=sortie)
         self.assertIn("Objet : Votre commande Biboulab BL-EXEMPLE1 est confirmée", sortie.getvalue())
-        self.assertIn("Livraison (Point relais) : offerte", sortie.getvalue())
+        self.assertIn("Livraison (Mondial Relay en point relais) : offerte", sortie.getvalue())
+        self.assertIn("===== E-mail EXPEDITION =====", sortie.getvalue())
 
     def test_session_expiree_efface_les_coordonnees(self):
         self.payer()
@@ -535,3 +544,159 @@ class ContactTests(TestCase):
         src = (DEPOT / "assets" / "js" / "data.js").read_text("utf-8")
         self.assertIn('formEndpoint: "/admin/contact/"', src)
         self.assertFalse((DEPOT / "envoyer-contact.php").exists())
+
+
+
+# ---------- Livraison en point de retrait et expédition ----------
+@override_settings(STRIPE_SECRET_KEY="sk_test_x", STRIPE_WEBHOOK_SECRET=WHSEC, SECURE_SSL_REDIRECT=False)
+class ExpeditionTests(TestCase):
+    def setUp(self):
+        self.site = Path(tempfile.mkdtemp())
+        js = self.site / "assets" / "js"
+        js.mkdir(parents=True)
+        shutil.copy(DEPOT / "assets" / "js" / "data.js", js / "data.js")
+        shutil.copy(DEPOT / "assets" / "js" / "catalogue.js", js / "catalogue.js")
+        self.override = override_settings(SITE_ROOT=self.site)
+        self.override.enable()
+        cache.clear()
+        self.stripe = mock.MagicMock()
+        self.stripe.v1.checkout.sessions.create.return_value = mock.Mock(id="cs_test_123", url="https://checkout.stripe.com/c/pay/cs_test_123")
+        patch = mock.patch("gestion.paiement._stripe", return_value=self.stripe)
+        patch.start()
+        self.addCleanup(patch.stop)
+        self.admin = Client()
+        self.admin.force_login(get_user_model().objects.create_user("gerant", password="Un-mot-de-passe-solide-42", is_staff=True))
+        session = self.admin.session
+        session["debut"] = _time.time()
+        session.save()
+
+    def tearDown(self):
+        self.override.disable()
+        shutil.rmtree(self.site)
+
+    def payer(self, livraison="relais", **client):
+        corps = json.dumps({"panier": PANIER, "livraison": livraison, "client": {**CLIENT, **client}})
+        return Client().post("/paiement/session/", corps, content_type="application/json", **HOTE)
+
+    def payee(self, livraison="relais", **client):
+        self.assertEqual(self.payer(livraison, **client).status_code, 200)
+        corps = json.dumps({"id": "evt_1", "object": "event", "type": "checkout.session.completed", "data": {"object": {
+            "id": "cs_test_123", "object": "checkout.session", "client_reference_id": None, "payment_status": "paid", "status": "complete"}}})
+        Client().post("/paiement/webhook/", corps, content_type="application/json", HTTP_STRIPE_SIGNATURE=signe(corps), **HOTE)
+        mail.outbox.clear()
+        return Commande.objects.get()
+
+    def expedier(self, ref, numero):
+        return self.admin.post("/commandes/", {"ref": ref, "numero_suivi": numero}, **HOTE)
+
+    # --- Choix du point de retrait ---
+    def test_point_de_retrait_obligatoire_pour_les_relais(self):
+        r = self.payer(point="")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("point de retrait", r.json()["erreur"])
+        self.assertEqual(self.payer("colissimo-retrait", point="  ").status_code, 400)
+        self.assertFalse(Commande.objects.exists())
+
+    def test_point_enregistre_et_transmis_a_stripe(self):
+        cde = self.payee()
+        self.assertEqual(cde.point_retrait, "Tabac de la Gare, 12 rue de la Gare, 75011 Paris")
+        self.assertEqual((cde.prenom, cde.nom_famille), ("Ada", "Lovelace"))
+        self.assertEqual(cde.livraison["transporteur"], "mondialrelay")
+        meta = self.stripe.v1.checkout.sessions.create.call_args.args[0]["metadata"]
+        self.assertEqual(meta["point_retrait"], cde.point_retrait)
+
+    def test_pas_de_point_garde_pour_la_livraison_a_domicile(self):
+        cde = self.payee("colissimo")
+        self.assertEqual(cde.point_retrait, "")
+        self.assertEqual(cde.livraison["transporteur"], "colissimo")
+
+    # --- Page Commandes ---
+    def test_page_reservee_aux_administrateurs(self):
+        r = Client().get("/commandes/", **HOTE)
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/connexion/", r["Location"])
+        self.assertEqual(Client().post("/commandes/", {"ref": "x", "numero_suivi": "6A12345678901"}, **HOTE).status_code, 302)
+
+    def test_commande_a_expedier_avec_coordonnees_a_recopier(self):
+        cde = self.payee()
+        r = self.admin.get("/commandes/", **HOTE)
+        html = r.content.decode()
+        self.assertEqual(r.status_code, 200)
+        self.assertIn(cde.ref, html)
+        self.assertIn('data-copie="Lovelace"', html)
+        self.assertIn('data-copie="Tabac de la Gare, 12 rue de la Gare, 75011 Paris"', html)
+        self.assertIn("nonce-", r["Content-Security-Policy"])
+        self.assertIn("À expédier (1)", html)
+
+    def test_expedition_envoie_le_lien_de_suivi(self):
+        cde = self.payee()
+        r = self.expedier(cde.ref, " 6a 1234 5678 901 ")
+        self.assertEqual(r.status_code, 200, r.content)
+        cde.refresh_from_db()
+        self.assertEqual((cde.statut, cde.numero_suivi), (Commande.EXPEDIEE, "6A12345678901"))
+        self.assertIsNotNone(cde.expediee_le)
+        self.assertEqual(len(mail.outbox), 1)
+        m = mail.outbox[0]
+        self.assertEqual(m.to, ["ada@example.com"])
+        self.assertEqual(m.subject, f"Votre commande {cde.ref} est en route")
+        self.assertIn("avec Mondial Relay", m.body)
+        self.assertIn("https://www.mondialrelay.fr/suivi-de-colis/?numeroExpedition=6A12345678901", m.body)
+        self.assertIn("Tabac de la Gare", m.body)
+        self.assertIn("Expédiées (1)", self.admin.get("/commandes/", **HOTE).content.decode())
+
+    def test_lien_colissimo_pour_la_livraison_a_domicile(self):
+        cde = self.payee("colissimo")
+        self.expedier(cde.ref, "6A12345678901")
+        self.assertIn("https://www.laposte.fr/outils/suivre-vos-envois?code=6A12345678901", mail.outbox[0].body)
+        self.assertIn("1 rue des Lilas", mail.outbox[0].body)
+
+    def test_numero_invalide_refuse(self):
+        cde = self.payee()
+        for numero in ("", "123", "6A1234<script>", "x" * 30):
+            self.assertEqual(self.expedier(cde.ref, numero).status_code, 400, numero)
+        cde.refresh_from_db()
+        self.assertEqual(cde.statut, Commande.PAYEE)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_commande_non_payee_non_expediable(self):
+        self.assertEqual(self.payer().status_code, 200)   # paiement pas encore confirmé
+        cde = Commande.objects.get()
+        self.assertEqual(self.expedier(cde.ref, "6A12345678901").status_code, 400)
+        self.assertEqual(Commande.objects.get().statut, Commande.CREEE)
+
+    def test_correction_du_numero_renvoie_l_email(self):
+        cde = self.payee()
+        self.expedier(cde.ref, "6A12345678901")
+        premiere = Commande.objects.get().expediee_le
+        self.expedier(cde.ref, "6A99999999999")
+        cde.refresh_from_db()
+        self.assertEqual(cde.numero_suivi, "6A99999999999")
+        self.assertEqual(cde.expediee_le, premiere)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_webhook_tardif_ne_defait_pas_l_expedition(self):
+        cde = self.payee()
+        self.expedier(cde.ref, "6A12345678901")
+        mail.outbox.clear()
+        corps = json.dumps({"id": "evt_9", "object": "event", "type": "checkout.session.completed", "data": {"object": {
+            "id": "cs_test_123", "object": "checkout.session", "client_reference_id": None, "payment_status": "paid", "status": "complete"}}})
+        Client().post("/paiement/webhook/", corps, content_type="application/json", HTTP_STRIPE_SIGNATURE=signe(corps), **HOTE)
+        self.assertEqual(Commande.objects.get().statut, Commande.EXPEDIEE)
+        self.assertEqual(len(mail.outbox), 0)   # pas de second e-mail de commande
+
+    def test_echec_de_l_email_signale(self):
+        cde = self.payee()
+        with mock.patch("gestion.emails.EmailMultiAlternatives.send", side_effect=OSError("sendmail absent")):
+            r = self.expedier(cde.ref, "6A12345678901")
+        self.assertIn("n&#x27;a pas pu partir", r.content.decode())
+        self.assertEqual(Commande.objects.get().statut, Commande.EXPEDIEE)
+
+    def test_ancienne_commande_sans_prenom_separe(self):
+        cde = self.payee()
+        Commande.objects.filter(pk=cde.pk).update(prenom="", nom_famille="", nom="Jean de La Fontaine")
+        self.assertEqual(Commande.objects.get().coordonnees(), ("Jean", "de La Fontaine"))
+
+    def test_modele_d_expedition_dans_la_page_des_e_mails(self):
+        html = self.admin.get("/emails/?modele=expedition", **HOTE).content.decode()
+        self.assertIn("Colis expédié, envoyé au client", html)
+        self.assertIn("6A12345678901", html)   # aperçu avec la commande d'exemple
