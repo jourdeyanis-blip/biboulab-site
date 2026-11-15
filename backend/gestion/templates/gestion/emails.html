@@ -25,6 +25,10 @@
     .e-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
     .e-mail { white-space: pre-wrap; overflow-wrap: anywhere; font: 400 .9rem/1.6 var(--font-b, inherit); margin: 0; padding: 16px; border-radius: 12px; background: var(--surface-2); }
     .e-subject { font-weight: 600; margin: 0 0 10px; overflow-wrap: anywhere; }
+    .e-html { border-radius: 12px; overflow: hidden; }
+    .e-html table { max-width: 100%; }
+    .e-texte { margin-top: 14px; font-size: .875rem; }
+    .e-texte summary { cursor: pointer; margin-bottom: 10px; }
     .e-msg { padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); margin: 0 0 20px; }
     .e-msg.err { border-color: var(--err); color: var(--err); }
     .e-vars { width: 100%; border-collapse: collapse; font-size: .875rem; }
@@ -75,10 +79,14 @@
       </section>
 
       <section class="panel" aria-labelledby="t-apercu">
-        <h2 id="t-apercu">Aperçu <span class="muted" style="font-weight:400;font-size:.85rem">· commande d'exemple</span></h2>
+        <h2 id="t-apercu">Aperçu <span class="muted" style="font-weight:400;font-size:.85rem">· commande d'exemple, avec le bandeau</span></h2>
         {% if apercu %}
           <p class="e-subject">Objet : {{ apercu.0 }}</p>
-          <pre class="e-mail">{{ apercu.1 }}</pre>
+          <div class="e-html">{{ apercu_html }}</div>
+          <details class="e-texte">
+            <summary>Version texte <span class="muted">(pour les messageries qui n'affichent pas le HTML)</span></summary>
+            <pre class="e-mail">{{ apercu.1 }}</pre>
+          </details>
         {% else %}
           <p class="muted">Corrigez l'erreur pour voir l'aperçu.</p>
         {% endif %}

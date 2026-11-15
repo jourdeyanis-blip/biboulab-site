@@ -157,9 +157,10 @@ def infos_site() -> dict:
     """Nom et adresse de la boutique (SITE dans data.js), pour les e-mails."""
     try:
         site = lire_constante(_lire("data.js"), "SITE")
-        return {"nom": str(site.get("name") or "Biboulab"), "url": str(site.get("url") or "")}
+        return {"nom": str(site.get("name") or "Biboulab"), "url": str(site.get("url") or ""),
+                "slogan": str(site.get("slogan") or "")}
     except (CatalogueIndisponible, AttributeError):
-        return {"nom": "Biboulab", "url": ""}
+        return {"nom": "Biboulab", "url": "", "slogan": ""}
 
 
 def centimes(montant) -> int:

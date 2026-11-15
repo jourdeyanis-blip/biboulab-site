@@ -113,6 +113,10 @@ Dans l'administration, bouton **« E-mails de commande »** en haut du panneau (
 
 Le message est en texte simple. Les valeurs de la commande s'insèrent avec des variables entre doubles accolades, listées sous l'éditeur : `{{ nom }}`, `{{ ref }}`, `{{ total }}`, `{{ livraison.label }}`… Les articles se parcourent avec `{% for l in lignes %}- {{ l.quantite }} × {{ l.nom }} : {{ l.total }}{% endfor %}`, et un passage facultatif s'écrit `{% if note %}…{% endif %}`. Un modèle qui contient une erreur (balise non fermée, par exemple) est refusé à l'enregistrement, et votre texte est conservé pour que vous puissiez le corriger.
 
+**Bandeau et logo** : chaque e-mail part en deux versions. La version HTML habille votre texte avec un bandeau sombre (logo Biboulab et slogan de `data.js`), un liseré aux couleurs du site et un pied de page. La version texte simple sert aux messageries qui n'affichent pas le HTML. Le logo est intégré à l'e-mail : il s'affiche sans que la messagerie ait à le télécharger depuis le site.
+- Changer le logo : remplacez `backend/gestion/modeles_emails/logo-email.png` (PNG à fond transparent, environ 540 × 140 px, affiché sur 180 px de large).
+- Changer la mise en page du bandeau ou du pied de page : `backend/gestion/modeles_emails/cadre.html` (styles écrits dans les balises, seule façon fiable pour Gmail et Outlook).
+
 Les modèles modifiés sont enregistrés dans la base de l'administration (`backend/db.sqlite3`) : une mise à jour du site (`git pull`) ne les écrase jamais. Les modèles par défaut sont dans `backend/gestion/modeles_emails/`. En ligne de commande, `python manage.py apercu_emails` affiche les deux e-mails tels qu'ils partiraient.
 
 **Activer le paiement (à faire d'abord en préproduction, en mode test)**

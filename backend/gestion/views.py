@@ -7,7 +7,7 @@ from functools import wraps
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.http import HttpResponse, JsonResponse
+from django.http import FileResponse, Http404, HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.urls import reverse
@@ -119,14 +119,26 @@ def modeles_emails(request):
         objet, corps = saisie
     try:
         apercu = courriels.rendre(objet, corps, courriels.contexte(courriels.exemple()))
+        logo = reverse("emails_logo") if courriels.LOGO.is_file() else None
+        apercu_html = courriels.habiller(*apercu, logo, document=False)
     except Exception:
-        apercu = None
+        apercu = apercu_html = None
     return render(request, "gestion/emails.html", {
+        "apercu_html": apercu_html,
         "modeles": courriels.MODELES.items(), "actif": actif, "titre": courriels.MODELES[actif],
         "objet": objet, "corps": corps, "perso": perso, "non_enregistre": bool(saisie),
         "apercu": apercu, "message": message, "erreur": erreur, "variables": courriels.VARIABLES,
         "destinataire": settings.COMMANDES_DESTINATAIRE,
     }, status=400 if erreur else 200)
+
+
+@require_GET
+@admin_requis()
+def logo_email(request):
+    """Logo du bandeau des e-mails, pour l'aperçu de l'administration."""
+    if not courriels.LOGO.is_file():
+        raise Http404
+    return FileResponse(open(courriels.LOGO, "rb"), content_type="image/png")
 
 
 # ---------- API du panneau (JSON) ----------

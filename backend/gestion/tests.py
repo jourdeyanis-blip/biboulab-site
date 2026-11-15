@@ -273,6 +273,25 @@ class PaiementTests(TestCase):
         self.c.post("/paiement/webhook/", corps, content_type="application/json", HTTP_STRIPE_SIGNATURE=signe(corps), **HOTE)
         self.assertEqual(Commande.objects.get().statut, Commande.PAYEE)
 
+    def test_email_html_avec_bandeau_et_logo_integre(self):
+        self.payer()
+        self.webhook("checkout.session.completed", payment_status="paid", status="complete")
+        client = mail.outbox[1]
+        html, type_ = client.alternatives[0]
+        self.assertEqual(type_, "text/html")
+        self.assertIn('src="cid:logo-biboulab"', html)
+        self.assertIn("Bonjour Ada Lovelace,<br>", html)
+        self.assertIn("Biboulab\u00a0! Votre paiement", html)                    # pas de « ! » seul en début de ligne
+        self.assertIn('<a style="color:#7C3AED;text-decoration:underline;" href="https://www.biboulab.fr">', html)
+        self.assertIn("Du fichier à l&#x27;objet, imprimé avec passion", html)   # slogan de data.js
+        self.assertEqual(client.mixed_subtype, "related")
+        logo = client.attachments[0]
+        self.assertEqual(logo["Content-ID"], "<logo-biboulab>")
+        self.assertEqual(logo.get_content_type(), "image/png")
+        brut = client.message().as_string()
+        self.assertIn("multipart/related", brut)
+        self.assertIn("multipart/alternative", brut)
+
     def test_paiement_differe(self):
         self.payer()
         self.webhook("checkout.session.completed", payment_status="unpaid", status="complete")
@@ -302,6 +321,7 @@ class PaiementTests(TestCase):
         client = mail.outbox[1]
         self.assertIn("Bonjour Ada O'Brien & <fils>,", client.body)
         self.assertNotIn("Votre précision", client.body)
+        self.assertIn("Bonjour Ada O&#x27;Brien &amp; &lt;fils&gt;,", client.alternatives[0][0])   # échappé en HTML
         self.assertEqual(client.subject, f"Votre commande Biboulab {Commande.objects.get().ref} est confirmée")
 
     def test_apercu_emails(self):
@@ -354,6 +374,14 @@ class EmailsAdminTests(PaiementTests):
         self.assertIn("Bonjour {{ nom }}", html)                  # le modèle, à modifier
         self.assertIn("Bonjour Ada Lovelace,", html)              # son aperçu
         self.assertIn("Objet : Votre commande Biboulab BL-EXEMPLE1 est confirmée", html)
+
+    def test_apercu_html_et_logo(self):
+        html = self.page().content.decode()
+        self.assertIn('<img src="/emails/logo.png"', html)
+        self.assertIn("Version texte", html)
+        r = self.admin.get("/emails/logo.png", **HOTE)
+        self.assertEqual((r.status_code, r["Content-Type"]), (200, "image/png"))
+        self.assertEqual(Client().get("/emails/logo.png", **HOTE).status_code, 302)   # réservé à l'administration
 
     def test_modele_casse_refuse_et_texte_conserve(self):
         r = self.page(modele="client", action="enregistrer", objet="Commande {{ ref }}", corps="{% for l in lignes %}oubli du endfor")

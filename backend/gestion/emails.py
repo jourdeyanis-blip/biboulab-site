@@ -5,13 +5,22 @@ enregistrés en base (ModeleEmail). Sans modification, ce sont les modèles par
 défaut du dossier modeles_emails/ qui servent.
 
 Syntaxe des modèles Django en texte simple : {{ variable }}, {% if … %}, {% for … %}.
+
+Chaque e-mail part en deux versions : le texte simple, et le même texte habillé en
+HTML (modeles_emails/cadre.html : bandeau avec le logo, pied de page). Le logo est
+joint à l'e-mail (image intégrée « cid: »), il s'affiche donc sans aller le chercher
+sur le site.
 """
 import logging
+import re
+from email.mime.image import MIMEImage
 from pathlib import Path
 
 from django.conf import settings
-from django.core.mail import EmailMessage
+from django.core.mail import EmailMultiAlternatives
 from django.template import Context, Engine, TemplateSyntaxError
+from django.utils.html import urlize
+from django.utils.safestring import SafeString, mark_safe
 
 from .boutique import infos_site
 from .models import Commande, ModeleEmail
@@ -49,6 +58,10 @@ MAX_OBJET, MAX_CORPS = 300, 20_000
 _DEFAUTS = Path(__file__).resolve().parent / "modeles_emails"
 # Texte simple : pas d'échappement HTML (« O'Brien & fils » reste tel quel), et aucun accès aux fichiers.
 _MOTEUR = Engine(autoescape=False)
+# Habillage HTML : échappement automatique activé.
+_CADRE = Engine(dirs=[_DEFAUTS])
+LOGO = _DEFAUTS / "logo-email.png"
+LOGO_CID = "logo-biboulab"
 
 
 class ModeleInvalide(ValueError):
@@ -79,6 +92,29 @@ def rendre(objet: str, corps: str, contexte: dict) -> tuple[str, str]:
     c = Context(contexte, autoescape=False)
     return (" ".join(_MOTEUR.from_string(objet).render(c).split()),   # l'objet tient sur une ligne
             _MOTEUR.from_string(corps).render(c).strip() + "\n")
+
+
+_ESPACE_AVANT = re.compile(r" ([!?:;»])")   # typographie française : « Biboulab ! » ne se coupe pas avant le « ! »
+_ESPACE_APRES = re.compile(r"« ")
+
+
+def message_html(corps: str) -> SafeString:
+    """Le texte de l'e-mail en HTML : caractères échappés, liens et adresses cliquables, retours à la ligne gardés."""
+    html = urlize(corps.strip(), nofollow=False, autoescape=True)
+    html = _ESPACE_APRES.sub("«\u00a0", _ESPACE_AVANT.sub("\u00a0\\1", html))
+    html = html.replace("<a href=", '<a style="color:#7C3AED;text-decoration:underline;" href=')
+    return mark_safe(html.replace("\n", "<br>\n"))
+
+
+def habiller(objet: str, corps: str, logo: str | None, document: bool = True) -> SafeString:
+    """Version HTML de l'e-mail. « logo » : adresse de l'image (cid:… à l'envoi), ou None pour un logo en texte.
+    document=False donne le seul bloc de l'e-mail, pour l'aperçu dans l'administration."""
+    site = infos_site()
+    return mark_safe(_CADRE.get_template("cadre.html").render(Context({
+        "document": document, "objet": objet, "message": message_html(corps), "logo": logo,
+        "boutique": site["nom"], "slogan": site["slogan"], "site_url": site["url"],
+        "site_affiche": site["url"].split("://", 1)[-1].rstrip("/"),
+    })).strip())   # strip() rend une chaîne ordinaire : on la marque de nouveau comme sûre
 
 
 def verifier(objet: str, corps: str) -> tuple[str, str]:
@@ -129,10 +165,24 @@ def exemple() -> Commande:
 
 
 # ---------- Envoi ----------
+def preparer(objet: str, corps: str, destinataire: str, repondre_a: str) -> EmailMultiAlternatives:
+    """E-mail en texte simple + HTML habillé, avec le logo intégré s'il est présent."""
+    msg = EmailMultiAlternatives(objet, corps, settings.COMMANDES_EXPEDITEUR, [destinataire], reply_to=[repondre_a])
+    logo = LOGO.read_bytes() if LOGO.is_file() else None
+    msg.attach_alternative(habiller(objet, corps, f"cid:{LOGO_CID}" if logo else None), "text/html")
+    if logo:
+        msg.mixed_subtype = "related"   # l'image accompagne le HTML au lieu d'être une pièce jointe
+        image = MIMEImage(logo, "png")
+        image.add_header("Content-ID", f"<{LOGO_CID}>")
+        image.add_header("Content-Disposition", "inline", filename="biboulab.png")
+        msg.attach(image)
+    return msg
+
+
 def _envoyer(nom: str, ctx: dict, destinataire: str, repondre_a: str) -> None:
     try:
         objet, corps = rendre(*source(nom)[:2], ctx)
-        EmailMessage(objet, corps, settings.COMMANDES_EXPEDITEUR, [destinataire], reply_to=[repondre_a]).send()
+        preparer(objet, corps, destinataire, repondre_a).send()
         log.info("Commande %s : e-mail envoyé au %s", ctx["ref"], nom)
     except Exception:   # modèle cassé ou envoi en échec : le webhook ne doit jamais échouer, la commande reste enregistrée
         log.exception("Commande %s : e-mail au %s non envoyé", ctx["ref"], nom)
