@@ -7,6 +7,7 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
+from django.test.utils import override_script_prefix
 
 HOTE = {"HTTP_HOST": "www.biboulab.fr", "HTTP_ORIGIN": "https://www.biboulab.fr", "secure": True}   # les navigateurs envoient Origin sur un POST
 CATALOGUE = {
@@ -102,3 +103,10 @@ class AdminTests(TestCase):
         r = self.c.post("/api/photo/?nom=vase-1.png", data=b"\x89PNG\r\n\x1a\n0000", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 200)
         self.assertTrue((self.site / "assets" / "img" / "produits" / "vase-1.png").exists())
+
+    def test_adresses_api_sous_admin(self):
+        """En ligne, l'application est montée sous /admin : l'API doit pointer vers /admin/api/."""
+        self.connecter()
+        with override_script_prefix("/admin/"):
+            html = self.c.get("/", **HOTE).content.decode()
+        self.assertIn('"api": "/admin/api/"', html)

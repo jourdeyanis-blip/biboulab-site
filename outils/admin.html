@@ -156,7 +156,7 @@
     const ONLINE = window.ADMIN_ONLINE || null;
     const call = (action, init = {}, query = "") => {
       const headers = { ...(init.headers || {}) };
-      if (ONLINE) { headers["X-CSRFToken"] = ONLINE.csrf; return fetch(`api/${action}/${query ? "?" + query.slice(1) : ""}`, { ...init, headers, credentials: "same-origin" }); }
+      if (ONLINE) { headers["X-CSRFToken"] = ONLINE.csrf; return fetch(`${ONLINE.api || "api/"}${action}/${query ? "?" + query.slice(1) : ""}`, { ...init, headers, credentials: "same-origin" }); }
       headers["X-Biboulab-Admin"] = "1";
       return fetch(`/api/${action}${query ? "?" + query.slice(1) : ""}`, { ...init, headers });
     };
@@ -517,6 +517,7 @@
     status("", "Aucune modification");
     if (ONLINE) { const lo = $("#logout"); lo.hidden = false; lo.addEventListener("click", async () => { if (st.dirty && !confirm("Des modifications ne sont pas enregistrées. Se déconnecter quand même ?")) return; st.dirty = false; try { await call("deconnexion", { method: "POST" }); } catch {} location.reload(); }); }
     call("etat").then((r) => r.json()).then((o) => { st.canSave = !!o.ok; }).catch(() => {}).finally(() => {
+      if (ONLINE && !st.canSave) $("#warn").textContent = "Connexion au serveur impossible : l'enregistrement est désactivé. Rechargez la page ; si le message reste, reconnectez-vous.";
       $("#warn").hidden = st.canSave;
       if (st.dirty) $("#save").disabled = !st.canSave;
       form();

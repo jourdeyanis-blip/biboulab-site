@@ -71,12 +71,13 @@ def connexion(request):
 @require_GET
 @admin_requis()
 def panneau(request):
-    if not request.path.endswith("/"):
-        return redirect(request.path + "/")
+    # « /admin » sans « / » final : les liens relatifs de la page seraient faux.
+    if not request.path.endswith("/") or request.META.get("PATH_INFO", "/") == "":
+        return redirect(request.path.rstrip("/") + "/")
     nonce = secrets.token_urlsafe(16)
     html = settings.PANNEAU_HTML.read_text("utf-8")
     html = re.sub(r"<script(?=[\s>])", f'<script nonce="{nonce}"', html)
-    init = f'<script nonce="{nonce}">window.ADMIN_ONLINE={json.dumps({"csrf": get_token(request)})};</script>\n'
+    init = f'<script nonce="{nonce}">window.ADMIN_ONLINE={json.dumps({"csrf": get_token(request), "api": reverse("panneau") + "api/"})};</script>\n'
     html = html.replace("</head>", init + "</head>", 1)
     response = HttpResponse(html, content_type="text/html; charset=utf-8")
     response["Content-Security-Policy"] = csp(nonce)
