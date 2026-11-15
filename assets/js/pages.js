@@ -595,7 +595,7 @@
       } else if (st.step === 2) {
         const i = st.info;
         body = `<form class="co-main" id="ship-form" novalidate>
-            <h2 class="h-sub">Adresse de livraison</h2>
+            <h2 class="h-sub">Vos coordonnées</h2>
             <div class="form">
               ${fg("prenom", "Prénom", { required: true, auto: "given-name", value: i.prenom })}
               ${fg("nom", "Nom", { required: true, auto: "family-name", value: i.nom })}
@@ -606,7 +606,11 @@
               ${fg("note", "Précision pour la commande", { full: true, value: i.note, placeholder: "ex. référence d'appareil, ville pour une skyline…" })}
             </div>
             <h2 class="h-sub" style="margin-top:32px">Mode de livraison <small class="muted" style="font:500 .85rem var(--font-b)">(France métropolitaine)</small></h2>
-            ${methods.map((m) => `<label class="radio-card"><input type="radio" name="ship" value="${m.id}" ${m.id === st.ship ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.delay)}</small></span><span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>`).join("")}
+            ${methods.map((m) => `<label class="radio-card"><input type="radio" name="ship" value="${m.id}" ${m.id === st.ship ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc([m.note, m.delay].filter(Boolean).join(" · "))}</small></span><span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>`).join("")}
+            ${t.m.point ? `<div class="form point-box" style="margin-top:18px">
+              <p class="full" style="margin:0">Choisissez votre point de retrait${t.m.finder ? ` sur <a href="${esc(t.m.finder)}" target="_blank" rel="noopener">le site ${t.m.carrier === "mondialrelay" ? "Mondial Relay" : t.m.carrier === "colissimo" ? "de La Poste" : "du transporteur"}<span class="sr"> (nouvel onglet)</span></a>` : ""}, puis recopiez son nom et son adresse ci-dessous.</p>
+              ${fg("point", "Point de retrait choisi", { required: true, area: true, full: true, value: i.point, placeholder: t.m.carrier === "mondialrelay" ? "ex. Tabac de la Gare, 12 rue de la Gare, 75011 Paris" : "ex. Bureau de poste Paris Voltaire, 4 rue Popincourt, 75011 Paris" })}
+            </div>` : ""}
           </form>
           ${summary(t, `<button class="btn btn-primary" type="submit" form="ship-form">Passer au paiement ${icon("arrow", "ic-arrow")}</button><button class="back" type="button" data-go="1">← Retour au panier</button>`)}`;
       } else if (st.step === 3) {
@@ -619,7 +623,7 @@
               : `${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est envoyée par e-mail et je vous retourne un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
                  ${pays.map((m) => `<label class="radio-card"><input type="radio" name="pay" value="${m.id}" ${m.id === st.pay ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.note)}</small></span></label>`).join("")}`}
             <h2 class="h-sub" style="margin-top:32px">Livraison</h2>
-            <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})</p>
+            <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})${t.m.point && st.info.point ? `<br>Point de retrait : ${esc(st.info.point)}` : ""}</p>
             <div class="fg" style="margin-top:22px"><label class="check"><input type="checkbox" name="cgv" required><span>J'ai lu et j'accepte les <a href="cgv.html" target="_blank" rel="noopener">conditions générales de vente</a> et je reconnais que ma commande implique une obligation de paiement.</span></label><p class="err-msg" role="alert"></p></div>
           </form>
           ${summary(t, `<button class="btn btn-primary" type="submit" form="pay-form">${stripe ? "Commander et payer" : "Valider la commande"} · ${euro(t.total)}</button><button class="back" type="button" data-go="2">← Retour à la livraison</button>`)}`;
@@ -656,7 +660,8 @@
       const pay = pays.find((m) => m.id === st.pay);
       const text = [`Commande ${ref}`, "", ...Cart.lines().map((l) => `- ${l.qty} × ${l.p.name}${optText(l) ? ` (${optText(l)})` : ""} : ${euro(l.total)}`), "",
         `Sous-total : ${euro(t.sub)}`, `Livraison (${t.m.label}) : ${t.free ? "offerte" : euro(t.fee)}`, `TOTAL : ${euro(t.total)}`, "",
-        `Paiement souhaité : ${pay.label}`, "", "Livraison :", `${i.prenom} ${i.nom}`, i.adresse, `${i.cp} ${i.ville}`, i.email, i.note ? `Précision : ${i.note}` : ""].join("\n");
+        `Paiement souhaité : ${pay.label}`, "", "Livraison :", `${i.prenom} ${i.nom}`, i.adresse, `${i.cp} ${i.ville}`, i.email,
+        t.m.point && i.point ? `Point de retrait : ${i.point}` : "", i.note ? `Précision : ${i.note}` : ""].join("\n");
       const link = mailto(`Commande ${ref} — ${SITE.name}`, text);
       st.done = `<section class="wrap section"><div class="success" role="status">${tick}
         <h1 tabindex="-1">Commande ${ref} prête à partir</h1>
@@ -676,7 +681,8 @@
       try {
         const r = await fetch(SITE.payment.endpoint + "session/", {
           method: "POST", headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ panier: Cart.read().map(({ id, color, size, qty }) => ({ id, color, size, qty })), livraison: st.ship, client: st.info })
+          body: JSON.stringify({ panier: Cart.read().map(({ id, color, size, qty }) => ({ id, color, size, qty })), livraison: st.ship,
+            client: { ...st.info, point: totals().m.point ? st.info.point || "" : "" } })
         });
         const d = await r.json().catch(() => ({}));
         if (r.ok && d.url) { location.href = d.url; return; }

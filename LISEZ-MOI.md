@@ -146,7 +146,7 @@ Les commandes sont enregistrées dans la base de l'administration (`backend/db.s
 **Modèles des e-mails de commande**
 
 Dans l'administration, bouton **« E-mails de commande »** en haut du panneau (https://pprod.biboulab.fr/admin/emails/) :
-- un onglet par e-mail : *Confirmation envoyée au client* et *Nouvelle commande, envoyée à vous* ;
+- un onglet par e-mail : *Confirmation envoyée au client*, *Nouvelle commande, envoyée à vous* et *Colis expédié, envoyé au client* ;
 - modifiez l'objet et le message, cliquez sur **Voir l'aperçu** (commande d'exemple, rien n'est envoyé), puis sur **Enregistrer**. Le nouveau texte sert dès la prochaine commande payée ;
 - **Rétablir le modèle par défaut** efface votre version.
 
@@ -157,6 +157,19 @@ Le message est en texte simple. Les valeurs de la commande s'insèrent avec des 
 - Changer la mise en page du bandeau ou du pied de page : `backend/gestion/modeles_emails/cadre.html` (styles écrits dans les balises, seule façon fiable pour Gmail et Outlook).
 
 Les modèles modifiés sont enregistrés dans la base de l'administration (`backend/db.sqlite3`) : une mise à jour du site (`git pull`) ne les écrase jamais. Les modèles par défaut sont dans `backend/gestion/modeles_emails/`. En ligne de commande, `python manage.py apercu_emails` affiche les deux e-mails tels qu'ils partiraient.
+
+**Livraison et expédition des commandes**
+
+Trois modes de livraison sont proposés au client (Réglages › Livraison : nom, prix, délai, transporteur, liens) :
+- **Colissimo en point retrait** (bureau de poste, relais ou consigne Pickup) et **Mondial Relay en point relais** : le client ouvre l'outil de recherche du transporteur depuis le panier, choisit son point et recopie son nom et son adresse dans le champ « Point de retrait choisi » (obligatoire, vérifié par le serveur). Sans contrat transporteur, il n'existe pas de carte de sélection intégrable au site ;
+- **Colissimo à domicile**.
+
+À chaque commande payée :
+1. l'e-mail « Nouvelle commande » contient un bloc **« Pour l'étiquette »** : prénom, nom, adresse, code postal, ville, pays et e-mail séparés, à recopier champ par champ, plus le point de retrait choisi ;
+2. achetez l'étiquette sur Colissimo en ligne (professionnels) ou sur l'espace pro Mondial Relay, puis déposez le colis (bureau de poste, consigne Pickup, Point Relais…) ;
+3. dans l'administration, bouton **« Commandes »** (https://pprod.biboulab.fr/admin/commandes/) : chaque commande « À expédier » affiche ces coordonnées avec des boutons **Copier**. Collez le **numéro de suivi** et cliquez sur **Marquer comme expédiée et prévenir le client** : la commande passe dans « Expédiées » et le client reçoit l'e-mail « Colis expédié » avec le lien de suivi. Une faute de frappe se corrige avec **Corriger et renvoyer l'e-mail**.
+
+Le lien de suivi vient du champ « Adresse de suivi du colis » du mode de livraison (`{numero}` y est remplacé par le numéro). **Vérifiez une fois** ces adresses et celles des pages de recherche de points (Réglages › Livraison) : ouvrez-les avec un vrai numéro de suivi, et corrigez-les si le transporteur a changé son site. Si vous aviez déjà personnalisé l'e-mail « Nouvelle commande », le bloc « Pour l'étiquette » n'y apparaît pas : cliquez sur **Rétablir le modèle par défaut**, ou ajoutez `{{ prenom }}`, `{{ nom_famille }}`, `{{ point_retrait }}` à votre version.
 
 **Activer le paiement (à faire d'abord en préproduction, en mode test)**
 1. Dashboard Stripe › **Développeurs › Clés API** : copiez la clé secrète (`sk_test_…` pour les essais). Possible aussi : une **clé restreinte** (`rk_…`) limitée à *Checkout Sessions : Écriture*, à essayer d'abord en préproduction.

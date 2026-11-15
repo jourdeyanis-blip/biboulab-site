@@ -129,6 +129,13 @@ def verifier(contenu: dict, produits: list) -> None:
     for m in modes:
         _texte(m.get("label"), "Nom du mode de livraison", vide=False)
         _nombre(m.get("price"), f"Prix de « {m['label']} »")
+        if m.get("carrier", "autre") not in ("colissimo", "mondialrelay", "autre"):
+            raise Invalide(f"Transporteur inconnu pour « {m['label']} ».")
+        if not isinstance(m.get("point", False), bool):
+            raise Invalide(f"Réglage du point de retrait invalide pour « {m['label']} ».")
+        for k, quoi in (("finder", "page de recherche des points"), ("tracking", "adresse de suivi")):
+            if m.get(k) and not URL.match(_texte(m[k], quoi)):
+                raise Invalide(f"La {quoi} de « {m['label']} » doit commencer par https://")
 
     paiement = site.get("payment")
     if not isinstance(paiement, dict):

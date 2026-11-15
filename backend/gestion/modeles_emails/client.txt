@@ -9,11 +9,13 @@ Sous-total : {{ sous_total }}
 Livraison ({{ livraison.label }}) : {{ livraison.prix }}
 Total payé : {{ total }}
 
-Adresse de livraison :
+{% if point_retrait %}Point de retrait choisi :
+{{ point_retrait }}
+{% else %}Adresse de livraison :
 {{ nom }}
 {{ adresse }}
 {{ code_postal }} {{ ville }}
-
+{% endif %}
 Chaque objet est imprimé à la commande : je lance l'impression et je vous écris dès l'expédition{% if livraison.delai %} ({{ livraison.label }}, {{ livraison.delai }} après l'envoi){% endif %}.
 {% if note %}
 Votre précision : {{ note }}

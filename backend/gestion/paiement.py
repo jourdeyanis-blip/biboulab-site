@@ -80,7 +80,7 @@ def _coordonnees(d) -> dict:
 
     c = {"prenom": champ("prenom", 100), "nom": champ("nom", 100), "email": champ("email", 150),
          "adresse": champ("adresse", 200), "cp": champ("cp", 10), "ville": champ("ville", 100),
-         "note": champ("note", 450, requis=False)}
+         "note": champ("note", 450, requis=False), "point": champ("point", 300, requis=False)}
     try:
         validate_email(c["email"])
     except ValidationError:
@@ -104,6 +104,8 @@ def _parametres(cde: Commande, base: str) -> dict:
     meta = {"commande": cde.ref}
     if cde.note:
         meta["note"] = cde.note
+    if cde.point_retrait:
+        meta["point_retrait"] = cde.point_retrait[:500]
     return {
         "mode": "payment",
         "line_items": [{
@@ -148,6 +150,8 @@ def creer_session(request):
             raise PanierInvalide("Requête invalide : rechargez la page.")
         client = _coordonnees(data.get("client"))
         calcul = calculer(data.get("panier"), data.get("livraison"))
+        if calcul["livraison"]["point"] and not client["point"]:
+            raise PanierInvalide("Indiquez le point de retrait choisi pour la livraison.")
     except PanierInvalide as e:
         return _erreur(str(e), 400)
     except ValueError:
@@ -158,8 +162,9 @@ def creer_session(request):
 
     cde = Commande.objects.create(
         ref="BL-" + secrets.token_hex(4).upper(),
-        email=client["email"], nom=f"{client['prenom']} {client['nom']}", adresse=client["adresse"],
-        code_postal=client["cp"], ville=client["ville"], note=client["note"],
+        email=client["email"], nom=f"{client['prenom']} {client['nom']}", prenom=client["prenom"], nom_famille=client["nom"],
+        adresse=client["adresse"], code_postal=client["cp"], ville=client["ville"], note=client["note"],
+        point_retrait=client["point"] if calcul["livraison"]["point"] else "",
         lignes=calcul["lignes"], livraison=calcul["livraison"], sous_total=calcul["sous_total"], total=calcul["total"],
     )
     base = f"{'http' if settings.DEBUG else 'https'}://{request.get_host()}/"
@@ -220,12 +225,12 @@ def _traiter(type_evenement: str, s) -> None:
         # Panier abandonné : on ne garde pas les coordonnées d'un client qui n'a rien acheté.
         commande.filter(statut=Commande.CREEE).delete()
     elif type_evenement == "checkout.session.async_payment_failed":
-        commande.exclude(statut=Commande.PAYEE).update(statut=Commande.ECHOUEE)
+        commande.exclude(statut__in=Commande.REGLEES).update(statut=Commande.ECHOUEE)
     elif type_evenement in ("checkout.session.completed", "checkout.session.async_payment_succeeded"):
         if s.payment_status in PAYE:
             # update() renvoie 0 si la commande était déjà payée : Stripe peut renvoyer
             # un même événement, le vendeur n'est prévenu qu'une fois.
-            if commande.exclude(statut=Commande.PAYEE).update(statut=Commande.PAYEE, payee_le=timezone.now()):
+            if commande.exclude(statut__in=Commande.REGLEES).update(statut=Commande.PAYEE, payee_le=timezone.now()):
                 envoyer_commande_payee(commande.get())
         else:   # moyen de paiement différé (ex. prélèvement SEPA) : confirmation plus tard
             commande.filter(statut=Commande.CREEE).update(statut=Commande.ATTENTE)
