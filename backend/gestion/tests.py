@@ -110,3 +110,174 @@ class AdminTests(TestCase):
         with override_script_prefix("/admin/"):
             html = self.c.get("/", **HOTE).content.decode()
         self.assertIn('"api": "/admin/api/"', html)
+
+
+# ---------- Paiement Stripe ----------
+import time as _time
+from unittest import mock
+
+import stripe
+from django.core import mail
+
+from gestion import boutique
+from gestion.models import Commande
+
+DEPOT = Path(__file__).resolve().parents[2]
+PANIER = [{"id": "boule-flocon", "color": "rouge", "size": "Ø 8 cm", "qty": 2, "price": 0.01},   # le prix envoyé est ignoré
+          {"id": "renne-articule", "color": "or", "size": None, "qty": 1}]
+CLIENT = {"prenom": "Ada", "nom": "Lovelace", "email": "ada@example.com", "adresse": "1 rue des Lilas",
+          "cp": "75011", "ville": "Paris", "note": "Merci !"}
+WHSEC = "whsec_test_secret"
+
+
+def signe(payload: str, secret: str = WHSEC) -> str:
+    t = int(_time.time())
+    return f"t={t},v1={stripe.WebhookSignature._compute_signature(f'{t}.{payload}', secret)}"
+
+
+@override_settings(STRIPE_SECRET_KEY="sk_test_x", STRIPE_WEBHOOK_SECRET=WHSEC, SECURE_SSL_REDIRECT=False)
+class PaiementTests(TestCase):
+    def setUp(self):
+        self.site = Path(tempfile.mkdtemp())
+        js = self.site / "assets" / "js"
+        js.mkdir(parents=True)
+        shutil.copy(DEPOT / "assets" / "js" / "data.js", js / "data.js")
+        shutil.copy(DEPOT / "assets" / "js" / "catalogue.js", js / "catalogue.js")
+        self.override = override_settings(SITE_ROOT=self.site)
+        self.override.enable()
+        self.c = Client()
+        self.stripe = mock.MagicMock()
+        self.stripe.v1.checkout.sessions.create.return_value = mock.Mock(id="cs_test_123", url="https://checkout.stripe.com/c/pay/cs_test_123")
+        patch = mock.patch("gestion.paiement._stripe", return_value=self.stripe)
+        patch.start()
+        self.addCleanup(patch.stop)
+
+    def tearDown(self):
+        self.override.disable()
+        shutil.rmtree(self.site)
+
+    def payer(self, panier=PANIER, livraison="relais", client=CLIENT, **entetes):
+        corps = json.dumps({"panier": panier, "livraison": livraison, "client": client})
+        return self.c.post("/paiement/session/", corps, content_type="application/json", **{**HOTE, **entetes})
+
+    def params(self):
+        return self.stripe.v1.checkout.sessions.create.call_args.args[0]
+
+    def webhook(self, type_, **session):
+        corps = json.dumps({"id": "evt_1", "object": "event", "type": type_, "data": {"object": {
+            "id": "cs_test_123", "object": "checkout.session", "client_reference_id": None, **session}}})
+        return self.c.post("/paiement/webhook/", corps, content_type="application/json",
+                           HTTP_STRIPE_SIGNATURE=signe(corps), **HOTE)
+
+    # --- Calcul des prix ---
+    def test_data_js_du_site_est_lisible(self):
+        cat = boutique.catalogue()
+        self.assertGreater(len(cat["produits"]), 0)
+        self.assertEqual(set(cat["livraison"]), {"lettre", "relais", "colissimo"})
+        self.assertEqual(cat["franco"], 6000)
+
+    def test_prix_recalcules_depuis_le_catalogue(self):
+        r = self.payer()
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json()["url"], "https://checkout.stripe.com/c/pay/cs_test_123")
+        p = self.params()
+        self.assertEqual([(l["price_data"]["unit_amount"], l["quantity"]) for l in p["line_items"]], [(890, 2), (1250, 1)])
+        self.assertEqual(p["line_items"][0]["price_data"]["product_data"]["description"], "Rouge · Ø 8 cm")
+        self.assertEqual(p["shipping_options"][0]["shipping_rate_data"]["fixed_amount"]["amount"], 490)
+        self.assertEqual(p["payment_intent_data"]["shipping"]["address"]["postal_code"], "75011")
+        self.assertNotIn("payment_method_types", p)   # moyens de paiement dynamiques (Dashboard)
+        self.assertTrue(p["success_url"].startswith("https://www.biboulab.fr/panier.html?paiement=ok&session_id={CHECKOUT_SESSION_ID}"))
+        cde = Commande.objects.get()
+        self.assertEqual((cde.total, cde.statut, cde.session_stripe), (3520, Commande.CREEE, "cs_test_123"))
+        self.assertEqual(self.stripe.v1.checkout.sessions.create.call_args.args[1], {"idempotency_key": f"commande-{cde.ref}"})
+
+    def test_livraison_offerte_au_dela_du_seuil(self):
+        self.payer(panier=[{"id": "lampe-lune", "color": "blanc", "size": "Ø 16 cm", "qty": 2}])
+        tarif = self.params()["shipping_options"][0]["shipping_rate_data"]
+        self.assertEqual(tarif["fixed_amount"]["amount"], 0)
+        self.assertIn("offerte", tarif["display_name"])
+
+    def test_catalogue_en_ligne_prioritaire(self):
+        (self.site / "assets" / "js" / "catalogue.js").write_text(
+            "window.CATALOGUE = " + json.dumps({"categories": [], "products": [
+                {"id": "boule-flocon", "name": "Boule", "price": 3, "colors": ["rouge"], "sizes": [{"label": "Ø 8 cm", "extra": 1.5}]}]}) + ";", "utf-8")
+        self.payer(panier=[PANIER[0]])
+        self.assertEqual(self.params()["line_items"][0]["price_data"]["unit_amount"], 450)
+
+    def test_paniers_refuses(self):
+        cas = [
+            [{"id": "inconnu", "color": None, "size": None, "qty": 1}],
+            [{**PANIER[0], "size": "Ø 99 cm"}],
+            [{**PANIER[0], "color": "rose"}],
+            [{**PANIER[0], "qty": 0}],
+            [{**PANIER[0], "qty": 100}],
+            [{**PANIER[0], "qty": "2"}],
+            [],
+        ]
+        for panier in cas:
+            with self.subTest(panier=panier):
+                self.assertEqual(self.payer(panier=panier).status_code, 400)
+        self.assertEqual(self.payer(livraison="teleportation").status_code, 400)
+        self.assertEqual(self.payer(client={**CLIENT, "cp": "7501"}).status_code, 400)
+        self.assertEqual(self.payer(client={**CLIENT, "email": "pas-un-email"}).status_code, 400)
+        self.stripe.v1.checkout.sessions.create.assert_not_called()
+        self.assertFalse(Commande.objects.exists())
+
+    def test_autre_origine_refusee(self):
+        self.assertEqual(self.payer(HTTP_ORIGIN="https://pirate.example").status_code, 403)
+
+    def test_paiement_desactive_sans_cle(self):
+        with override_settings(STRIPE_SECRET_KEY=""):
+            self.assertEqual(self.payer().status_code, 503)
+
+    def test_stripe_en_panne(self):
+        self.stripe.v1.checkout.sessions.create.side_effect = stripe.APIConnectionError("panne")
+        self.assertEqual(self.payer().status_code, 502)
+        self.assertFalse(Commande.objects.exists())
+
+    # --- Webhook ---
+    def test_webhook_signature_obligatoire(self):
+        corps = json.dumps({"type": "checkout.session.completed"})
+        r = self.c.post("/paiement/webhook/", corps, content_type="application/json",
+                        HTTP_STRIPE_SIGNATURE=signe(corps, "whsec_autre"), **HOTE)
+        self.assertEqual(r.status_code, 400)
+
+    def test_commande_payee_un_seul_email(self):
+        self.payer()
+        for _ in range(2):   # Stripe peut renvoyer le même événement
+            self.assertEqual(self.webhook("checkout.session.completed", payment_status="paid", status="complete").status_code, 200)
+        cde = Commande.objects.get()
+        self.assertEqual(cde.statut, Commande.PAYEE)
+        self.assertEqual(len(mail.outbox), 1)
+        self.assertIn(cde.ref, mail.outbox[0].subject)
+        self.assertIn("Boule de Noël Flocon ajouré (Rouge · Ø 8 cm)", mail.outbox[0].body)
+        self.assertEqual(mail.outbox[0].reply_to, ["ada@example.com"])
+
+    def test_webhook_retrouve_la_commande_par_sa_reference(self):
+        self.payer()
+        cde = Commande.objects.get()
+        Commande.objects.update(session_stripe=None)   # webhook arrivé avant l'enregistrement de l'identifiant
+        corps = json.dumps({"id": "evt_2", "object": "event", "type": "checkout.session.completed", "data": {"object": {
+            "id": "cs_test_autre", "object": "checkout.session", "client_reference_id": cde.ref, "payment_status": "paid", "status": "complete"}}})
+        self.c.post("/paiement/webhook/", corps, content_type="application/json", HTTP_STRIPE_SIGNATURE=signe(corps), **HOTE)
+        self.assertEqual(Commande.objects.get().statut, Commande.PAYEE)
+
+    def test_paiement_differe(self):
+        self.payer()
+        self.webhook("checkout.session.completed", payment_status="unpaid", status="complete")
+        self.assertEqual(Commande.objects.get().statut, Commande.ATTENTE)
+        self.assertEqual(len(mail.outbox), 0)
+        self.webhook("checkout.session.async_payment_succeeded", payment_status="paid", status="complete")
+        self.assertEqual(Commande.objects.get().statut, Commande.PAYEE)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_session_expiree_efface_les_coordonnees(self):
+        self.payer()
+        self.webhook("checkout.session.expired", payment_status="unpaid", status="expired")
+        self.assertFalse(Commande.objects.exists())
+
+    def test_etat_session(self):
+        self.stripe.v1.checkout.sessions.retrieve.return_value = mock.Mock(payment_status="paid", status="complete", client_reference_id="BL-1234ABCD")
+        r = self.c.get("/paiement/etat/", {"session_id": "cs_test_123"}, **HOTE)
+        self.assertEqual(r.json(), {"ok": True, "ref": "BL-1234ABCD", "statut": "payee"})
+        self.assertEqual(self.c.get("/paiement/etat/", {"session_id": "../x"}, **HOTE).status_code, 404)

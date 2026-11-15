@@ -87,6 +87,37 @@ cd ~/biboulab && git pull && cd backend && pip install -r requirements.txt && py
 - Tests automatiques : `DJANGO_SECRET_KEY=test python manage.py test`.
 - Essai sur votre ordinateur : `DJANGO_DEBUG=1 python manage.py runserver`, puis http://localhost:8000/.
 
+## Paiement en ligne (Stripe)
+
+Avec `payment.mode: "stripe"` (dans `data.js`), le bouton **« Commander et payer »** du panier envoie le client sur la page de paiement sécurisée de Stripe (Stripe Checkout). Les coordonnées bancaires ne passent jamais par le site. C'est l'administration Django qui parle à Stripe : elle doit donc être installée (voir ci-dessus).
+
+**Comment ça marche**
+1. Le panier envoie à `/admin/paiement/session/` les **identifiants** des articles (objet, couleur, taille, quantité), le mode de livraison et l'adresse. Aucun prix : le serveur relit les prix dans `catalogue.js` (ou `data.js` tant que le catalogue en ligne n'a jamais été enregistré) et les frais de port dans `data.js`, puis crée la commande et la session Stripe.
+2. Le client paie chez Stripe, puis revient sur `panier.html` : panier vidé et message de confirmation. S'il annule, il retrouve son panier et son adresse.
+3. Stripe prévient le serveur par un **webhook** signé (`/admin/paiement/webhook/`) : c'est la seule preuve de paiement. La commande passe alors à « payée » et vous recevez **un e-mail** (adresse `COMMANDES_DESTINATAIRE`) avec les articles, couleurs, tailles, l'adresse de livraison et la précision du client. Répondre à cet e-mail écrit directement au client.
+
+Les commandes sont enregistrées dans la base de l'administration (`backend/db.sqlite3`). Les coordonnées d'un client qui abandonne le paiement sont effacées à l'expiration de la session (1 h).
+
+**Activer le paiement (à faire d'abord en préproduction, en mode test)**
+1. Dashboard Stripe › **Développeurs › Clés API** : copiez la clé secrète (`sk_test_…` pour les essais). Possible aussi : une **clé restreinte** (`rk_…`) limitée à *Checkout Sessions : Écriture*, à essayer d'abord en préproduction.
+2. Dashboard Stripe › **Développeurs › Webhooks › Ajouter une destination** :
+   - URL : `https://pprod.biboulab.fr/admin/paiement/webhook/` (en production : `https://www.biboulab.fr/admin/paiement/webhook/`) ;
+   - événements : `checkout.session.completed`, `checkout.session.async_payment_succeeded`, `checkout.session.async_payment_failed`, `checkout.session.expired` ;
+   - copiez le **secret de signature** (`whsec_…`).
+3. cPanel › **Setup Python App** › votre application › *Environment variables* :
+   - `STRIPE_SECRET_KEY` : la clé de l'étape 1 ;
+   - `STRIPE_WEBHOOK_SECRET` : le secret de l'étape 2 ;
+   - facultatif : `COMMANDES_DESTINATAIRE` (par défaut biboulab@outlook.fr) et `COMMANDES_EXPEDITEUR` (par défaut no-reply@biboulab.fr, à garder sur le domaine du site).
+4. Mettez à jour l'administration (commande `git pull … migrate …` ci-dessus : elle installe la bibliothèque Stripe et crée la table des commandes), puis **Restart**.
+5. Faites une commande sur la préproduction avec la carte de test `4242 4242 4242 4242` (date future, n'importe quel code). Vérifiez : retour sur le site avec « paiement confirmé », e-mail de commande reçu, paiement visible dans le Dashboard (Transactions).
+
+**Réglages dans le Dashboard Stripe**
+- *Paramètres › Moyens de paiement* : choisissez ce que vous proposez (carte, Apple Pay, Google Pay, Link…). Le site n'en impose aucun.
+- *Paramètres › E-mails clients* : activez « Paiements réussis » pour que le client reçoive un reçu (aucun e-mail n'est envoyé en mode test).
+- *Paramètres › Image de marque* : logo et couleurs de la page de paiement.
+
+**Passer en production** : remplacez dans cPanel la clé de test par la clé **live** (`sk_live_…` ou `rk_live_…`), créez le webhook live (même URL sur `www.biboulab.fr`, mêmes événements) et mettez son `whsec_…`. Sans clé, le site affiche « Le paiement en ligne n'est pas encore activé » au moment de payer : remettez `payment.mode: "email"` si vous préférez l'ancien fonctionnement d'ici là.
+
 ## Site en construction
 
 Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les visiteurs de `biboulab.fr` voient `construction.html` à la place du site. Le blocage ne vaut que pour ce domaine : en local, ou sur une autre adresse (par exemple une préproduction `preprod.biboulab.fr`), le site complet s'affiche.
@@ -160,7 +191,7 @@ Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré
 
 ## Paiement et formulaires
 
-- **Commande** : par défaut (`payment.mode: "email"`), valider la commande ouvre la messagerie du client avec le récapitulatif ; vous lui renvoyez un lien de paiement (Stripe Payment Links, PayPal, SumUp…). Aucun paiement n'est encaissé sur le site. Pour un paiement en ligne intégré, il faut un service marchand (Stripe Checkout, Shopify Buy Button, Snipcart…) : c'est une étape à part.
+- **Commande** : avec `payment.mode: "stripe"`, le client paie en ligne par Stripe Checkout (voir « Paiement en ligne (Stripe) »). Avec `payment.mode: "email"`, valider la commande ouvre la messagerie du client avec le récapitulatif et vous lui renvoyez un moyen de paiement ; aucun paiement n'est alors encaissé sur le site.
 - **Contact** : le formulaire envoie directement un e-mail à la boîte de l'entreprise, sans ouvrir la messagerie du visiteur. Il passe par `envoyer-contact.php` (réglé dans `SITE.formEndpoint`) ; l'adresse destinataire et l'adresse d'expédition se changent en haut de ce fichier (`DESTINATAIRE`, `EXPEDITEUR`). Cela ne fonctionne que sur l'hébergement (PHP) : en local, le formulaire affichera une erreur.
 
 ## Animations et design : où régler quoi
