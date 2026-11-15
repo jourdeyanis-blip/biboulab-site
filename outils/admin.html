@@ -117,6 +117,7 @@
     <span class="sub">Administration</span>
     <span class="sub" id="counts"></span>
     <p class="a-status" id="status" role="status"><i></i><span></span></p>
+    <a class="btn btn-ghost" id="emails" href="emails/" hidden>E-mails de commande</a>
     <button class="btn btn-primary" type="button" id="save" disabled>Enregistrer</button>
     <button class="btn btn-ghost" type="button" id="logout" hidden>Se déconnecter</button>
   </header>
@@ -515,6 +516,7 @@
     /* ---------- Démarrage ---------- */
     render();
     status("", "Aucune modification");
+    if (ONLINE) { const em = $("#emails"); em.hidden = false; em.addEventListener("click", (e) => { if (st.dirty && !confirm("Des modifications du catalogue ne sont pas enregistrées. Quitter quand même ?")) e.preventDefault(); else st.dirty = false; }); }
     if (ONLINE) { const lo = $("#logout"); lo.hidden = false; lo.addEventListener("click", async () => { if (st.dirty && !confirm("Des modifications ne sont pas enregistrées. Se déconnecter quand même ?")) return; st.dirty = false; try { await call("deconnexion", { method: "POST" }); } catch {} location.reload(); }); }
     call("etat").then((r) => r.json()).then((o) => { st.canSave = !!o.ok; }).catch(() => {}).finally(() => {
       if (ONLINE && !st.canSave) $("#warn").textContent = "Connexion au serveur impossible : l'enregistrement est désactivé. Rechargez la page ; si le message reste, reconnectez-vous.";

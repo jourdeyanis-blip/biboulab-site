@@ -19,7 +19,6 @@ import stripe
 from django.conf import settings
 from django.core.cache import cache
 from django.core.exceptions import ValidationError
-from django.core.mail import EmailMessage
 from django.core.validators import validate_email
 from django.http import HttpResponse, JsonResponse
 from django.utils import timezone
@@ -27,6 +26,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_GET, require_POST
 
 from .boutique import CatalogueIndisponible, PanierInvalide, calculer
+from .emails import envoyer_commande_payee
 from .models import Commande
 
 log = logging.getLogger(__name__)
@@ -46,10 +46,6 @@ def _stripe() -> stripe.StripeClient:
 
 def _erreur(message: str, statut: int) -> JsonResponse:
     return JsonResponse({"ok": False, "erreur": message}, status=statut)
-
-
-def _euros(centimes: int) -> str:
-    return f"{centimes / 100:.2f} €".replace(".", ",")
 
 
 def _meme_origine(request) -> bool:
@@ -230,26 +226,6 @@ def _traiter(type_evenement: str, s) -> None:
             # update() renvoie 0 si la commande était déjà payée : Stripe peut renvoyer
             # un même événement, le vendeur n'est prévenu qu'une fois.
             if commande.exclude(statut=Commande.PAYEE).update(statut=Commande.PAYEE, payee_le=timezone.now()):
-                _prevenir_vendeur(commande.get())
+                envoyer_commande_payee(commande.get())
         else:   # moyen de paiement différé (ex. prélèvement SEPA) : confirmation plus tard
             commande.filter(statut=Commande.CREEE).update(statut=Commande.ATTENTE)
-
-
-def _prevenir_vendeur(cde: Commande) -> None:
-    liv = cde.livraison
-    corps = [f"Nouvelle commande payée en ligne : {cde.ref}", ""]
-    for l in cde.lignes:
-        options = f" ({l['options']})" if l["options"] else ""
-        corps.append(f"- {l['quantite']} × {l['nom']}{options} : {_euros(l['unitaire'] * l['quantite'])}")
-    corps += ["", f"Sous-total : {_euros(cde.sous_total)}",
-              f"Livraison ({liv['label']}) : {_euros(liv['prix']) if liv['prix'] else 'offerte'}",
-              f"TOTAL payé : {_euros(cde.total)}", "",
-              "Adresse de livraison :", cde.nom, cde.adresse, f"{cde.code_postal} {cde.ville}", cde.email]
-    if cde.note:
-        corps += ["", f"Précision du client : {cde.note}"]
-    corps += ["", "Détail du paiement dans le Dashboard Stripe › Transactions (recherchez la référence)."]
-    try:
-        EmailMessage(f"Commande payée {cde.ref} · {_euros(cde.total)}", "\n".join(corps),
-                     settings.COMMANDES_EXPEDITEUR, [settings.COMMANDES_DESTINATAIRE], reply_to=[cde.email]).send()
-    except Exception:   # l'e-mail ne doit jamais faire échouer le webhook : la commande reste enregistrée
-        log.exception("E-mail de la commande %s non envoyé", cde.ref)
