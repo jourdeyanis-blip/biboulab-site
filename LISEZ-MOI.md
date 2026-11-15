@@ -28,6 +28,14 @@ node outils/serveur-local.js
 
 La page de gestion ne fonctionne que sur votre ordinateur. Le dossier `outils/` n'a pas besoin d'être mis en ligne.
 
+## Site en construction
+
+Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les visiteurs de `biboulab.fr` voient `construction.html` à la place du site. Le blocage ne vaut que pour ce domaine : en local, ou sur une autre adresse (par exemple une préproduction `preprod.biboulab.fr`), le site complet s'affiche.
+
+- **Voir la page en local** : http://localhost:4173/construction.html
+- **Modifier son texte** : directement dans `construction.html` (page autonome, sans `data.js`).
+- **Ouvrir le site** : supprimez dans `.htaccess` tout le bloc compris entre « DÉBUT CONSTRUCTION » et « FIN CONSTRUCTION », puis publiez.
+
 ## Fichiers
 
 | Fichier | Rôle |
@@ -39,6 +47,7 @@ La page de gestion ne fonctionne que sur votre ordinateur. Le dossier `outils/` 
 | `assets/js/app.js` | Moteur commun : menu, pied de page, thème, panier, curseur, préloader, transitions, cookies |
 | `assets/js/pages.js` | Contenu de chaque page (accueil, boutique, fiche produit, panier, contact…) |
 | `index.html` | Accueil |
+| `construction.html`, `.htaccess` | Page « site en construction » et son activation (voir ci-dessus) |
 | `boutique.html` | Tous les produits, filtres et tri |
 | `categorie.html` | Page d'une catégorie (`categorie.html?c=noel`) |
 | `produit.html` | Fiche produit (`produit.html?id=dragon-articule`) |
