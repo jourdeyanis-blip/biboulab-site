@@ -342,10 +342,7 @@
           <div class="gallery" data-reveal="left">
             <div class="zoom" id="zoom">${media(p, 0, true)}</div>
             <div class="thumbs" role="group" aria-label="Vues du produit">
-              ${Array.from({ length: views }, (_, i) => `<button class="thumb" type="button" data-v="${i}" aria-pressed="${i === 0}" aria-label="Afficher la vue ${i + 1}">${media(p, i)}</button>`).join("")}
-              ${/^https?:\/\//i.test(p.model3d || "") ? `<a class="thumb thumb-link" href="${esc(p.model3d)}" ${extAttrs} aria-label="Ouvrir la visionneuse 3D (nouvel onglet)" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</a>`
-                : p.model3d ? `<button class="thumb" type="button" data-v="3d" aria-pressed="false" aria-label="Afficher le modèle 3D interactif" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</button>` : ""}
-            </div>
+              ${Array.from({ length: views }, (_, i) => `<button class="thumb" type="button" data-v="${i}" aria-pressed="${i === 0}" aria-label="Afficher la vue ${i + 1}">${media(p, i)}</button>`).join("")}            </div>
           </div>
 
           <div class="p-info" data-reveal="right">
@@ -384,8 +381,6 @@
 
             <div class="p-desc"><h2>Description détaillée</h2><p>${esc(p.description)}</p></div>
 
-            ${p.makerworld ? `<p class="view3d"><a class="btn btn-ghost" href="${esc(p.makerworld)}" ${extAttrs}>${icon("cube")}Voir en 3D sur MakerWorld<span class="sr"> (nouvel onglet)</span></a></p>` : ""}
-
             ${(() => {
               const links = SITE.stores.filter((s) => p[s.id]);
               return links.length ? `<p class="also">Aussi disponible sur
@@ -402,17 +397,13 @@
         <div class="carousel" tabindex="0" aria-label="Carrousel de produits similaires">${similar.map(card).join("")}</div>
       </div></section>`;
 
-    /* Galerie : miniatures, zoom qui suit la souris, visionneuse 3D à la demande */
+    /* Galerie : miniatures, zoom qui suit la souris */
     const zoom = $("#zoom");
     $(".thumbs").addEventListener("click", (e) => {
-      const t = e.target.closest(".thumb"); if (!t || t.matches(".thumb-link")) return;
-      $$(".thumb:not(.thumb-link)").forEach((x) => x.setAttribute("aria-pressed", x === t));
+      const t = e.target.closest(".thumb"); if (!t) return;
+      $$(".thumb").forEach((x) => x.setAttribute("aria-pressed", x === t));
       zoom.classList.remove("zoomed", "swap"); void zoom.offsetWidth; zoom.classList.add("swap");
-      if (t.dataset.v === "3d") {
-        if (!customElements.get("model-viewer")) { const s = document.createElement("script"); s.type = "module"; s.src = "https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"; document.head.append(s); }
-        zoom.innerHTML = `<model-viewer src="${esc(p.model3d)}" alt="Modèle 3D de ${esc(p.name)}" camera-controls auto-rotate shadow-intensity="1" style="background:#14141c"></model-viewer>`;
-        zoom.style.cursor = "grab";
-      } else { zoom.innerHTML = media(p, +t.dataset.v, true); zoom.style.cursor = ""; }
+      zoom.innerHTML = media(p, +t.dataset.v, true); zoom.style.cursor = "";
     });
     zoom.addEventListener("pointermove", (e) => { const r = zoom.getBoundingClientRect(); zoom.style.setProperty("--zx", ((e.clientX - r.left) / r.width) * 100 + "%"); zoom.style.setProperty("--zy", ((e.clientY - r.top) / r.height) * 100 + "%"); });
     zoom.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") zoom.classList.add("zoomed"); });
