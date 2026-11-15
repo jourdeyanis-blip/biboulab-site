@@ -383,9 +383,12 @@
 
             <div class="p-desc"><h2>Description détaillée</h2><p>${esc(p.description)}</p></div>
 
-            <p class="also">Aussi disponible sur
-              ${SITE.stores.map((s) => `<a href="${esc(p[s.id] || s.url)}" ${extAttrs} style="--sc:${s.color}">${storeLogo(s)}${esc(s.name)}<span class="sr"> (nouvel onglet)</span></a>`).join("")}
-            </p>
+            ${(() => {
+              const links = SITE.stores.filter((s) => p[s.id]);
+              return links.length ? `<p class="also">Aussi disponible sur
+              ${links.map((s) => `<a href="${esc(p[s.id])}" ${extAttrs} style="--sc:${s.color}">${storeLogo(s)}${esc(s.name)}<span class="sr"> (nouvel onglet)</span></a>`).join("")}
+            </p>` : "";
+            })()}
           </div>
         </div>
       </section>
