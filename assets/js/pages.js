@@ -502,8 +502,9 @@
         </div>
         <div class="panel" data-reveal="right" id="contact-panel">
           <form class="form" id="contact-form" novalidate>
-            ${fg("nom", "Votre nom", { required: true, auto: "name" })}
-            ${fg("email", "Votre e-mail", { required: true, type: "email", auto: "email" })}
+            ${fg("prenom", "Prénom", { required: true, auto: "given-name" })}
+            ${fg("nom", "Nom", { required: true, auto: "family-name" })}
+            ${fg("email", "Votre e-mail", { required: true, type: "email", auto: "email", full: true })}
             <div class="fg full"><label class="check"><input type="checkbox" id="f-perso" name="personnalisation" ${custom ? "checked" : ""}><span><b>C'est une demande de personnalisation</b><br><span class="muted">Pièce sur mesure, couleur spéciale, gravure…</span></span></label></div>
             <div class="custom-fields full${custom ? " open" : ""}"><div><div class="form">
               ${fg("dimensions", "Dimensions approximatives", { placeholder: "ex. 12 × 8 × 5 cm" })}
@@ -524,8 +525,9 @@
       if (!validate(form)) return;
       const d = Object.fromEntries(new FormData(form));
       const perso = !!d.personnalisation;
-      const subject = `${perso ? "Demande de personnalisation" : "Message"} — ${d.nom}`;
-      const body = `${d.message}\n\n${perso ? `Dimensions : ${d.dimensions || "—"}\nCouleur : ${d.couleur || "—"}\n\n` : ""}${d.nom}\n${d.email}`;
+      const fullName = `${d.prenom} ${d.nom}`.trim();
+      const subject = `${perso ? "Demande de personnalisation" : "Message"} — ${fullName}`;
+      const body = `${d.message}\n\n${perso ? `Dimensions : ${d.dimensions || "—"}\nCouleur : ${d.couleur || "—"}\n\n` : ""}${fullName}\n${d.email}`;
       let viaMail = !SITE.formEndpoint;
       if (SITE.formEndpoint) {
         const btn = $("button[type=submit]", form); btn.disabled = true;
@@ -534,7 +536,7 @@
       } else location.href = mailto(subject, body);
       $("#contact-panel").innerHTML = `<div class="success" role="status">${tick}
         <h2>${viaMail ? "Votre message est prêt" : "Message envoyé"}</h2>
-        <p class="muted">${viaMail ? "Votre messagerie vient de s'ouvrir avec le message pré-rempli : il ne reste qu'à cliquer sur « Envoyer »." : `Merci ${esc(d.nom)}, je vous réponds très vite.`}</p>
+        <p class="muted">${viaMail ? "Votre messagerie vient de s'ouvrir avec le message pré-rempli : il ne reste qu'à cliquer sur « Envoyer »." : `Merci ${esc(d.prenom)}, je vous réponds très vite.`}</p>
         ${viaMail ? `<a class="btn btn-ghost btn-sm" href="${esc(mailto(subject, body))}">Rouvrir l'e-mail</a>` : ""}
         <a class="btn btn-ghost btn-sm" href="boutique.html">Retour à la boutique</a></div>`;
       confetti();
