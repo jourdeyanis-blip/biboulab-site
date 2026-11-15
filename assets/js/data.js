@@ -169,6 +169,14 @@ const PRODUCTS = [
     description: "Facettes nettes, base conique qui s'adapte à toutes les cimes. Compatible avec une petite guirlande LED glissée à l'intérieur.",
     colors: ["or", "blanc", "rouge"], sizes: [],
     material: "PLA soie", printTime: "3 h", dimensions: "16 × 16 × 5 cm", weight: "38 g", images: [], model3d: "" },
+  /* ⚠️ À COMPLÉTER : prix, couleurs, tailles, matière, temps, dimensions et poids sont
+     provisoires (la page MakerWorld n'a pas pu être lue). Vérifiez-les sur le modèle réel. */
+  { id: "bol-bonhomme-de-neige", name: "Bol Bonhomme de neige", category: "noel", price: 12.9, badge: "new", popularity: 70, date: "2026-11-15",
+    short: "Un bol en forme de bonhomme de neige, pour grignoter en mode hiver.",
+    description: "Un bol imprimé en 3D sur le thème du bonhomme de neige : sourire, nez carotte et petit air de fête. Parfait pour servir des bonbons, des chocolats ou des mandarines sur la table de Noël, ou comme vide-poche déco. Modèle conçu pour une impression nette et facile à nettoyer à la main. Non adapté au lave-vaisselle, au micro-ondes ni au contact alimentaire direct : utilisez un papier ou un sachet pour les aliments non emballés.",
+    colors: ["blanc", "rouge", "bleu"], sizes: [],
+    material: "PLA", printTime: "À confirmer", dimensions: "À confirmer", weight: "À confirmer", images: [], model3d: "",
+    makerworld: "https://makerworld.com/fr/models/1963222-snowman-bowl" },
 
   /* ----- Figurine ----- */
   { id: "dragon-articule", name: "Dragon articulé", category: "figurine", price: 18.9, badge: "best", popularity: 99, date: "2026-08-14",
