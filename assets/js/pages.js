@@ -645,7 +645,7 @@
               ${fg("note", "Précision pour la commande", { full: true, value: i.note, placeholder: "ex. référence d'appareil, ville pour une skyline…" })}
             </div>
             <h2 class="h-sub" style="margin-top:32px">Mode de livraison <small class="muted" style="font:500 .85rem var(--font-b)">(France métropolitaine)</small></h2>
-            ${methods.map((m) => `<label class="radio-card"><input type="radio" name="ship" value="${m.id}" ${m.id === st.ship ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.delay)}</small></span><span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>`).join("")}
+            ${methods.map((m) => `<label class="radio-card"><input type="radio" name="ship" value="${m.id}" ${m.id === st.ship ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.delay)}</small></span>${m.logo ? `<img class="ship-logo" src="${esc(m.logo)}" alt="" width="207" height="72" loading="lazy">` : ""}<span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>`).join("")}
           </form>
           ${needRelay() ? `<div class="mr-box"><h2 class="h-sub" style="margin-top:32px">Votre Point Relais®</h2>
             <p class="mr-choice" id="mr-choice" aria-live="polite"></p>
@@ -679,6 +679,8 @@
     main.addEventListener("change", (e) => {
       if (e.target.name === "ship") { st.ship = e.target.value; Object.assign(st.info, Object.fromEntries(new FormData($("#ship-form")))); render(); const r = $('input[name="ship"]:checked'); if (r) r.focus(); }
       if (e.target.name === "pay") st.pay = e.target.value;
+      /* Code postal saisi après l'affichage du widget : on relance la recherche de Points Relais */
+      if (e.target.id === "f-cp" && needRelay() && /^\d{5}$/.test(e.target.value.trim()) && window.jQuery && $("#mr-zone")) window.jQuery("#mr-zone").trigger("MR_DoSearch", [e.target.value.trim(), MR.country || "FR"]);
     });
     main.addEventListener("submit", (e) => {
       e.preventDefault();

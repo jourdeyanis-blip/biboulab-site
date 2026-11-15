@@ -48,9 +48,8 @@ const SITE = {
   shipping: {
     freeFrom: 60, // livraison offerte à partir de ce montant (€)
     methods: [
-      { id: "lettre",    label: "Lettre suivie",          price: 3.9, delay: "2 à 4 jours ouvrés" },
-      { id: "relais",    label: "Point Relais® Mondial Relay", price: 4.9, delay: "3 à 5 jours ouvrés" },
-      { id: "colissimo", label: "Colissimo à domicile",   price: 6.9, delay: "2 à 3 jours ouvrés" }
+      { id: "relais",   label: "Point Relais® Mondial Relay", price: 4.9, delay: "3 à 5 jours ouvrés", logo: "assets/img/mondial-relay.png" },
+      { id: "domicile", label: "Livraison à domicile",        price: 6.9, delay: "2 à 3 jours ouvrés" }
     ],
     /* Widget Mondial Relay : affiché quand le client choisit le mode "relais".
        brand = votre code enseigne Mondial Relay (8 caractères, espaces compris).

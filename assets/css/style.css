@@ -566,6 +566,12 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .radio-card b { display: block; }
 .radio-card small { color: var(--muted); }
 .radio-card .price { margin-left: auto; font-weight: 500; white-space: nowrap; }
+/* Logo transporteur : toujours sur pastille blanche (le logo Mondial Relay est prévu pour fond clair) */
+.ship-logo { height: 36px; width: auto; flex: none; padding: 5px 9px; background: #fff; border-radius: 8px; box-sizing: border-box; }
+.radio-card .ship-logo { margin-left: auto; }
+.radio-card .ship-logo + .price { margin-left: 0; }
+@media (max-width: 520px) { .radio-card .ship-logo { height: 30px; padding: 4px 7px; } }
+.ftr-ship { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; padding: 0 0 20px; font-size: .875rem; color: var(--muted); }
 /* Widget Mondial Relay : le widget a son propre thème clair, on l'encadre sur fond blanc */
 .mr-zone { background: #fff; color: #1a1a1a; color-scheme: light; border-radius: 12px; border: 1px solid var(--line-2); overflow: hidden; min-height: 56px; }
 .mr-zone .muted { color: #555; }
