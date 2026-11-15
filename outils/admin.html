@@ -409,6 +409,10 @@
           <p class="hint">${p.sizes.length ? "À gauche le nom de la taille, à droite son supplément en euros (0 pour la taille de base)" : "Taille unique. Ajoutez des tailles si l'objet existe en plusieurs formats"}</p>
           <button class="btn btn-ghost btn-sm" type="button" data-act="size">${icon("plus")} Ajouter une taille</button>
         </section>
+        <section class="a-sec"><h2>Créateur et licence</h2><div class="form">
+          ${F("creator", "Nom du créateur", { v: p.creator, opt: 1, ph: "Pseudo ou nom du créateur du modèle" })}
+          ${F("license", "Licence", { v: p.license, opt: 1, ph: "CC BY-NC 4.0", hint: "Affichés au-dessus de la fiche technique (« Non renseigné » si vide)" })}
+        </div></section>
         <section class="a-sec"><h2>Fiche technique</h2><div class="form">
           ${F("material", "Matériau", { v: p.material, ph: "PLA", hint: "Le filtre de la boutique reconnaît PLA et PETG" })}
           ${F("printTime", "Temps de fabrication", { v: p.printTime, ph: "3 h 15" })}
@@ -420,10 +424,6 @@
           ${F("date", "Date de mise en ligne", { v: p.date, type: "date", hint: "Sert au tri « Nouveautés »" })}
           ${F("popularity", "Popularité de 0 à 100", { v: p.popularity, type: "number", num: 1, step: "1", max: 100, hint: "Sert au tri « Popularité »" })}
         </div></div></section>
-        <section class="a-sec"><h2>Créateur et licence</h2><div class="form">
-          ${F("creator", "Nom du créateur", { v: p.creator, opt: 1, ph: "Pseudo ou nom du créateur du modèle" })}
-          ${F("license", "Licence", { v: p.license, opt: 1, ph: "CC BY-NC 4.0", hint: "Affichés au-dessus de la fiche technique (« Non renseigné » si vide)" })}
-        </div></section>
         <section class="a-sec"><h2>Liens</h2><div class="form">
           ${F("makerworld", "Lien MakerWorld du modèle", { v: p.makerworld, opt: 1, ph: "https://makerworld.com/…" })}
           ${F("cults3d", "Lien Cults3D du modèle", { v: p.cults3d, opt: 1, ph: "https://cults3d.com/…" })}
