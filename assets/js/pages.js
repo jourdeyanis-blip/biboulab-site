@@ -344,6 +344,7 @@
             <div class="thumbs" role="group" aria-label="Vues du produit">
               ${Array.from({ length: views }, (_, i) => `<button class="thumb" type="button" data-v="${i}" aria-pressed="${i === 0}" aria-label="Afficher la vue ${i + 1}">${media(p, i)}</button>`).join("")}
               ${p.model3d ? `<button class="thumb" type="button" data-v="3d" aria-pressed="false" aria-label="Afficher le modèle 3D interactif" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</button>` : ""}
+              ${p.makerworld ? `<a class="thumb thumb-link" href="${esc(p.makerworld)}" ${extAttrs} aria-label="Voir le modèle en 3D sur MakerWorld (nouvel onglet)" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</a>` : ""}
             </div>
           </div>
 
@@ -404,8 +405,8 @@
     /* Galerie : miniatures, zoom qui suit la souris, visionneuse 3D à la demande */
     const zoom = $("#zoom");
     $(".thumbs").addEventListener("click", (e) => {
-      const t = e.target.closest(".thumb"); if (!t) return;
-      $$(".thumb").forEach((x) => x.setAttribute("aria-pressed", x === t));
+      const t = e.target.closest(".thumb"); if (!t || t.matches(".thumb-link")) return;
+      $$(".thumb:not(.thumb-link)").forEach((x) => x.setAttribute("aria-pressed", x === t));
       zoom.classList.remove("zoomed", "swap"); void zoom.offsetWidth; zoom.classList.add("swap");
       if (t.dataset.v === "3d") {
         if (!customElements.get("model-viewer")) { const s = document.createElement("script"); s.type = "module"; s.src = "https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"; document.head.append(s); }
