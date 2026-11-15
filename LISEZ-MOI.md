@@ -139,7 +139,7 @@ Les modèles modifiés sont enregistrés dans la base de l'administration (`back
 3. cPanel › **Setup Python App** › votre application › *Environment variables* :
    - `STRIPE_SECRET_KEY` : la clé de l'étape 1 ;
    - `STRIPE_WEBHOOK_SECRET` : le secret de l'étape 2 ;
-   - facultatif : `COMMANDES_DESTINATAIRE` (par défaut biboulab@outlook.fr) et `COMMANDES_EXPEDITEUR` (par défaut no-reply@biboulab.fr, à garder sur le domaine du site).
+   - facultatif : `COMMANDES_DESTINATAIRE` (par défaut biboulab@outlook.fr), `CONTACT_DESTINATAIRE` (formulaire de contact, par défaut la même adresse) et `COMMANDES_EXPEDITEUR` (par défaut no-reply@biboulab.fr, à garder sur le domaine du site).
 4. Mettez à jour l'administration (commande `git pull … migrate …` ci-dessus : elle installe la bibliothèque Stripe et crée la table des commandes), puis **Restart**.
 5. Faites une commande sur la préproduction avec la carte de test `4242 4242 4242 4242` (date future, n'importe quel code). Vérifiez : retour sur le site avec « paiement confirmé », e-mail de commande reçu, paiement visible dans le Dashboard (Transactions).
 
@@ -226,7 +226,7 @@ Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré
 ## Paiement et formulaires
 
 - **Commande** : avec `payment.mode: "stripe"`, le client paie en ligne par Stripe Checkout (voir « Paiement en ligne (Stripe) »). Avec `payment.mode: "email"`, valider la commande ouvre la messagerie du client avec le récapitulatif et vous lui renvoyez un moyen de paiement ; aucun paiement n'est alors encaissé sur le site.
-- **Contact** : le formulaire envoie directement un e-mail à la boîte de l'entreprise, sans ouvrir la messagerie du visiteur. Il passe par `envoyer-contact.php` (réglé dans `SITE.formEndpoint`) ; l'adresse destinataire et l'adresse d'expédition se changent en haut de ce fichier (`DESTINATAIRE`, `EXPEDITEUR`). Cela ne fonctionne que sur l'hébergement (PHP) : en local, le formulaire affichera une erreur.
+- **Contact** : le formulaire envoie directement un e-mail à la boîte de l'entreprise, sans ouvrir la messagerie du visiteur. Il passe par l'administration en ligne (adresse `/admin/contact/`, réglée dans Réglages › Identité et contact ou `SITE.formEndpoint`), qui envoie l'e-mail comme ceux des commandes : champs obligatoires, e-mail valide, champ piège anti-robots et 5 messages par heure et par visiteur au maximum. La boîte qui reçoit les messages est `CONTACT_DESTINATAIRE` (par défaut la même que `COMMANDES_DESTINATAIRE`) ; répondre au message écrit directement au visiteur. Avec le serveur local `node outils/serveur-local.js`, le formulaire affichera une erreur : l'envoi n'existe qu'en ligne.
 
 ## Animations et design : où régler quoi
 

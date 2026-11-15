@@ -72,9 +72,9 @@ const SITE = {
   },
 
   /* Formulaire de contact : adresse qui reçoit le formulaire et l'envoie par
-     e-mail à l'entreprise (envoyer-contact.php, fourni avec le site).
+     e-mail à l'entreprise (administration en ligne Django : /admin/contact/).
      Vide = le message s'ouvre dans la messagerie du visiteur. */
-  formEndpoint: "envoyer-contact.php",
+  formEndpoint: "/admin/contact/",
 
   /* true = affiche les petites mentions "contenu d'exemple" (avis, chiffres).
      Passez à false quand vos vrais contenus sont en place. */

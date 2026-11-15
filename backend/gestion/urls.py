@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import paiement, views
+from . import contact, paiement, views
 
 urlpatterns = [
     path("", views.panneau, name="panneau"),
@@ -15,4 +15,6 @@ urlpatterns = [
     path("paiement/session/", paiement.creer_session, name="paiement_session"),
     path("paiement/etat/", paiement.etat_session, name="paiement_etat"),
     path("paiement/webhook/", paiement.webhook, name="paiement_webhook"),
+    # Formulaire de contact du site (www.biboulab.fr/admin/contact/)
+    path("contact/", contact.envoyer, name="contact"),
 ]

@@ -104,8 +104,8 @@ def verifier(contenu: dict, produits: list) -> None:
         raise Invalide("L'e-mail de contact n'est pas valide.")
     if not URL.match(_texte(site.get("url"), "Adresse du site")):
         raise Invalide("L'adresse du site doit commencer par https://")
-    if site.get("formEndpoint") and not (URL.match(site["formEndpoint"]) or re.match(r"^[\w-]+\.php$", site["formEndpoint"])):
-        raise Invalide("L'adresse d'envoi du formulaire doit commencer par https:// (ou être un fichier .php du site).")
+    if site.get("formEndpoint") and not (URL.match(site["formEndpoint"]) or re.match(r"^/[\w/-]*$", site["formEndpoint"])):
+        raise Invalide("L'adresse d'envoi du formulaire doit commencer par https:// ou par / (ex. /admin/contact/).")
     _image(site.get("logo"), "logo")
     if not isinstance(site.get("demo"), bool):
         raise Invalide("Réglages incomplets (mode démonstration).")

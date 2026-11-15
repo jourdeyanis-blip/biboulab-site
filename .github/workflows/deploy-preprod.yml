@@ -54,7 +54,7 @@ jobs:
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 3;
-            rm -r -f /.git /.github /.claude /outils /backend /LISEZ-MOI.md;
+            rm -r -f /.git /.github /.claude /outils /backend /LISEZ-MOI.md /envoyer-contact.php;
             mirror -R --verbose --parallel=2 \
               -x '^\.git(/|$)' -x '^\.github(/|$)' -x '^\.claude(/|$)' \
               -x '^outils(/|$)' -x '^backend(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \

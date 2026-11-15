@@ -476,3 +476,62 @@ class EmailsAdminTests(PaiementTests):
     for _nom in [n for n in dir(PaiementTests) if n.startswith("test_")]:
         locals()[_nom] = None
     del _nom
+
+
+# ---------- Formulaire de contact ----------
+@override_settings(SECURE_SSL_REDIRECT=False, CONTACT_DESTINATAIRE="boutique@example.com", COMMANDES_EXPEDITEUR="no-reply@biboulab.fr")
+class ContactTests(TestCase):
+    MESSAGE = {"prenom": "Ada", "nom": "Lovelace", "email": "ada@example.com", "message": "Bonjour,\nune pièce sur mesure ?", "accord": "on"}
+
+    def setUp(self):
+        cache.clear()
+        self.c = Client()
+
+    def envoyer(self, **champs):
+        return self.c.post("/contact/", {**self.MESSAGE, **champs}, **HOTE)
+
+    def test_message_envoye_a_la_boutique(self):
+        r = self.envoyer(personnalisation="on", dimensions="12 × 8 cm", couleur="noir mat")
+        self.assertEqual(r.status_code, 200, r.content)
+        self.assertEqual(r.json(), {"ok": True})
+        m = mail.outbox[0]
+        self.assertEqual(m.to, ["boutique@example.com"])
+        self.assertEqual(m.from_email, "no-reply@biboulab.fr")
+        self.assertEqual(m.reply_to, ["Ada Lovelace <ada@example.com>"])
+        self.assertEqual(m.subject, "Demande de personnalisation — Ada Lovelace")
+        self.assertIn("Dimensions : 12 × 8 cm", m.body)
+        self.assertIn("une pièce sur mesure ?", m.body)
+
+    def test_champs_obligatoires_et_email(self):
+        self.assertEqual(self.envoyer(message="").status_code, 422)
+        self.assertEqual(self.envoyer(accord="").status_code, 422)
+        self.assertEqual(self.envoyer(email="pas-un-email").status_code, 422)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_injection_d_en_tetes_impossible(self):
+        self.envoyer(prenom="Ada\r\nBcc: victime@example.com", nom="Lovelace")
+        m = mail.outbox[0]
+        self.assertNotIn("\n", m.subject)
+        self.assertNotIn("victime", " ".join(m.recipients()))
+
+    def test_robot_ignore_sans_envoi(self):
+        r = self.envoyer(site_web="http://spam.example")
+        self.assertEqual(r.status_code, 200)   # le robot croit avoir réussi
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_limite_de_5_messages_par_heure(self):
+        for _ in range(5):
+            self.assertEqual(self.envoyer().status_code, 200)
+        self.assertEqual(self.envoyer().status_code, 429)
+        self.assertEqual(len(mail.outbox), 5)
+
+    def test_autre_origine_et_get_refuses(self):
+        r = self.c.post("/contact/", self.MESSAGE, HTTP_HOST="www.biboulab.fr", HTTP_ORIGIN="https://pirate.example", secure=True)
+        self.assertEqual(r.status_code, 403)
+        self.assertEqual(self.c.get("/contact/", **HOTE).status_code, 405)
+        self.assertEqual(len(mail.outbox), 0)
+
+    def test_le_site_pointe_vers_django(self):
+        src = (DEPOT / "assets" / "js" / "data.js").read_text("utf-8")
+        self.assertIn('formEndpoint: "/admin/contact/"', src)
+        self.assertFalse((DEPOT / "envoyer-contact.php").exists())
