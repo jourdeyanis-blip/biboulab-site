@@ -231,6 +231,7 @@ def _traiter(type_evenement: str, s) -> None:
             # update() renvoie 0 si la commande était déjà payée : Stripe peut renvoyer
             # un même événement, le vendeur n'est prévenu qu'une fois.
             if commande.exclude(statut__in=Commande.REGLEES).update(statut=Commande.PAYEE, payee_le=timezone.now()):
+                log.info("Commande %s : paiement confirmé par Stripe", cde.ref)
                 envoyer_commande_payee(commande.get())
         else:   # moyen de paiement différé (ex. prélèvement SEPA) : confirmation plus tard
             commande.filter(statut=Commande.CREEE).update(statut=Commande.ATTENTE)

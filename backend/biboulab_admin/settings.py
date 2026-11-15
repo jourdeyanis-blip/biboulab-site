@@ -150,10 +150,10 @@ LOGGING = {
     "formatters": {"date": {"format": "%(asctime)s %(levelname)s %(name)s : %(message)s"}},
     "handlers": {
         "console": {"class": "logging.StreamHandler"},
-        # Journal des erreurs, lisible dans l'administration (/admin/journal/) : sur O2switch,
+        # Journal (erreurs et envois d'e-mails), lisible dans l'administration (/admin/journal/) : sur O2switch,
         # la sortie « console » n'est gardée que si un fichier de log Passenger est configuré.
         "fichier": {"class": "logging.handlers.RotatingFileHandler", "filename": str(JOURNAL_ERREURS), "delay": True,
-                    "maxBytes": 300_000, "backupCount": 1, "encoding": "utf-8", "formatter": "date", "level": "WARNING"},
+                    "maxBytes": 300_000, "backupCount": 1, "encoding": "utf-8", "formatter": "date", "level": "INFO"},
     },
     "loggers": {
         # Erreurs 500 : sans ceci, Django (hors mode DEBUG) n'écrit la trace nulle part
