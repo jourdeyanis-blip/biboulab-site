@@ -11,3 +11,4 @@ backend/tmp/
 backend/.deploye
 backend/.deploiement.verrou/
 backend/deploiement.log
+backend/erreurs.log*

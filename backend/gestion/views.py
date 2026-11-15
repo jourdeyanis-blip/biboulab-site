@@ -197,6 +197,30 @@ def commandes(request):
 
 
 # ---------- API du panneau (JSON) ----------
+def _fin(chemin, lignes=200) -> str:
+    """Dernières lignes d'un fichier journal (ou un mot d'explication s'il n'existe pas)."""
+    try:
+        with open(chemin, "rb") as f:
+            f.seek(0, 2)
+            f.seek(max(0, f.tell() - 200_000))
+            texte = f.read().decode("utf-8", "replace")
+    except OSError:
+        return "(fichier absent : rien n'a encore été écrit)"
+    return "\n".join(texte.splitlines()[-lignes:]) or "(vide)"
+
+
+@require_GET
+@admin_requis()
+def journal(request):
+    """Dernières erreurs de l'application et dernières mises à jour automatiques, en texte brut :
+    évite d'aller chercher les fichiers journaux sur le serveur."""
+    texte = (f"=== Erreurs de l'application ({settings.JOURNAL_ERREURS.name}) ===\n{_fin(settings.JOURNAL_ERREURS)}\n\n"
+             f"=== Mises à jour automatiques ({settings.JOURNAL_DEPLOIEMENT.name}) ===\n{_fin(settings.JOURNAL_DEPLOIEMENT, 60)}\n")
+    response = HttpResponse(texte, content_type="text/plain; charset=utf-8")
+    response["Cache-Control"] = "no-store"
+    return response
+
+
 @require_GET
 @admin_requis(api=True)
 def api_etat(request):
