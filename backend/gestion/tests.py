@@ -248,10 +248,18 @@ class PaiementTests(TestCase):
             self.assertEqual(self.webhook("checkout.session.completed", payment_status="paid", status="complete").status_code, 200)
         cde = Commande.objects.get()
         self.assertEqual(cde.statut, Commande.PAYEE)
-        self.assertEqual(len(mail.outbox), 1)
-        self.assertIn(cde.ref, mail.outbox[0].subject)
-        self.assertIn("Boule de Noël Flocon ajouré (Rouge · Ø 8 cm)", mail.outbox[0].body)
-        self.assertEqual(mail.outbox[0].reply_to, ["ada@example.com"])
+        self.assertEqual(len(mail.outbox), 2)   # vendeur + client, une seule fois
+        vendeur, client = mail.outbox
+        self.assertEqual(vendeur.to, [settings.COMMANDES_DESTINATAIRE])
+        self.assertIn(cde.ref, vendeur.subject)
+        self.assertIn("Boule de Noël Flocon ajouré (Rouge · Ø 8 cm)", vendeur.body)
+        self.assertEqual(vendeur.reply_to, ["ada@example.com"])
+        self.assertEqual(client.to, ["ada@example.com"])
+        self.assertIn(cde.ref, client.subject)
+        self.assertIn("Bonjour Ada Lovelace", client.body)
+        self.assertIn("Total payé : 35,20 €", client.body)
+        self.assertIn("Point relais, 3 à 5 jours ouvrés", client.body)
+        self.assertEqual(client.reply_to, [settings.COMMANDES_DESTINATAIRE])
 
     def test_webhook_retrouve_la_commande_par_sa_reference(self):
         self.payer()
@@ -269,7 +277,14 @@ class PaiementTests(TestCase):
         self.assertEqual(len(mail.outbox), 0)
         self.webhook("checkout.session.async_payment_succeeded", payment_status="paid", status="complete")
         self.assertEqual(Commande.objects.get().statut, Commande.PAYEE)
-        self.assertEqual(len(mail.outbox), 1)
+        self.assertEqual(len(mail.outbox), 2)
+
+    def test_echec_d_un_email_n_empeche_pas_l_autre(self):
+        self.payer()
+        with mock.patch("django.core.mail.EmailMessage.send", side_effect=[OSError("sendmail absent"), 1]) as envoi:
+            self.assertEqual(self.webhook("checkout.session.completed", payment_status="paid", status="complete").status_code, 200)
+        self.assertEqual(envoi.call_count, 2)
+        self.assertEqual(Commande.objects.get().statut, Commande.PAYEE)
 
     def test_session_expiree_efface_les_coordonnees(self):
         self.payer()

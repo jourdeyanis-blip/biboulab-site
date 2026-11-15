@@ -153,6 +153,15 @@ def catalogue() -> dict:
         raise CatalogueIndisponible("Modes de livraison incomplets dans data.js.") from e
 
 
+def infos_site() -> dict:
+    """Nom et adresse de la boutique (SITE dans data.js), pour les e-mails."""
+    try:
+        site = lire_constante(_lire("data.js"), "SITE")
+        return {"nom": str(site.get("name") or "Biboulab"), "url": str(site.get("url") or "")}
+    except (CatalogueIndisponible, AttributeError):
+        return {"nom": "Biboulab", "url": ""}
+
+
 def centimes(montant) -> int:
     if isinstance(montant, bool) or not isinstance(montant, (int, float, Decimal)):
         raise CatalogueIndisponible("Prix invalide dans le catalogue.")
