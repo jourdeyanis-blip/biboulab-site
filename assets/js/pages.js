@@ -550,8 +550,11 @@
 
   /* ================= PANIER & COMMANDE (3 étapes) ================= */
   function cartPage() {
-    const methods = SITE.shipping.methods, pays = SITE.payment.methods;
+    const methods = SITE.shipping.methods, pays = SITE.payment.methods, stripe = SITE.payment.mode === "stripe";
     const st = { step: 1, ship: methods[0].id, pay: pays[0].id, info: {} };
+    /* Coordonnées gardées le temps du passage sur la page Stripe (retour après annulation) */
+    const KEEP = "biboulab-commande";
+    const keep = { get() { try { return JSON.parse(sessionStorage.getItem(KEEP)); } catch { return null; } }, set(v) { try { sessionStorage.setItem(KEEP, JSON.stringify(v)); } catch { /* stockage indisponible */ } }, clear() { try { sessionStorage.removeItem(KEEP); } catch { /* idem */ } } };
     const totals = () => { const sub = Cart.subtotal(), m = methods.find((x) => x.id === st.ship), free = sub >= SITE.shipping.freeFrom, fee = free ? 0 : m.price; return { sub, m, free, fee, total: sub + fee }; };
     const stepsHTML = () => `<ol class="steps" aria-label="Étapes de la commande">${["Panier", "Livraison", "Paiement"].map((l, i) => `<li class="${i + 1 === st.step ? "on" : i + 1 < st.step ? "past" : ""}"${i + 1 === st.step ? ' aria-current="step"' : ""}><i aria-hidden="true"></i><span>${l}</span></li>`).join("")}</ol>`;
     const optText = (l) => [l.color && FILAMENTS[l.color] ? FILAMENTS[l.color].name : null, l.size].filter(Boolean).join(" · ");
@@ -609,13 +612,17 @@
       } else if (st.step === 3) {
         body = `<form class="co-main" id="pay-form" novalidate>
             <h2 class="h-sub">Mode de paiement</h2>
-            ${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est envoyée par e-mail et je vous retourne un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
-            ${pays.map((m) => `<label class="radio-card"><input type="radio" name="pay" value="${m.id}" ${m.id === st.pay ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.note)}</small></span></label>`).join("")}
+            ${st.notice ? `<p class="notice" role="status">${esc(st.notice)}</p>` : ""}
+            ${stripe
+              ? `<p class="notice">Paiement sécurisé par carte bancaire (ou Apple Pay, Google Pay selon votre appareil) sur la page de Stripe, le prestataire de paiement. Vos coordonnées bancaires ne passent jamais par ce site.</p>
+                 <p class="notice pay-err" role="alert" style="border-color:var(--err)" hidden></p>`
+              : `${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est envoyée par e-mail et je vous retourne un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
+                 ${pays.map((m) => `<label class="radio-card"><input type="radio" name="pay" value="${m.id}" ${m.id === st.pay ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.note)}</small></span></label>`).join("")}`}
             <h2 class="h-sub" style="margin-top:32px">Livraison</h2>
             <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})</p>
             <div class="fg" style="margin-top:22px"><label class="check"><input type="checkbox" name="cgv" required><span>J'ai lu et j'accepte les <a href="cgv.html" target="_blank" rel="noopener">conditions générales de vente</a> et je reconnais que ma commande implique une obligation de paiement.</span></label><p class="err-msg" role="alert"></p></div>
           </form>
-          ${summary(t, `<button class="btn btn-primary" type="submit" form="pay-form">Valider la commande · ${euro(t.total)}</button><button class="back" type="button" data-go="2">← Retour à la livraison</button>`)}`;
+          ${summary(t, `<button class="btn btn-primary" type="submit" form="pay-form">${stripe ? "Commander et payer" : "Valider la commande"} · ${euro(t.total)}</button><button class="back" type="button" data-go="2">← Retour à la livraison</button>`)}`;
       }
       main.innerHTML = st.step === 4 ? st.done : `<section class="wrap page-head" style="padding-bottom:0"><h1 tabindex="-1">${["Votre panier", "Livraison", "Paiement"][st.step - 1]}</h1>${stepsHTML()}</section><section class="wrap checkout">${body}</section>`;
       enhance(main);
@@ -642,7 +649,8 @@
     main.addEventListener("submit", (e) => {
       e.preventDefault();
       if (!validate(e.target)) return;
-      if (e.target.id === "ship-form") { Object.assign(st.info, Object.fromEntries(new FormData(e.target))); st.step = 3; render(true); return; }
+      if (e.target.id === "ship-form") { Object.assign(st.info, Object.fromEntries(new FormData(e.target))); st.step = 3; st.notice = ""; render(true); return; }
+      if (stripe) { payStripe(); return; }
       /* Validation finale : on prépare l'e-mail de commande */
       const t = totals(), i = st.info, ref = "GF-" + Date.now().toString(36).toUpperCase().slice(-6);
       const pay = pays.find((m) => m.id === st.pay);
@@ -658,6 +666,54 @@
       st.step = 4; Cart.clear(); render(true); confetti();
       location.href = link;
     });
+
+    /* Paiement Stripe : le serveur recalcule les prix et renvoie l'adresse de la page Stripe.
+       Seuls les identifiants des articles partent d'ici, jamais les prix. */
+    async function payStripe() {
+      const btn = $('button[form="pay-form"][type="submit"]'), err = $(".pay-err", main), label = btn.innerHTML;
+      btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Redirection vers le paiement…"; err.hidden = true;
+      keep.set({ info: st.info, ship: st.ship });
+      try {
+        const r = await fetch(SITE.payment.endpoint + "session/", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ panier: Cart.read().map(({ id, color, size, qty }) => ({ id, color, size, qty })), livraison: st.ship, client: st.info })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.url) { location.href = d.url; return; }
+        err.textContent = d.erreur || "Le paiement en ligne est momentanément indisponible. Réessayez dans quelques minutes.";
+      } catch {
+        err.textContent = "Connexion impossible. Vérifiez votre accès à Internet, puis réessayez.";
+      }
+      err.hidden = false; btn.disabled = false; btn.removeAttribute("aria-busy"); btn.innerHTML = label;
+    }
+
+    /* Retour depuis la page Stripe : ?paiement=ok&session_id=… ou ?paiement=annule */
+    const back = new URLSearchParams(location.search), outcome = back.get("paiement");
+    if (outcome) history.replaceState(null, "", location.pathname);
+    if (outcome === "ok") {
+      Cart.clear(); keep.clear();
+      st.done = `<section class="wrap section"><div class="success" role="status">${tick}
+        <h1 tabindex="-1">Merci pour votre commande !</h1>
+        <p class="muted pay-state">Votre paiement a bien été transmis. Vous recevez la confirmation par e-mail, et je lance l'impression.</p>
+        <a class="btn btn-primary" href="boutique.html">Retour à la boutique</a></div></section>`;
+      st.step = 4; render(true); confetti();
+      fetch(SITE.payment.endpoint + "etat/?session_id=" + encodeURIComponent(back.get("session_id") || ""))
+        .then((r) => (r.ok ? r.json() : null)).then((d) => {
+          const p = $(".pay-state", main); if (!d || !p) return;
+          if (d.statut === "payee") p.textContent = `Commande ${d.ref} : paiement confirmé. Vous recevez un reçu par e-mail ; je lance l'impression et je vous préviens à l'expédition.`;
+          else if (d.statut === "attente") p.textContent = `Commande ${d.ref} : votre banque confirme le paiement sous quelques jours. J'imprime votre commande dès sa confirmation.`;
+        }).catch(() => { /* le message par défaut reste affiché */ });
+      return;
+    }
+    if (outcome === "annule") {
+      const saved = keep.get();
+      if (saved && saved.info && Cart.count()) {
+        Object.assign(st.info, saved.info);
+        if (methods.some((m) => m.id === saved.ship)) st.ship = saved.ship;
+        st.step = 3;
+      }
+      st.notice = "Paiement annulé : rien n'a été débité. Votre panier est intact, vous pouvez réessayer.";
+    }
     render();
   }
 

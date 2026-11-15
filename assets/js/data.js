@@ -55,11 +55,15 @@ const SITE = {
   },
 
   /* Paiement.
-     mode "email" : la commande est envoyée par e-mail et vous renvoyez un lien de
-     paiement (fonctionne tout de suite, sans abonnement ni serveur).
-     Voir LISEZ-MOI.md pour brancher Stripe ou PayPal ensuite. */
+     mode "stripe" : le client paie en ligne sur la page sécurisée de Stripe (carte,
+       Apple Pay, Google Pay… selon les réglages du Dashboard Stripe). Nécessite
+       l'administration en ligne (backend/) configurée avec les clés Stripe : voir
+       LISEZ-MOI.md, « Paiement en ligne (Stripe) ».
+     mode "email"  : la commande est envoyée par e-mail et vous renvoyez un lien de
+       paiement (sans serveur). La liste "methods" ne sert que dans ce mode. */
   payment: {
-    mode: "email",
+    mode: "stripe",
+    endpoint: "/admin/paiement/",   // adresse de l'administration en ligne (Django)
     methods: [
       { id: "lien",     label: "Lien de paiement sécurisé (carte bancaire)", note: "Envoyé par e-mail après validation de la commande" },
       { id: "paypal",   label: "PayPal",                                    note: "Demande de paiement envoyée par e-mail" },

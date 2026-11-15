@@ -2,3 +2,4 @@
 Django>=5.2,<5.3          # version LTS
 django-axes>=7,<9         # blocage après plusieurs échecs de connexion
 argon2-cffi>=23           # hachage des mots de passe (Argon2id)
+stripe>=17,<18            # paiement en ligne (Stripe Checkout)

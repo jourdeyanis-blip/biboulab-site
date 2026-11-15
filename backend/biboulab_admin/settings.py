@@ -7,6 +7,13 @@ Tout ce qui change d'un serveur à l'autre se règle par variables d'environneme
   DJANGO_ALLOWED_HOSTS  domaines autorisés, séparés par des virgules
   SITE_ROOT             dossier public du site (ex. /home/<compte>/public_html)
   DJANGO_DEBUG          1 uniquement sur votre ordinateur, jamais en ligne
+
+Paiement en ligne (Stripe Checkout, voir LISEZ-MOI.md) :
+
+  STRIPE_SECRET_KEY       clé secrète Stripe (sk_… ou clé restreinte rk_…) ; vide = paiement désactivé
+  STRIPE_WEBHOOK_SECRET   secret de signature du webhook (whsec_…)
+  COMMANDES_DESTINATAIRE  adresse prévenue à chaque commande payée
+  COMMANDES_EXPEDITEUR    expéditeur de cet e-mail (adresse du domaine du site)
 """
 import os
 from pathlib import Path
@@ -122,9 +129,21 @@ USE_I18N = True
 USE_TZ = True
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
+# ---------- Paiement en ligne (Stripe) ----------
+STRIPE_SECRET_KEY = os.environ.get("STRIPE_SECRET_KEY", "")
+STRIPE_WEBHOOK_SECRET = os.environ.get("STRIPE_WEBHOOK_SECRET", "")
+COMMANDES_DESTINATAIRE = os.environ.get("COMMANDES_DESTINATAIRE", "biboulab@outlook.fr")
+COMMANDES_EXPEDITEUR = os.environ.get("COMMANDES_EXPEDITEUR", "no-reply@biboulab.fr")
+# En ligne, les e-mails partent par le sendmail d'O2switch ; en local, ils s'affichent dans le terminal.
+EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend" if DEBUG else "gestion.courriel.SendmailBackend"
+SENDMAIL = os.environ.get("SENDMAIL", "/usr/sbin/sendmail")
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
-    "loggers": {"axes": {"handlers": ["console"], "level": "WARNING"}},
+    "loggers": {
+        "axes": {"handlers": ["console"], "level": "WARNING"},
+        "gestion": {"handlers": ["console"], "level": "INFO"},
+    },
 }
