@@ -343,8 +343,8 @@
             <div class="zoom" id="zoom">${media(p, 0, true)}</div>
             <div class="thumbs" role="group" aria-label="Vues du produit">
               ${Array.from({ length: views }, (_, i) => `<button class="thumb" type="button" data-v="${i}" aria-pressed="${i === 0}" aria-label="Afficher la vue ${i + 1}">${media(p, i)}</button>`).join("")}
-              ${p.model3d ? `<button class="thumb" type="button" data-v="3d" aria-pressed="false" aria-label="Afficher le modèle 3D interactif" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</button>` : ""}
-              ${p.makerworld ? `<a class="thumb thumb-link" href="${esc(p.makerworld)}" ${extAttrs} aria-label="Voir le modèle en 3D sur MakerWorld (nouvel onglet)" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</a>` : ""}
+              ${/^https?:\/\//i.test(p.model3d || "") ? `<a class="thumb thumb-link" href="${esc(p.model3d)}" ${extAttrs} aria-label="Ouvrir la visionneuse 3D (nouvel onglet)" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</a>`
+                : p.model3d ? `<button class="thumb" type="button" data-v="3d" aria-pressed="false" aria-label="Afficher le modèle 3D interactif" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</button>` : ""}
             </div>
           </div>
 
