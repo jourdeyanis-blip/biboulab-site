@@ -18,7 +18,7 @@ const SITE = {
   /* Boutiques externes — affichées dans le menu, le pied de page,
      l'accueil et chaque fiche produit. */
   stores: [
-    { id: "makerworld", name: "MakerWorld", url: "https://makerworld.com/fr/@Honjou",
+    { id: "makerworld", name: "MakerWorld", url: "https://makerworld.com/fr",
       color: "#00AE42", mono: "MW", logo: "", tagline: "Mes modèles à imprimer chez vous" },
     { id: "cults3d",    name: "Cults3D",    url: "https://cults3d.com/fr/users/yanou14/creations",
       color: "#A855F7", mono: "C3D", logo: "", tagline: "Mes fichiers STL et créations" }
