@@ -7,9 +7,6 @@ from pathlib import Path
 from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import Client, TestCase, override_settings
-from django_otp.oath import totp
-from django_otp.plugins.otp_static.models import StaticDevice, StaticToken
-from django_otp.plugins.otp_totp.models import TOTPDevice
 
 HOTE = {"HTTP_HOST": "www.biboulab.fr", "HTTP_ORIGIN": "https://www.biboulab.fr", "secure": True}   # les navigateurs envoient Origin sur un POST
 CATALOGUE = {
@@ -26,17 +23,11 @@ class AdminTests(TestCase):
         self.override = override_settings(SITE_ROOT=self.site, SECURE_SSL_REDIRECT=False)
         self.override.enable()
         self.user = get_user_model().objects.create_user("gerant", password="Un-mot-de-passe-solide-42", is_staff=True)
-        self.totp = TOTPDevice.objects.create(user=self.user, name="App", confirmed=True)
-        secours = StaticDevice.objects.create(user=self.user, name="Secours", confirmed=True)
-        StaticToken.objects.create(device=secours, token="ABCDEFGHJKLM")
         self.c = Client(enforce_csrf_checks=True)
 
     def tearDown(self):
         self.override.disable()
         shutil.rmtree(self.site)
-
-    def code(self):
-        return str(totp(self.totp.bin_key, step=self.totp.step, t0=self.totp.t0, digits=self.totp.digits)).zfill(6)
 
     def csrf(self):
         r = self.c.get("/connexion/", **HOTE)
@@ -46,8 +37,8 @@ class AdminTests(TestCase):
         """Jeton CSRF injecté dans le panneau (après connexion)."""
         return self.c.get("/", **HOTE).content.decode().split('"csrf": "')[1].split('"')[0]
 
-    def connecter(self, mdp="Un-mot-de-passe-solide-42", code=None):
-        return self.c.post("/connexion/", {"csrfmiddlewaretoken": self.csrf(), "identifiant": "gerant", "mdp": mdp, "code": code or self.code()}, **HOTE)
+    def connecter(self, mdp="Un-mot-de-passe-solide-42"):
+        return self.c.post("/connexion/", {"csrfmiddlewaretoken": self.csrf(), "identifiant": "gerant", "mdp": mdp}, **HOTE)
 
     def test_panneau_inaccessible_sans_connexion(self):
         r = self.c.get("/", **HOTE)
@@ -55,8 +46,8 @@ class AdminTests(TestCase):
         r = self.c.post("/api/sauver/", data="{}", content_type="application/json", **HOTE)
         self.assertIn(r.status_code, (401, 403))
 
-    def test_mot_de_passe_seul_ne_suffit_pas(self):
-        r = self.connecter(code="000000")
+    def test_mauvais_mot_de_passe_refuse(self):
+        r = self.connecter(mdp="faux")
         self.assertEqual(r.status_code, 401)
         self.assertEqual(self.c.get("/", **HOTE).status_code, 302)
 
@@ -73,19 +64,10 @@ class AdminTests(TestCase):
         self.assertTrue(cookie["secure"] and cookie["httponly"])
         self.assertEqual(cookie["samesite"], "Strict")
 
-    def test_code_deja_utilise_refuse(self):
-        code = self.code()
-        self.connecter(code=code)
+    def test_deconnexion(self):
+        self.connecter()
         self.assertEqual(self.c.post("/api/deconnexion/", HTTP_X_CSRFTOKEN=self.jeton(), **HOTE).status_code, 200)
         self.assertEqual(self.c.get("/", **HOTE).status_code, 302)
-        self.c = Client(enforce_csrf_checks=True)
-        r = self.connecter(code=code)
-        self.assertEqual(r.status_code, 401)
-
-    def test_code_de_secours_usage_unique(self):
-        self.assertEqual(self.connecter(code="abcd-efgh-jklm").status_code, 302)
-        self.c = Client(enforce_csrf_checks=True)
-        self.assertEqual(self.connecter(code="ABCD-EFGH-JKLM").status_code, 401)
 
     def test_blocage_apres_5_echecs(self):
         for _ in range(5):

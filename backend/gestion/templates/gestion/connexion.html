@@ -11,13 +11,12 @@
 <body style="display:grid;place-items:center;min-height:100vh;padding:24px">
   <main class="panel" style="width:100%;max-width:420px;padding:32px">
     <h1 style="font-size:1.5rem;margin-bottom:8px">Administration</h1>
-    <p class="muted" style="margin-bottom:24px">Accès réservé. Identifiant, mot de passe et code de votre application d'authentification.</p>
+    <p class="muted" style="margin-bottom:24px">Accès réservé. Identifiant et mot de passe.</p>
     {% if erreur %}<p role="alert" style="color:var(--err);margin-bottom:16px">{{ erreur }}</p>{% endif %}
     <form class="form" method="post" action="{% url 'connexion' %}" autocomplete="off" style="grid-template-columns:1fr">
       {% csrf_token %}
       <div class="fg"><label for="identifiant">Identifiant</label><input class="input" id="identifiant" name="identifiant" required autocomplete="username" autocapitalize="none" spellcheck="false" maxlength="150"></div>
       <div class="fg"><label for="mdp">Mot de passe</label><input class="input" id="mdp" name="mdp" type="password" required autocomplete="current-password"></div>
-      <div class="fg"><label for="code">Code à 6 chiffres <span class="muted">(ou code de secours)</span></label><input class="input" id="code" name="code" required inputmode="numeric" autocomplete="one-time-code" spellcheck="false" maxlength="32"></div>
       <div><button class="btn btn-primary" type="submit">Se connecter</button></div>
     </form>
   </main>

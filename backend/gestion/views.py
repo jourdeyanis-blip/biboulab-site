@@ -1,4 +1,4 @@
-"""Administration en ligne : connexion forte (mot de passe + code à usage unique) et actions du panneau."""
+"""Administration en ligne : connexion (identifiant + mot de passe) et actions du panneau."""
 import json
 import re
 import secrets
@@ -7,29 +7,26 @@ from functools import wraps
 
 from django.conf import settings
 from django.contrib.auth import authenticate, login, logout
-from django.contrib.auth.signals import user_login_failed
 from django.http import HttpResponse, JsonResponse
 from django.middleware.csrf import get_token
 from django.shortcuts import redirect, render
 from django.urls import reverse
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
-from django_otp import login as otp_login
-from django_otp import match_token
 
 from .catalogue import Invalide, enregistrer, enregistrer_photo
 from .securite import csp
 
-ERREUR = "Identifiant, mot de passe ou code incorrect."
+ERREUR = "Identifiant ou mot de passe incorrect."
 BLOQUE = "Trop de tentatives. Réessayez dans 15 minutes."
 
 
 def _verifie(user) -> bool:
-    return user.is_authenticated and user.is_active and user.is_staff and user.is_verified()
+    return user.is_authenticated and user.is_active and user.is_staff
 
 
 def admin_requis(api=False):
-    """Accès réservé : session ouverte AVEC le second facteur validé."""
+    """Accès réservé à un compte d'administration connecté."""
     def deco(vue):
         @wraps(vue)
         def enveloppe(request, *args, **kwargs):
@@ -48,7 +45,7 @@ def bloque(request, credentials, *args, **kwargs):
     return render(request, "gestion/connexion.html", {"erreur": BLOQUE}, status=429)
 
 
-@sensitive_post_parameters("mdp", "code")
+@sensitive_post_parameters("mdp")
 @require_http_methods(["GET", "POST"])
 def connexion(request):
     if _verifie(request.user):
@@ -57,22 +54,14 @@ def connexion(request):
     if request.method == "POST":
         identifiant = request.POST.get("identifiant", "")[:150]
         mdp = request.POST.get("mdp", "")[:1024]
-        code = re.sub(r"[\s-]+", "", request.POST.get("code", "")).upper()[:32]   # « ABCD-EFGH-JKLM » accepté
 
         user = authenticate(request, username=identifiant, password=mdp)
         if getattr(request, "axes_locked_out", False):
             return bloque(request, None)
         if user is not None and user.is_active and user.is_staff:
-            appareil = match_token(user, code) if code else None   # code TOTP ou code de secours
-            if appareil is not None:
-                login(request, user)            # nouvel identifiant de session (anti-fixation)
-                otp_login(request, appareil)
-                request.session["debut"] = time.time()
-                return redirect("panneau")
-            # Mot de passe juste mais code faux : compte comme un échec pour le blocage.
-            user_login_failed.send(sender=__name__, credentials={"username": identifiant}, request=request)
-            if getattr(request, "axes_locked_out", False):
-                return bloque(request, None)
+            login(request, user)            # nouvel identifiant de session (anti-fixation)
+            request.session["debut"] = time.time()
+            return redirect("panneau")
         time.sleep(0.5 + secrets.randbelow(700) / 1000)   # ralentit les essais en série
         erreur = ERREUR
     return render(request, "gestion/connexion.html", {"erreur": erreur}, status=401 if erreur else 200)

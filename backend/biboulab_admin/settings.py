@@ -37,9 +37,6 @@ INSTALLED_APPS = [
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
-    "django_otp",
-    "django_otp.plugins.otp_totp",
-    "django_otp.plugins.otp_static",
     "axes",
     "gestion",
 ]
@@ -50,7 +47,6 @@ MIDDLEWARE = [
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
-    "django_otp.middleware.OTPMiddleware",
     "gestion.securite.SecuriteMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
     "axes.middleware.AxesMiddleware",   # en dernier, comme le demande django-axes
@@ -94,9 +90,6 @@ AXES_LOCKOUT_PARAMETERS = ["ip_address", ["username", "ip_address"]]
 AXES_RESET_ON_SUCCESS = True
 AXES_LOCKOUT_CALLABLE = "gestion.views.bloque"
 AXES_IPWARE_META_PRECEDENCE_ORDER = ["REMOTE_ADDR"]   # ne pas croire X-Forwarded-For
-
-# ---------- Second facteur (django-otp) ----------
-OTP_TOTP_ISSUER = "Biboulab"                 # nom affiché dans l'application d'authentification
 
 # ---------- Session ----------
 SESSION_COOKIE_NAME = "bbadm" if DEBUG else "__Host-bbadm"   # « __Host- » : HTTPS, sans domaine, chemin /

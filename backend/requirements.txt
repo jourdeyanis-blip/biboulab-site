@@ -1,6 +1,4 @@
 # Administration en ligne de Biboulab (Django)
 Django>=5.2,<5.3          # version LTS
-django-otp>=1.5,<2        # codes à usage unique (TOTP) + codes de secours
 django-axes>=7,<9         # blocage après plusieurs échecs de connexion
 argon2-cffi>=23           # hachage des mots de passe (Argon2id)
-qrcode>=7.4,<9            # QR code affiché dans le terminal à la création du compte

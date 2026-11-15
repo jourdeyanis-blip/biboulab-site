@@ -6,7 +6,7 @@
    La page de gestion enregistre directement dans assets/js/data.js.
    Elle ne fonctionne que sur cet ordinateur. L'administration du site en
    ligne utilise la même page, servie par l'application Django du dossier
-   backend/ (mot de passe + code à usage unique).                    */
+   backend/ (identifiant + mot de passe).                            */
 const http = require("http"), fs = require("fs"), path = require("path"), vm = require("vm");
 const { execFile } = require("child_process");
 const root = path.join(__dirname, "..");

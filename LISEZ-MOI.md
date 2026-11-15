@@ -28,13 +28,12 @@ node outils/serveur-local.js
 
 Cette version locale enregistre dans `data.js` sur votre ordinateur. Pour gérer le catalogue directement sur le site en ligne, voir la section suivante.
 
-## Administration en ligne (Django, connexion forte)
+## Administration en ligne (Django)
 
 La même page de gestion est disponible sur **https://www.biboulab.fr/admin/** (et https://pprod.biboulab.fr/admin/). Elle est servie par une petite application Django (dossier `backend/`) qui tourne chez O2switch, à côté du site.
 
 **Sécurité de la connexion**
-- Trois éléments obligatoires : identifiant, mot de passe (12 caractères minimum, haché en Argon2id) et **code à 6 chiffres** d'une application d'authentification (Google Authenticator, Microsoft Authenticator, Aegis, 1Password…). Un code ne sert qu'une fois.
-- 10 **codes de secours** à usage unique, si le téléphone est perdu.
+- Connexion par identifiant et mot de passe (12 caractères minimum, haché en Argon2id). Choisissez un mot de passe long et unique, utilisé nulle part ailleurs.
 - **Blocage 15 minutes après 5 échecs** (par adresse IP), même avec le bon mot de passe ensuite.
 - Session : HTTPS obligatoire, cookie `__Host-` (Secure, HttpOnly, SameSite=Strict), déconnexion après 1 h sans action et au plus 8 h après la connexion.
 - Protection CSRF sur chaque enregistrement, politique de sécurité du contenu (CSP) stricte, page non indexable, interdite dans une iframe.
@@ -71,7 +70,7 @@ La même page de gestion est disponible sur **https://www.biboulab.fr/admin/** (
    python manage.py creer_admin
    ```
 
-   `creer_admin` demande l'identifiant et le mot de passe, puis affiche un **QR code à scanner** avec l'application d'authentification et les **10 codes de secours** : notez-les hors ligne, ils ne seront plus jamais affichés.
+   `creer_admin` demande l'identifiant et le mot de passe du compte.
 
 4. Cliquez sur **Restart** dans Setup Python App, puis ouvrez https://www.biboulab.fr/admin/.
 
@@ -82,7 +81,7 @@ cd ~/biboulab && git pull && cd backend && pip install -r requirements.txt && py
 ```
 
 **En cas de problème**
-- Téléphone perdu : connectez-vous avec un code de secours, puis relancez `python manage.py creer_admin` (nouveau QR code, nouveaux codes de secours, les anciens sont révoqués).
+- Mot de passe oublié, ou à changer : relancez `python manage.py creer_admin` avec le même identifiant.
 - Compte bloqué après des erreurs : attendez 15 minutes, ou `python manage.py axes_reset`.
 - Boucle de redirection à l'ouverture de `/admin/` : ajoutez la variable `DJANGO_SSL_REDIRECT=0` (Apache impose déjà le HTTPS).
 - Tests automatiques : `DJANGO_SECRET_KEY=test python manage.py test`.
