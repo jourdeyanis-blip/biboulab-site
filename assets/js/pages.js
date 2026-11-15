@@ -383,6 +383,8 @@
 
             <div class="p-desc"><h2>Description détaillée</h2><p>${esc(p.description)}</p></div>
 
+            ${p.makerworld ? `<p class="view3d"><a class="btn btn-ghost" href="${esc(p.makerworld)}" ${extAttrs}>${icon("cube")}Voir en 3D sur MakerWorld<span class="sr"> (nouvel onglet)</span></a></p>` : ""}
+
             ${(() => {
               const links = SITE.stores.filter((s) => p[s.id]);
               return links.length ? `<p class="also">Aussi disponible sur

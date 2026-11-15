@@ -409,6 +409,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .store-btn:hover > .ic { transform: translate(3px, -3px); }
 @media (max-width: 900px) { .ext-block { grid-template-columns: 1fr; } }
 @media (max-width: 560px) { .ext-btns { grid-template-columns: 1fr; } }
+.view3d { margin-top: 16px; }
+.view3d .btn svg { width: 18px; height: 18px; }
 .also { display: flex; flex-wrap: wrap; align-items: center; gap: 12px; font-size: .88rem; color: var(--muted); padding-top: 20px; margin-top: 24px; border-top: 1px solid var(--line); }
 .also a { display: inline-flex; align-items: center; gap: 8px; padding: 4px 12px 4px 4px; border: 1px solid var(--line); border-radius: 8px; font-weight: 500; color: var(--text); transition: border-color .18s var(--ease), background-color .18s var(--ease); }
 .also a:hover { border-color: var(--line-2); background: var(--surface-2); }
