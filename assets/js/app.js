@@ -71,6 +71,9 @@
       if (found) found.qty = Math.min(99, found.qty + qty); else items.push({ id, color, size, qty });
       this.write(items);
     },
+    /* Position et quantité d'une variante (produit + couleur + taille) dans le panier */
+    find(id, { color = null, size = null } = {}) { return this.read().findIndex((i) => i.id === id && i.color === color && i.size === size); },
+    qtyOf(id, opts) { const i = this.read()[this.find(id, opts)]; return i ? i.qty : 0; },
     setQty(index, qty) { const items = this.read(); if (!items[index]) return; if (qty < 1) items.splice(index, 1); else items[index].qty = Math.min(99, qty); this.write(items); },
     clear() { this.write([]); },
     /* Lignes enrichies : produit, prix unitaire (taille comprise), total */
@@ -111,7 +114,49 @@
     setTimeout(() => { t.classList.add("out"); setTimeout(() => t.remove(), 400); }, 3200);
   }
 
+  /* ---------- Confirmation avant de retirer un article ---------- */
+  function confirmRemove(name) {
+    return new Promise((resolve) => {
+      const prev = document.activeElement;
+      const m = document.createElement("div"); m.className = "modal";
+      m.innerHTML = `<div class="modal-box" role="alertdialog" aria-modal="true" aria-labelledby="modal-t" aria-describedby="modal-d">
+        <h2 id="modal-t">Retirer cet article ?</h2>
+        <p id="modal-d"><b>${esc(name)}</b> va être retiré de votre panier.</p>
+        <div class="modal-actions"><button class="btn btn-ghost" type="button" data-ok="0">Annuler</button><button class="btn btn-primary" type="button" data-ok="1">Retirer du panier</button></div>
+      </div>`;
+      document.body.append(m);
+      const btns = $$("button", m);
+      const close = (ok) => { document.removeEventListener("keydown", onKey, true); m.remove(); if (prev && prev.isConnected) prev.focus(); resolve(ok); };
+      const onKey = (e) => {
+        if (e.key === "Escape") { e.preventDefault(); close(false); }
+        else if (e.key === "Tab") { e.preventDefault(); btns[(btns.indexOf(document.activeElement) + (e.shiftKey ? -1 : 1) + btns.length) % btns.length].focus(); }
+      };
+      document.addEventListener("keydown", onKey, true);
+      m.addEventListener("click", (e) => { const b = e.target.closest("[data-ok]"); if (b) close(b.dataset.ok === "1"); else if (e.target === m) close(false); });
+      btns[1].focus();
+    });
+  }
+  /* Modifie la quantité d'une variante déjà au panier ; arrivé à 0, on demande confirmation avant de la retirer */
+  async function stepQty(p, opts, delta) {
+    const line = Cart.read()[Cart.find(p.id, opts)]; if (!line) return;
+    const q = line.qty + delta;
+    if (q < 1 && !(await confirmRemove(p.name))) return;
+    Cart.setQty(Cart.find(p.id, opts), q);
+    if (q < 1) toast(`${esc(p.name)} retiré du panier`);
+  }
+  const qtyHTML = (n, label) => `<div class="qty" role="group" aria-label="${label}">
+    <button type="button" data-step="-1" aria-label="Diminuer la quantité">${icon("minus")}</button>
+    <output>${n}</output>
+    <button type="button" data-step="1" aria-label="Augmenter la quantité">${icon("plus")}</button></div>`;
+
   /* ---------- Carte produit ---------- */
+  const defOpts = (p) => ({ color: p.colors[0] || null, size: p.sizes[0] ? p.sizes[0].label : null });
+  /* Bouton « + » tant que l'article n'est pas au panier, sinon sélecteur − quantité + */
+  function cardCtl(p) {
+    const n = Cart.qtyOf(p.id, defOpts(p));
+    return n ? qtyHTML(n, `Quantité de ${esc(p.name)} dans le panier`)
+      : `<button class="card-add" type="button" data-add="${p.id}" aria-label="Ajouter ${esc(p.name)} au panier">${icon("plus")}</button>`;
+  }
   function card(p, i = 0) {
     const c = cat(p.category);
     const badge = p.badge === "new" ? '<span class="badge new">Nouveau</span>' : p.badge === "best" ? '<span class="badge best">Best-seller</span>' : "";
@@ -125,20 +170,33 @@
             <p class="card-price">${p.sizes.length ? "<small>dès </small>" : ""}${euro(p.price)}</p>
           </div>
         </a>
-        <button class="card-add" type="button" data-add="${p.id}" aria-label="Ajouter ${esc(p.name)} au panier">${icon("plus")}</button>
+        <div class="card-ctl" data-ctl="${p.id}">${cardCtl(p)}</div>
         <span class="glare" aria-hidden="true"></span>
       </article>
     </div>`;
   }
   /* Ajout rapide depuis une carte (options par défaut) */
   document.addEventListener("click", (e) => {
-    const b = e.target.closest("[data-add]"); if (!b) return;
-    const p = product(b.dataset.add); if (!p) return;
-    Cart.add(p.id, { color: p.colors[0] || null, size: p.sizes[0] ? p.sizes[0].label : null });
-    b.classList.add("ok"); b.innerHTML = icon("check"); flyToCart(b);
-    toast(`${esc(p.name)} ajouté · <a href="panier.html">Voir le panier</a>`);
-    setTimeout(() => { b.classList.remove("ok"); b.innerHTML = icon("plus"); }, 1400);
+    const b = e.target.closest("[data-add]");
+    if (b) {
+      const p = product(b.dataset.add); if (!p) return;
+      flyToCart(b); Cart.add(p.id, defOpts(p));
+      toast(`${esc(p.name)} ajouté · <a href="panier.html">Voir le panier</a>`);
+      return;
+    }
+    const s = e.target.closest(".card-ctl [data-step]"); if (!s) return;
+    const p = product(s.closest("[data-ctl]").dataset.ctl); if (p) stepQty(p, defOpts(p), +s.dataset.step);
   });
+  /* Les cartes suivent le panier : quantité à jour, retour au bouton « + » une fois l'article retiré */
+  document.addEventListener("cart:change", () => $$("[data-ctl]").forEach((el) => {
+    const p = product(el.dataset.ctl); if (!p) return;
+    const n = Cart.qtyOf(p.id, defOpts(p)), out = $("output", el);
+    if (n && out) { out.textContent = n; return; }
+    if (!n && !out) return;
+    const focused = el.contains(document.activeElement);
+    el.innerHTML = cardCtl(p);
+    if (focused) $('[data-step="1"], [data-add]', el).focus();
+  }));
 
   /* ---------- En-tête & pied de page ---------- */
   function logoHTML() {
@@ -376,7 +434,7 @@
   }
 
   /* ---------- API partagée avec pages.js ---------- */
-  window.UI = { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, art, media, card, storeLogo, extAttrs, Cart, toast, flyToCart, enhance, jsonLd, setMeta, RM, FINE, consent: () => store.get("gforge-cookies") };
+  window.UI = { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, art, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM, FINE, consent: () => store.get("gforge-cookies") };
 
   /* ---------- Démarrage ---------- */
   initEntrance();

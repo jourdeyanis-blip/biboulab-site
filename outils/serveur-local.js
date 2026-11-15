@@ -5,8 +5,9 @@
 
    La page de gestion enregistre directement dans assets/js/data.js
    (et recopie titres et descriptions des pages légales dans leur HTML).
-   Elle ne fonctionne que sur cet ordinateur : rien de tout cela n'existe
-   sur le site en ligne.                                                  */
+   Elle ne fonctionne que sur cet ordinateur. L'administration du site en
+   ligne utilise la même page, servie par l'application Django du dossier
+   backend/ (identifiant + mot de passe), qui écrit catalogue.js et contenu.js. */
 const http = require("http"), fs = require("fs"), path = require("path"), vm = require("vm");
 const { execFile } = require("child_process");
 const root = path.join(__dirname, "..");

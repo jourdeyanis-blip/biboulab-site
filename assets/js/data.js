@@ -12,13 +12,13 @@ const SITE = {
   name: "Biboulab",
   slogan: "Du fichier à l'objet, imprimé avec passion",
   url: "https://www.biboulab.fr",                 // (sert au sitemap et au SEO)
-  email: "contact@votre-domaine.fr",              // ⚠️ À REMPLACER
+  email: "biboulab@outlook.fr",
   logo: "",                                       // chemin d'une image de logo (ex. "assets/img/logo.svg"). Vide = logotype texte animé
 
   /* Boutiques externes — affichées dans le menu, le pied de page,
      l'accueil et chaque fiche produit. */
   stores: [
-    { id: "makerworld", name: "MakerWorld", url: "https://makerworld.com/fr/@Honjou",
+    { id: "makerworld", name: "MakerWorld", url: "https://makerworld.com/fr",
       color: "#00AE42", mono: "MW", logo: "", tagline: "Mes modèles à imprimer chez vous" },
     { id: "cults3d",    name: "Cults3D",    url: "https://cults3d.com/fr/users/yanou14/creations",
       color: "#A855F7", mono: "C3D", logo: "", tagline: "Mes fichiers STL et créations" }
@@ -55,11 +55,15 @@ const SITE = {
   },
 
   /* Paiement.
-     mode "email" : la commande est envoyée par e-mail et vous renvoyez un lien de
-     paiement (fonctionne tout de suite, sans abonnement ni serveur).
-     Voir LISEZ-MOI.md pour brancher Stripe ou PayPal ensuite. */
+     mode "stripe" : le client paie en ligne sur la page sécurisée de Stripe (carte,
+       Apple Pay, Google Pay… selon les réglages du Dashboard Stripe). Nécessite
+       l'administration en ligne (backend/) configurée avec les clés Stripe : voir
+       LISEZ-MOI.md, « Paiement en ligne (Stripe) ».
+     mode "email"  : la commande est envoyée par e-mail et vous renvoyez un lien de
+       paiement (sans serveur). La liste "methods" ne sert que dans ce mode. */
   payment: {
-    mode: "email",
+    mode: "stripe",
+    endpoint: "/admin/paiement/",   // adresse de l'administration en ligne (Django)
     methods: [
       { id: "lien",     label: "Lien de paiement sécurisé (carte bancaire)", note: "Envoyé par e-mail après validation de la commande" },
       { id: "paypal",   label: "PayPal",                                    note: "Demande de paiement envoyée par e-mail" },
@@ -67,9 +71,10 @@ const SITE = {
     ]
   },
 
-  /* Formulaire de contact : collez ici l'adresse d'un service de formulaires
-     (ex. Formspree). Vide = le message s'ouvre dans la messagerie du visiteur. */
-  formEndpoint: "",
+  /* Formulaire de contact : adresse qui reçoit le formulaire et l'envoie par
+     e-mail à l'entreprise (envoyer-contact.php, fourni avec le site).
+     Vide = le message s'ouvre dans la messagerie du visiteur. */
+  formEndpoint: "envoyer-contact.php",
 
   /* true = affiche les petites mentions "contenu d'exemple" (avis, chiffres).
      Passez à false quand vos vrais contenus sont en place. */
@@ -165,6 +170,14 @@ const PRODUCTS = [
     description: "Facettes nettes, base conique qui s'adapte à toutes les cimes. Compatible avec une petite guirlande LED glissée à l'intérieur.",
     colors: ["or", "blanc", "rouge"], sizes: [],
     material: "PLA soie", printTime: "3 h", dimensions: "16 × 16 × 5 cm", weight: "38 g", images: [], model3d: "" },
+  /* ⚠️ À COMPLÉTER : prix, couleurs, tailles, matière, temps, dimensions et poids sont
+     provisoires (la page MakerWorld n'a pas pu être lue). Vérifiez-les sur le modèle réel. */
+  { id: "bol-bonhomme-de-neige", name: "Bol Bonhomme de neige", category: "noel", price: 12.9, badge: "new", popularity: 70, date: "2026-11-15",
+    short: "Un bol en forme de bonhomme de neige, pour grignoter en mode hiver.",
+    description: "Un bol imprimé en 3D sur le thème du bonhomme de neige : sourire, nez carotte et petit air de fête. Parfait pour servir des bonbons, des chocolats ou des mandarines sur la table de Noël, ou comme vide-poche déco. Modèle conçu pour une impression nette et facile à nettoyer à la main. Non adapté au lave-vaisselle, au micro-ondes ni au contact alimentaire direct : utilisez un papier ou un sachet pour les aliments non emballés.",
+    colors: ["blanc", "rouge", "bleu"], sizes: [],
+    material: "PLA", printTime: "À confirmer", dimensions: "À confirmer", weight: "À confirmer", images: [], model3d: "",
+    makerworld: "https://makerworld.com/fr/models/1963222-snowman-bowl" },
 
   /* ----- Figurine ----- */
   { id: "dragon-articule", name: "Dragon articulé", category: "figurine", price: 18.9, badge: "best", popularity: 99, date: "2026-08-14",
@@ -407,6 +420,14 @@ const PAGES = {
 };
 
 /* ---------- Export (ne pas modifier) ---------- */
-const SHOP = { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT, PAGES };
+/* Si l'administration en ligne a enregistré un catalogue (assets/js/catalogue.js) ou des
+   contenus (assets/js/contenu.js : réglages, pages, couleurs, avis), ils remplacent ceux-ci. */
+const LIVE = typeof window !== "undefined" && window.CATALOGUE && window.CATALOGUE.categories && window.CATALOGUE.products ? window.CATALOGUE : null;
+const LIVE_C = typeof window !== "undefined" && window.CONTENU && typeof window.CONTENU === "object" ? window.CONTENU : {};
+const SHOP = {
+  SITE: LIVE_C.site || SITE, FILAMENTS: LIVE_C.filaments || FILAMENTS,
+  CATEGORIES: LIVE ? LIVE.categories : CATEGORIES, PRODUCTS: LIVE ? LIVE.products : PRODUCTS,
+  REVIEWS: LIVE_C.reviews || REVIEWS, ABOUT: LIVE_C.about || ABOUT, PAGES: LIVE_C.pages || PAGES
+};
 if (typeof window !== "undefined") window.SHOP = SHOP;
 if (typeof module !== "undefined") module.exports = SHOP;

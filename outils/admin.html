@@ -5,7 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="robots" content="noindex, nofollow">
   <title>Administration | Biboulab</title>
-  <!-- Page de gestion (catalogue, pages, réglages) : fonctionne uniquement avec  node outils/serveur-local.js  (http://localhost:4173/admin) -->
+  <!-- Page de gestion (catalogue, pages, réglages). En local : node outils/serveur-local.js puis http://localhost:4173/admin
+       En ligne : servie par l'application Django (backend/) sur /admin/, après connexion (identifiant + mot de passe). -->
   <script>try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"}catch(e){document.documentElement.dataset.theme="dark"}</script>
   <link rel="stylesheet" href="../assets/css/style.css">
   <link rel="icon" href="../assets/img/favicon.svg" type="image/svg+xml">
@@ -161,7 +162,9 @@
     </nav>
     <span class="sub" id="counts"></span>
     <p class="a-status" id="status" role="status"><i></i><span></span></p>
+    <a class="btn btn-ghost" id="emails" href="emails/" hidden>E-mails de commande</a>
     <button class="btn btn-primary" type="button" id="save" disabled>Enregistrer</button>
+    <button class="btn btn-ghost" type="button" id="logout" hidden>Se déconnecter</button>
   </header>
   <div class="a-warn" id="warn" hidden>
     L'enregistrement n'est pas disponible ici. Lancez <code>node outils/serveur-local.js</code> dans le dossier du site, puis ouvrez <code>http://localhost:4173/admin</code>
@@ -174,6 +177,8 @@
     <main class="a-main" id="main"></main>
   </div>
 
+  <script src="../assets/js/catalogue.js"></script>
+  <script src="../assets/js/contenu.js"></script>
   <script src="../assets/js/data.js"></script>
   <script src="../assets/js/icons.js"></script>
   <script src="../assets/js/rich.js"></script>
@@ -194,6 +199,16 @@
     const slugify = (s) => String(s).normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "");
     const today = () => new Date().toISOString().slice(0, 10);
     const ID = /^[a-z0-9]+(?:-[a-z0-9]+)*$/;
+
+    /* En ligne (Django, /admin/) : appels vers api/<action>/ avec le jeton CSRF de la session.
+       En local (serveur-local.js) : appels vers /api/<action>                                 */
+    const ONLINE = window.ADMIN_ONLINE || null;
+    const call = (action, init = {}, query = "") => {
+      const headers = { ...(init.headers || {}) };
+      if (ONLINE) { headers["X-CSRFToken"] = ONLINE.csrf; return fetch(`${ONLINE.api || "api/"}${action}/${query ? "?" + query.slice(1) : ""}`, { ...init, headers, credentials: "same-origin" }); }
+      headers["X-Biboulab-Admin"] = "1";
+      return fetch(`/api/${action}${query ? "?" + query.slice(1) : ""}`, { ...init, headers });
+    };
 
     const st = {
       sel: null,           // catégorie ou objet affiché à droite
@@ -505,7 +520,7 @@
           cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
           const blob = await new Promise((ok) => cv.toBlob(ok, "image/webp", 0.86));
           const name = `${p.id}-${Date.now().toString(36)}.${blob.type === "image/webp" ? "webp" : "png"}`;
-          const r = await fetch(`/api/photo?nom=${encodeURIComponent(name)}`, { method: "POST", headers: { "X-Biboulab-Admin": "1", "Content-Type": "application/octet-stream" }, body: blob });
+          const r = await call("photo", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: blob }, `&nom=${encodeURIComponent(name)}`);
           const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
           p.images.push(out.chemin);
         }
@@ -585,7 +600,7 @@
             { k: "logo", label: "Logo", type: "photo", folder: "atelier", hint: "Vide : le nom de la boutique est affiché en logotype animé" }
           ] },
           { title: "Formulaire de contact", fields: [
-            { k: "formEndpoint", label: "Adresse du service de formulaires", opt: 1, full: 1, ph: "https://formspree.io/f/…", hint: "Vide : le message s'ouvre dans la messagerie du visiteur" }
+            { k: "formEndpoint", label: "Adresse d'envoi du formulaire", opt: 1, full: 1, ph: "envoyer-contact.php", hint: "envoyer-contact.php : envoi direct par e-mail depuis le site. Vide : le message s'ouvre dans la messagerie du visiteur" }
           ] },
           { title: "Mode démonstration", fields: [
             { k: "demo", type: "check", label: "Afficher les mentions « contenu d'exemple » et surligner les informations légales à remplacer", hint: "Décochez quand vos vrais contenus sont en place" }
@@ -832,7 +847,7 @@
         cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
         const blob = await new Promise((ok) => cv.toBlob(ok, "image/webp", 0.86));
         const name = `${slugify(file.name.replace(/\.\w+$/, "")) || "image"}-${Date.now().toString(36)}.${blob.type === "image/webp" ? "webp" : "png"}`;
-        const r = await fetch(`/api/photo?dossier=${encodeURIComponent(upTo.folder)}&nom=${encodeURIComponent(name)}`, { method: "POST", headers: { "X-Biboulab-Admin": "1", "Content-Type": "application/octet-stream" }, body: blob });
+        const r = await call("photo", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: blob }, `&dossier=${encodeURIComponent(upTo.folder)}&nom=${encodeURIComponent(name)}`);
         const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
         setP(upTo.p, out.chemin); touch(); panelForm();
       } catch (err) { status("bad", err.message || "Envoi de l'image impossible"); }
@@ -926,7 +941,7 @@
       st.prods.forEach((p) => { p.images = p.images.filter(Boolean); p.popularity = Math.max(0, Math.min(100, Math.round(p.popularity || 0))); });
       $("#save").disabled = true; status("dirty", "Enregistrement");
       try {
-        const r = await fetch("/api/sauver", { method: "POST", headers: { "Content-Type": "application/json", "X-Biboulab-Admin": "1" }, body: JSON.stringify({ categories: st.cats, products: st.prods, ...contentPayload() }) });
+        const r = await call("sauver", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify({ categories: st.cats, products: st.prods, ...contentPayload() }) });
         const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
         st.dirty = false; st.fresh.clear(); st.manualId.clear();
         status("saved", `Enregistré à ${new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" })}`);
@@ -942,7 +957,10 @@
     /* ---------- Démarrage (l'adresse #pages/cgv rouvre directement un panneau) ---------- */
     { const [m, pn] = location.hash.slice(1).split("/"); if (m === "pages" || m === "site") setMode(m, pn); else render(); }
     status("", "Aucune modification");
-    fetch("/api/etat").then((r) => r.json()).then((o) => { st.canSave = !!o.ok; }).catch(() => {}).finally(() => {
+    if (ONLINE) { const em = $("#emails"); em.hidden = false; em.addEventListener("click", (e) => { if (st.dirty && !confirm("Des modifications du catalogue ne sont pas enregistrées. Quitter quand même ?")) e.preventDefault(); else st.dirty = false; }); }
+    if (ONLINE) { const lo = $("#logout"); lo.hidden = false; lo.addEventListener("click", async () => { if (st.dirty && !confirm("Des modifications ne sont pas enregistrées. Se déconnecter quand même ?")) return; st.dirty = false; try { await call("deconnexion", { method: "POST" }); } catch {} location.reload(); }); }
+    call("etat").then((r) => r.json()).then((o) => { st.canSave = !!o.ok; }).catch(() => {}).finally(() => {
+      if (ONLINE && !st.canSave) $("#warn").textContent = "Connexion au serveur impossible : l'enregistrement est désactivé. Rechargez la page ; si le message reste, reconnectez-vous.";
       $("#warn").hidden = st.canSave;
       if (st.dirty) $("#save").disabled = !st.canSave;
       form();
