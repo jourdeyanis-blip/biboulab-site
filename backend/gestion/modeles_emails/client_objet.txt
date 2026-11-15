@@ -1,0 +1,1 @@
+Votre commande {{ boutique }} {{ ref }} est confirmée

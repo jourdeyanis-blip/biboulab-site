@@ -1,0 +1,27 @@
+Bonjour {{ nom }},
+
+Merci pour votre commande sur {{ boutique }} ! Votre paiement est bien reçu.
+
+Commande {{ ref }}
+{% for l in lignes %}- {{ l.quantite }} × {{ l.nom }}{% if l.options %} ({{ l.options }}){% endif %} : {{ l.total }}
+{% endfor %}
+Sous-total : {{ sous_total }}
+Livraison ({{ livraison.label }}) : {{ livraison.prix }}
+Total payé : {{ total }}
+
+{% if point_retrait %}Point de retrait choisi :
+{{ point_retrait }}
+{% else %}Adresse de livraison :
+{{ nom }}
+{{ adresse }}
+{{ code_postal }} {{ ville }}
+{% endif %}
+Chaque objet est imprimé à la commande : je lance l'impression et je vous écris dès l'expédition{% if livraison.delai %} ({{ livraison.label }}, {{ livraison.delai }} après l'envoi){% endif %}.
+{% if note %}
+Votre précision : {{ note }}
+{% endif %}
+Une question ? Répondez simplement à cet e-mail.
+
+À bientôt,
+{{ boutique }}
+{{ site_url }}
