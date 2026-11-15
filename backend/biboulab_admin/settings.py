@@ -146,6 +146,8 @@ LOGGING = {
     "disable_existing_loggers": False,
     "handlers": {"console": {"class": "logging.StreamHandler"}},
     "loggers": {
+        # Erreurs 500 : sans ceci, Django (hors mode DEBUG) n'écrit la trace nulle part
+        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
         "axes": {"handlers": ["console"], "level": "WARNING"},
         "gestion": {"handlers": ["console"], "level": "INFO"},
     },
