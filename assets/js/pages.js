@@ -551,7 +551,10 @@
   /* ================= PANIER & COMMANDE (3 étapes) ================= */
   function cartPage() {
     const methods = SITE.shipping.methods, pays = SITE.payment.methods, stripe = SITE.payment.mode === "stripe";
-    const st = { step: 1, ship: methods[0].id, pay: pays[0].id, info: {}, mrDown: false, mrCode: "" };
+    /* Mode coché par défaut : le premier sans point de retrait (livraison à domicile) */
+    const st = { step: 1, ship: (methods.find((m) => !m.point) || methods[0]).id, pay: pays[0].id, info: {}, mrDown: false, mrCode: "" };
+    /* Coordonnées saisies + point de retrait recopié à la main (le choix fait dans le widget est déjà dans st.info.point) */
+    const keepInfo = () => { const f = $("#ship-form"); if (f) Object.assign(st.info, Object.fromEntries(new FormData(f))); const pt = $("#f-point"); if (pt) st.info.point = pt.value; };
     /* Coordonnées gardées le temps du passage sur la page Stripe (retour après annulation) */
     const KEEP = "biboulab-commande";
     const keep = { get() { try { return JSON.parse(sessionStorage.getItem(KEEP)); } catch { return null; } }, set(v) { try { sessionStorage.setItem(KEEP, JSON.stringify(v)); } catch { /* stockage indisponible */ } }, clear() { try { sessionStorage.removeItem(KEEP); } catch { /* idem */ } } };
@@ -580,7 +583,6 @@
       c.innerHTML = pt ? `${icon("check")}<span><b>Point Relais choisi :</b> ${esc(pt)}</span>` : "Recherchez puis sélectionnez votre Point Relais® ci-dessous.";
       c.classList.toggle("on", !!pt);
       const e = $("#mr-err"); if (e && pt) e.textContent = "";
-      const h = $("#mr-point"); if (h) h.value = pt || "";
     };
     function mountRelay() {
       const zone = $("#mr-zone"); if (!zone) return;
@@ -599,6 +601,8 @@
           Responsive: true,
           ShowResultsOnMap: true,
           Theme: "mondialrelay",
+          /* La carte change de taille sur mobile (feuille de style du site) : Leaflet doit la recalculer */
+          OnSearchSuccess: () => setTimeout(() => window.jQuery(zone).trigger("MR_RebindMap"), 50),
           OnParcelShopSelected: (d) => {
             const t = (v) => String(v || "").replace(/''/g, "'").trim();
             st.mrCode = `${t(d.Pays) || "FR"}-${t(d.ID)}`;
@@ -610,7 +614,7 @@
         if (!zone.isConnected) return;
         /* Widget indisponible : on repasse à la saisie manuelle du point de retrait */
         st.mrDown = true;
-        Object.assign(st.info, Object.fromEntries(new FormData($("#ship-form"))));
+        keepInfo();
         render();
       });
     }
@@ -662,18 +666,24 @@
               ${fg("ville", "Ville", { required: true, auto: "address-level2", value: i.ville })}
               ${fg("note", "Précision pour la commande", { full: true, value: i.note, placeholder: "ex. référence d'appareil, ville pour une skyline…" })}
             </div>
-            <h2 class="h-sub" style="margin-top:32px">Mode de livraison <small class="muted" style="font:500 .85rem var(--font-b)">(France métropolitaine)</small></h2>
-            ${methods.map((m) => `<label class="radio-card"><input type="radio" name="ship" value="${m.id}" ${m.id === st.ship ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc([m.note, m.delay].filter(Boolean).join(" · "))}</small></span>${shipLogo(m)}<span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>`).join("")}
-            ${mr ? `<input type="hidden" name="point" id="mr-point" value="${esc(i.point || "")}">` : t.m.point ? `<div class="form point-box" style="margin-top:18px">
-              <p class="full" style="margin:0">Choisissez votre point de retrait${t.m.finder ? ` sur <a href="${esc(t.m.finder)}" target="_blank" rel="noopener">le site ${t.m.carrier === "mondialrelay" ? "Mondial Relay" : t.m.carrier === "colissimo" ? "de La Poste" : "du transporteur"}<span class="sr"> (nouvel onglet)</span></a>` : ""}, puis recopiez son nom et son adresse ci-dessous.</p>
-              ${fg("point", "Point de retrait choisi", { required: true, area: true, full: true, value: i.point, placeholder: t.m.carrier === "mondialrelay" ? "ex. Tabac de la Gare, 12 rue de la Gare, 75011 Paris" : "ex. Bureau de poste Paris Voltaire, 4 rue Popincourt, 75011 Paris" })}
-            </div>` : ""}
           </form>
-          ${mr ? `<div class="mr-box"><h2 class="h-sub" style="margin-top:32px">Votre Point Relais®</h2>
-            <p class="mr-choice" id="mr-choice" aria-live="polite"></p>
-            <p class="mr-err" id="mr-err" role="alert"></p>
-            <input type="hidden" id="mr-target">
-            <div class="mr-zone" id="mr-zone"><p class="muted" style="padding:16px;margin:0">Chargement du sélecteur Mondial Relay…</p></div></div>` : ""}
+          <h2 class="h-sub" style="margin-top:32px">Mode de livraison <small class="muted" style="font:500 .85rem var(--font-b)">(France métropolitaine)</small></h2>
+          ${methods.map((m) => {
+            const on = m.id === st.ship;
+            /* Le choix du point de retrait s'ouvre dans le cadre de l'option cochée. Il reste hors du
+               formulaire : les boutons du widget Mondial Relay sont de type submit. */
+            const panel = !on || !m.point ? "" : mr
+              ? `<div class="ship-panel mr-box">
+                  <p class="mr-choice" id="mr-choice" aria-live="polite"></p>
+                  <p class="mr-err" id="mr-err" role="alert"></p>
+                  <input type="hidden" id="mr-target">
+                  <div class="mr-zone" id="mr-zone"><p class="muted" style="padding:16px;margin:0">Chargement de la carte des Points Relais…</p></div></div>`
+              : `<div class="ship-panel form point-box">
+                  <p class="full" style="margin:0">Choisissez votre point de retrait${m.finder ? ` sur <a href="${esc(m.finder)}" target="_blank" rel="noopener">le site ${m.carrier === "mondialrelay" ? "Mondial Relay" : m.carrier === "colissimo" ? "de La Poste" : "du transporteur"}<span class="sr"> (nouvel onglet)</span></a>` : ""}, puis recopiez son nom et son adresse ci-dessous.</p>
+                  ${fg("point", "Point de retrait choisi", { required: true, area: true, full: true, value: i.point, placeholder: m.carrier === "mondialrelay" ? "ex. Tabac de la Gare, 12 rue de la Gare, 75011 Paris" : "ex. Bureau de poste Paris Voltaire, 4 rue Popincourt, 75011 Paris" })}
+                </div>`;
+            return `<div class="ship-opt${panel ? " open" : ""}"><label class="radio-card"><input type="radio" name="ship" form="ship-form" value="${m.id}" ${on ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc([m.note, m.delay].filter(Boolean).join(" · "))}</small></span>${shipLogo(m)}<span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>${panel}</div>`;
+          }).join("")}
           </div>
           ${summary(t, `<button class="btn btn-primary" type="submit" form="ship-form">Passer au paiement ${icon("arrow", "ic-arrow")}</button><button class="back" type="button" data-go="1">← Retour au panier</button>`)}`;
       } else if (st.step === 3) {
@@ -711,16 +721,17 @@
       if (go) { st.step = +go.dataset.go; render(true); }
     });
     main.addEventListener("change", (e) => {
-      if (e.target.name === "ship") { st.ship = e.target.value; Object.assign(st.info, Object.fromEntries(new FormData($("#ship-form")))); render(); const r = $('input[name="ship"]:checked'); if (r) r.focus(); }
+      if (e.target.name === "ship") { st.ship = e.target.value; keepInfo(); render(); const r = $('input[name="ship"]:checked'); if (r) r.focus(); }
       if (e.target.name === "pay") st.pay = e.target.value;
       /* Code postal saisi après l'affichage du widget : on relance la recherche de Points Relais */
       if (e.target.id === "f-cp" && useMR() && /^\d{5}$/.test(e.target.value.trim()) && window.jQuery && $("#mr-zone")) window.jQuery("#mr-zone").trigger("MR_DoSearch", [e.target.value.trim(), "FR"]);
     });
     main.addEventListener("submit", (e) => {
       e.preventDefault();
-      if (!validate(e.target)) return;
+      /* Étape Livraison : on valide aussi le point de retrait recopié, placé hors du formulaire */
+      if (!validate(e.target.id === "ship-form" ? $(".co-main", main) : e.target)) return;
       if (e.target.id === "ship-form") {
-        Object.assign(st.info, Object.fromEntries(new FormData(e.target)));
+        keepInfo();
         if (useMR() && !st.info.point) { const m = $("#mr-err"); if (m) { m.textContent = "Sélectionnez un Point Relais® pour continuer."; m.scrollIntoView({ block: "center", behavior: RM ? "auto" : "smooth" }); } return; }
         st.step = 3; st.notice = ""; render(true); return;
       }
