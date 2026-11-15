@@ -6,7 +6,7 @@
 (() => {
   "use strict";
   const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT } = window.SHOP;
-  const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, media, card, storeLogo, extAttrs, Cart, toast, flyToCart, enhance, jsonLd, setMeta, RM } = window.UI;
+  const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM } = window.UI;
   const main = $("#main");
   const params = new URLSearchParams(location.search);
 
@@ -330,7 +330,7 @@
     }
     const c = cat(p.category);
     const views = p.images.length || 3;
-    const sel = { color: p.colors[0] || null, size: p.sizes[0] ? p.sizes[0].label : null, qty: 1 };
+    const sel = { color: p.colors[0] || null, size: p.sizes[0] ? p.sizes[0].label : null };
     const unit = () => p.price + ((p.sizes.find((s) => s.label === sel.size) || {}).extra || 0);
     const similar = [...PRODUCTS.filter((x) => x.category === p.category && x !== p), ...PRODUCTS.filter((x) => x.category !== p.category).sort((a, b) => b.popularity - a.popularity)].slice(0, 7);
     setMeta(`${p.name} — ${c.name}`, `${p.short} ${p.material}, ${p.dimensions}. ${euro(p.price)}.`);
@@ -360,15 +360,11 @@
               ${p.sizes.length ? `<fieldset class="opt"><legend>Taille</legend>
                 <div class="swatches">${p.sizes.map((s, i) => `<label class="pill"><input type="radio" name="size" value="${esc(s.label)}" ${i ? "" : "checked"}><span>${esc(s.label)}${s.extra ? ` <small>+${euro(s.extra)}</small>` : ""}</span></label>`).join("")}</div></fieldset>` : ""}
               <div class="buy">
-                <div class="qty" role="group" aria-label="Quantité">
-                  <button type="button" data-q="-1" aria-label="Diminuer la quantité">${icon("minus")}</button>
-                  <output id="qty" aria-live="polite">1</output>
-                  <button type="button" data-q="1" aria-label="Augmenter la quantité">${icon("plus")}</button>
+                <button class="btn btn-primary add-btn" type="submit" data-magnetic>${icon("cart")} Ajouter au panier</button>
+                <div class="in-cart" hidden>
+                  ${qtyHTML(1, "Quantité dans le panier")}
+                  <a class="btn btn-ghost" href="panier.html">Voir le panier ${icon("arrow", "ic-arrow")}</a>
                 </div>
-                <button class="btn btn-primary add-btn" type="submit" data-magnetic>
-                  <span class="lbl">${icon("cart")} Ajouter au panier</span>
-                  <span class="done" aria-hidden="true">${icon("check")} Ajouté</span>
-                </button>
               </div>
             </form>
 
@@ -418,21 +414,29 @@
     zoom.addEventListener("click", (e) => { if (e.pointerType && e.pointerType !== "mouse") zoom.classList.toggle("zoomed"); });
 
     /* Options, quantité, ajout au panier */
-    const form = $("#buy"), addBtn = $(".add-btn");
+    const form = $("#buy"), addBtn = $(".add-btn"), inCart = $(".in-cart");
+    /* Bouton « Ajouter » tant que la variante choisie n'est pas au panier, sinon − quantité + */
+    const syncBuy = () => {
+      const n = Cart.qtyOf(p.id, sel), focused = form.contains(document.activeElement) && document.activeElement.closest(".buy");
+      addBtn.hidden = n > 0; inCart.hidden = !n;
+      if (n) $("output", inCart).textContent = n;
+      if (focused) (n ? $('[data-step="1"]', inCart) : addBtn).focus();
+    };
     form.addEventListener("change", () => {
       const d = new FormData(form);
       sel.color = d.get("color"); sel.size = d.get("size");
       if (sel.color) $("#color-name").textContent = FILAMENTS[sel.color].name;
       $("#price").textContent = euro(unit());
+      syncBuy();
     });
-    form.addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (!b) return; sel.qty = Math.max(1, Math.min(20, sel.qty + +b.dataset.q)); $("#qty").textContent = sel.qty; });
+    form.addEventListener("click", (e) => { const b = e.target.closest("[data-step]"); if (b) stepQty(p, sel, +b.dataset.step); });
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      Cart.add(p.id, sel, sel.qty);
-      addBtn.classList.add("ok"); flyToCart(addBtn);
-      toast(`${sel.qty} × ${esc(p.name)} ajouté · <a href="panier.html">Voir le panier</a>`);
-      setTimeout(() => addBtn.classList.remove("ok"), 1900);
+      flyToCart(addBtn); Cart.add(p.id, sel);
+      toast(`${esc(p.name)} ajouté au panier`);
     });
+    document.addEventListener("cart:change", syncBuy);
+    syncBuy();
 
     /* Carrousel */
     const car = $(".carousel");
@@ -615,9 +619,17 @@
       if (focus) { scrollTo({ top: 0, behavior: RM ? "auto" : "smooth" }); const h = $("h1, h2", main); if (h) h.focus({ preventScroll: true }); }
     }
 
-    main.addEventListener("click", (e) => {
+    main.addEventListener("click", async (e) => {
       const q = e.target.closest("[data-q]"), go = e.target.closest("[data-go]");
-      if (q) { Cart.setQty(+q.dataset.i, +q.dataset.q); render(); }
+      if (q) {
+        const i = +q.dataset.i, n = +q.dataset.q;
+        /* Le bouton « − » qui fait tomber la quantité à 0 demande confirmation avant de retirer la ligne */
+        if (n < 1 && !q.classList.contains("line-del")) {
+          const l = Cart.lines().find((x) => x.index === i);
+          if (!l || !(await confirmRemove(l.p.name))) return;
+        }
+        Cart.setQty(i, n); render();
+      }
       if (go) { st.step = +go.dataset.go; render(true); }
     });
     main.addEventListener("change", (e) => {
