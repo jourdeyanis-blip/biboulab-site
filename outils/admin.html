@@ -422,7 +422,7 @@
         </div></div></section>
         <section class="a-sec"><h2>Créateur et licence</h2><div class="form">
           ${F("creator", "Nom du créateur", { v: p.creator, opt: 1, ph: "Pseudo ou nom du créateur du modèle" })}
-          ${F("license", "Licence", { v: p.license, opt: 1, ph: "CC BY-NC 4.0", hint: "Affichés au-dessus de la fiche technique, uniquement s'ils sont renseignés" })}
+          ${F("license", "Licence", { v: p.license, opt: 1, ph: "CC BY-NC 4.0", hint: "Affichés au-dessus de la fiche technique (« Non renseigné » si vide)" })}
         </div></section>
         <section class="a-sec"><h2>Liens</h2><div class="form">
           ${F("makerworld", "Lien MakerWorld du modèle", { v: p.makerworld, opt: 1, ph: "https://makerworld.com/…" })}

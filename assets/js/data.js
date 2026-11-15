@@ -153,7 +153,7 @@ const CATEGORIES = [
    - colors    : clés de FILAMENTS
    - sizes     : [] si taille unique, sinon [{ label, extra }] (extra = supplément en €)
    - images    : chemins de vos photos (WebP conseillé). Vide = visuel d'illustration généré
-   - creator / license : nom du créateur du modèle et licence, affichés au-dessus de la fiche technique (facultatifs)
+   - creator / license : nom du créateur du modèle et licence, toujours affichés au-dessus de la fiche technique (« Non renseigné » si vide)
    - makerworld / cults3d : lien direct vers le modèle sur la plateforme (facultatif)
    ⚠️ Tous les produits ci-dessous sont des EXEMPLES à remplacer. */
 const PRODUCTS = [
