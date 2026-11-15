@@ -254,8 +254,6 @@ images: ["assets/img/produits/dragon-1.webp", "assets/img/produits/dragon-2.webp
 
 Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré automatiquement.
 
-**Visionneuse 3D** — déposez un fichier `.glb` et indiquez `model3d: "assets/modeles/dragon.glb"` : un bouton « 3D » apparaît dans la galerie.
-
 **Lien direct vers un modèle** — ajoutez au produit `makerworld: "https://…"` et/ou `cults3d: "https://…"` ; sinon le bouton mène à votre profil.
 
 **Logos officiels MakerWorld / Cults3D** — les pastilles « MW » et « C3D » sont des substituts. Téléchargez les logos officiels depuis les kits presse des plateformes, déposez-les dans `assets/img/` et renseignez `logo: "assets/img/makerworld.svg"` dans `SITE.stores`.

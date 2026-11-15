@@ -153,7 +153,6 @@ const CATEGORIES = [
    - colors    : clés de FILAMENTS
    - sizes     : [] si taille unique, sinon [{ label, extra }] (extra = supplément en €)
    - images    : chemins de vos photos (WebP conseillé). Vide = visuel d'illustration généré
-   - model3d   : lien (https://…) ouvert dans un nouvel onglet, ou chemin d'un fichier .glb pour la visionneuse intégrée (facultatif)
    - makerworld / cults3d : lien direct vers le modèle sur la plateforme (facultatif)
    ⚠️ Tous les produits ci-dessous sont des EXEMPLES à remplacer. */
 const PRODUCTS = [
