@@ -141,14 +141,24 @@ CONTACT_DESTINATAIRE = os.environ.get("CONTACT_DESTINATAIRE", COMMANDES_DESTINAT
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend" if DEBUG else "gestion.courriel.SendmailBackend"
 SENDMAIL = os.environ.get("SENDMAIL", "/usr/sbin/sendmail")
 
+JOURNAL_ERREURS = Path(os.environ.get("DJANGO_JOURNAL", BASE_DIR / "erreurs.log"))
+JOURNAL_DEPLOIEMENT = BASE_DIR / "deploiement.log"      # écrit par la tâche cron (backend/deployer.sh)
+
 LOGGING = {
     "version": 1,
     "disable_existing_loggers": False,
-    "handlers": {"console": {"class": "logging.StreamHandler"}},
+    "formatters": {"date": {"format": "%(asctime)s %(levelname)s %(name)s : %(message)s"}},
+    "handlers": {
+        "console": {"class": "logging.StreamHandler"},
+        # Journal des erreurs, lisible dans l'administration (/admin/journal/) : sur O2switch,
+        # la sortie « console » n'est gardée que si un fichier de log Passenger est configuré.
+        "fichier": {"class": "logging.handlers.RotatingFileHandler", "filename": str(JOURNAL_ERREURS), "delay": True,
+                    "maxBytes": 300_000, "backupCount": 1, "encoding": "utf-8", "formatter": "date", "level": "WARNING"},
+    },
     "loggers": {
         # Erreurs 500 : sans ceci, Django (hors mode DEBUG) n'écrit la trace nulle part
-        "django.request": {"handlers": ["console"], "level": "ERROR", "propagate": False},
+        "django.request": {"handlers": ["console", "fichier"], "level": "ERROR", "propagate": False},
         "axes": {"handlers": ["console"], "level": "WARNING"},
-        "gestion": {"handlers": ["console"], "level": "INFO"},
+        "gestion": {"handlers": ["console", "fichier"], "level": "INFO"},
     },
 }

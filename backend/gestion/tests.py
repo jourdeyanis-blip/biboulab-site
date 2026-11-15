@@ -434,6 +434,19 @@ class EmailsAdminTests(PaiementTests):
             return self.admin.post("/emails/?modele=" + donnees.get("modele", "client"), donnees, **HOTE)
         return self.admin.get("/emails/", **HOTE)
 
+    def test_journal_reserve_aux_administrateurs_et_montre_les_erreurs(self):
+        r = Client().get("/journal/", **HOTE)
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/connexion/", r["Location"])
+        with tempfile.TemporaryDirectory() as d:
+            chemin = Path(d) / "erreurs.log"
+            chemin.write_text("ligne ancienne\nERROR django.request : Internal Server Error: /paiement/session/\n", "utf-8")
+            with self.settings(JOURNAL_ERREURS=chemin, JOURNAL_DEPLOIEMENT=Path(d) / "absent.log"):
+                r = self.admin.get("/journal/", **HOTE)
+        self.assertEqual(r.status_code, 200)
+        self.assertIn("Internal Server Error: /paiement/session/", r.content.decode())
+        self.assertIn("fichier absent", r.content.decode())
+
     def test_reservee_aux_administrateurs(self):
         r = Client().get("/emails/", **HOTE)
         self.assertEqual(r.status_code, 302)
