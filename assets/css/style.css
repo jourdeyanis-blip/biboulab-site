@@ -510,6 +510,8 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .assure { display: grid; gap: 8px; margin-top: 24px; font-size: .88rem; color: var(--muted); }
 .assure li { display: flex; gap: 12px; align-items: center; }
 .assure .ic { color: var(--faint); }
+.assure.credits { margin-top: 32px; }
+.assure.credits + .specs { margin-top: 16px; }
 
 /* ---------- 12. Panier & commande ---------- */
 .steps { display: flex; gap: 8px; margin: 28px 0 36px; counter-reset: s; }

@@ -372,6 +372,11 @@
               <li>${icon("shield")}Rétractation 14 jours (hors pièces personnalisées)</li>
             </ul>
 
+            ${p.creator || p.license ? `<ul class="assure credits">
+              ${p.creator ? `<li>${icon("etoile")}Créateur : ${esc(p.creator)}</li>` : ""}
+              ${p.license ? `<li>${icon("shield")}Licence : ${esc(p.license)}</li>` : ""}
+            </ul>` : ""}
+
             <dl class="specs">
               <div><dt>Matériau</dt><dd>${esc(p.material)}</dd></div>
               <div><dt>Temps de fabrication</dt><dd>${esc(p.printTime)}</dd></div>

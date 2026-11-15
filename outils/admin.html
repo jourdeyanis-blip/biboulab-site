@@ -420,6 +420,10 @@
           ${F("date", "Date de mise en ligne", { v: p.date, type: "date", hint: "Sert au tri « Nouveautés »" })}
           ${F("popularity", "Popularité de 0 à 100", { v: p.popularity, type: "number", num: 1, step: "1", max: 100, hint: "Sert au tri « Popularité »" })}
         </div></div></section>
+        <section class="a-sec"><h2>Créateur et licence</h2><div class="form">
+          ${F("creator", "Nom du créateur", { v: p.creator, opt: 1, ph: "Pseudo ou nom du créateur du modèle" })}
+          ${F("license", "Licence", { v: p.license, opt: 1, ph: "CC BY-NC 4.0", hint: "Affichés au-dessus de la fiche technique, uniquement s'ils sont renseignés" })}
+        </div></section>
         <section class="a-sec"><h2>Liens</h2><div class="form">
           ${F("makerworld", "Lien MakerWorld du modèle", { v: p.makerworld, opt: 1, ph: "https://makerworld.com/…" })}
           ${F("cults3d", "Lien Cults3D du modèle", { v: p.cults3d, opt: 1, ph: "https://cults3d.com/…" })}
@@ -472,7 +476,7 @@
         let v = t.dataset.num !== undefined ? (t.value === "" ? 0 : +t.value.replace(",", ".")) : t.value;
         if (k === "badge") v = v || null;
         if (k === idKey) { v = v.toLowerCase(); st.manualId.add(it); }
-        if ((k === "makerworld" || k === "cults3d" || k === "parent") && !v) delete it[k]; else it[k] = v;
+        if ((k === "makerworld" || k === "cults3d" || k === "creator" || k === "license" || k === "parent") && !v) delete it[k]; else it[k] = v;
         if (k === "parent" && v) st.open.add(catOf(v));
         if (k === "name") {
           $(".a-head h1").textContent = v || (isP() ? "Nouvel objet" : "Nouvelle catégorie");
