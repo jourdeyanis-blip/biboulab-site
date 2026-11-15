@@ -119,8 +119,10 @@ from unittest import mock
 import stripe
 from django.core import mail
 
+from django.core.cache import cache
+
 from gestion import boutique
-from gestion.models import Commande
+from gestion.models import Commande, ModeleEmail
 
 DEPOT = Path(__file__).resolve().parents[2]
 PANIER = [{"id": "boule-flocon", "color": "rouge", "size": "Ø 8 cm", "qty": 2, "price": 0.01},   # le prix envoyé est ignoré
@@ -145,6 +147,7 @@ class PaiementTests(TestCase):
         shutil.copy(DEPOT / "assets" / "js" / "catalogue.js", js / "catalogue.js")
         self.override = override_settings(SITE_ROOT=self.site)
         self.override.enable()
+        cache.clear()   # compteur anti-abus des tentatives de paiement
         self.c = Client()
         self.stripe = mock.MagicMock()
         self.stripe.v1.checkout.sessions.create.return_value = mock.Mock(id="cs_test_123", url="https://checkout.stripe.com/c/pay/cs_test_123")
@@ -286,6 +289,29 @@ class PaiementTests(TestCase):
         self.assertEqual(envoi.call_count, 2)
         self.assertEqual(Commande.objects.get().statut, Commande.PAYEE)
 
+    def test_modele_casse_n_empeche_pas_la_commande(self):
+        self.payer()
+        with mock.patch("gestion.emails.rendre", side_effect=[Exception("modèle cassé"), ("Objet", "Message")]):
+            self.assertEqual(self.webhook("checkout.session.completed", payment_status="paid", status="complete").status_code, 200)
+        self.assertEqual(Commande.objects.get().statut, Commande.PAYEE)
+        self.assertEqual(len(mail.outbox), 1)
+
+    def test_email_en_texte_simple_sans_echappement(self):
+        self.payer(client={**CLIENT, "nom": "O'Brien & <fils>", "note": ""})
+        self.webhook("checkout.session.completed", payment_status="paid", status="complete")
+        client = mail.outbox[1]
+        self.assertIn("Bonjour Ada O'Brien & <fils>,", client.body)
+        self.assertNotIn("Votre précision", client.body)
+        self.assertEqual(client.subject, f"Votre commande Biboulab {Commande.objects.get().ref} est confirmée")
+
+    def test_apercu_emails(self):
+        from io import StringIO
+        from django.core.management import call_command
+        sortie = StringIO()
+        call_command("apercu_emails", stdout=sortie)
+        self.assertIn("Objet : Votre commande Biboulab BL-EXEMPLE1 est confirmée", sortie.getvalue())
+        self.assertIn("Livraison (Point relais) : offerte", sortie.getvalue())
+
     def test_session_expiree_efface_les_coordonnees(self):
         self.payer()
         self.webhook("checkout.session.expired", payment_status="unpaid", status="expired")
@@ -296,3 +322,65 @@ class PaiementTests(TestCase):
         r = self.c.get("/paiement/etat/", {"session_id": "cs_test_123"}, **HOTE)
         self.assertEqual(r.json(), {"ok": True, "ref": "BL-1234ABCD", "statut": "payee"})
         self.assertEqual(self.c.get("/paiement/etat/", {"session_id": "../x"}, **HOTE).status_code, 404)
+
+
+@override_settings(SECURE_SSL_REDIRECT=False)
+class EmailsAdminTests(PaiementTests):
+    """Page /emails/ de l'administration : modèles des e-mails de commande."""
+
+    def setUp(self):
+        super().setUp()
+        self.admin = Client()
+        self.admin.force_login(get_user_model().objects.create_user("gerant", password="Un-mot-de-passe-solide-42", is_staff=True))
+        session = self.admin.session          # heure de connexion, contrôlée par SecuriteMiddleware
+        session["debut"] = _time.time()
+        session.save()
+
+    def page(self, **donnees):
+        if donnees:
+            return self.admin.post("/emails/?modele=" + donnees.get("modele", "client"), donnees, **HOTE)
+        return self.admin.get("/emails/", **HOTE)
+
+    def test_reservee_aux_administrateurs(self):
+        r = Client().get("/emails/", **HOTE)
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("/connexion/", r["Location"])
+
+    def test_affiche_le_modele_par_defaut_et_son_apercu(self):
+        r = self.page()
+        self.assertEqual(r.status_code, 200)
+        html = r.content.decode()
+        self.assertIn("modèle par défaut", html)
+        self.assertIn("Bonjour {{ nom }}", html)                  # le modèle, à modifier
+        self.assertIn("Bonjour Ada Lovelace,", html)              # son aperçu
+        self.assertIn("Objet : Votre commande Biboulab BL-EXEMPLE1 est confirmée", html)
+
+    def test_modele_casse_refuse_et_texte_conserve(self):
+        r = self.page(modele="client", action="enregistrer", objet="Commande {{ ref }}", corps="{% for l in lignes %}oubli du endfor")
+        self.assertEqual(r.status_code, 400)
+        self.assertIn("Erreur dans le modèle", r.content.decode())
+        self.assertIn("oubli du endfor", r.content.decode())
+        self.assertFalse(ModeleEmail.objects.exists())
+
+    def test_apercu_sans_enregistrer(self):
+        r = self.page(modele="client", action="apercu", objet="Merci {{ nom }}", corps="Coucou {{ nom }}")
+        self.assertIn("Coucou Ada Lovelace", r.content.decode())
+        self.assertFalse(ModeleEmail.objects.exists())
+
+    def test_modele_enregistre_utilise_pour_les_vraies_commandes(self):
+        self.page(modele="client", action="enregistrer", objet="Merci {{ nom }} ({{ ref }})", corps="Total : {{ total }}\r\nÀ bientôt")
+        self.assertEqual(ModeleEmail.objects.get(nom="client").corps, "Total : {{ total }}\nÀ bientôt")
+        self.payer()
+        self.webhook("checkout.session.completed", payment_status="paid", status="complete")
+        vendeur, client = mail.outbox
+        self.assertEqual(client.subject, f"Merci Ada Lovelace ({Commande.objects.get().ref})")
+        self.assertEqual(client.body, "Total : 35,20 €\nÀ bientôt\n")
+        self.assertIn("Nouvelle commande payée en ligne", vendeur.body)   # l'autre modèle reste celui par défaut
+
+        self.page(modele="client", action="defaut")
+        self.assertFalse(ModeleEmail.objects.exists())
+
+    # Les tests de paiement hérités ne sont pas rejoués ici.
+    for _nom in [n for n in dir(PaiementTests) if n.startswith("test_")]:
+        locals()[_nom] = None
+    del _nom

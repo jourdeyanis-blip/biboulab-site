@@ -14,7 +14,9 @@ from django.urls import reverse
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from . import emails as courriels
 from .catalogue import Invalide, enregistrer, enregistrer_photo
+from .models import ModeleEmail
 from .securite import csp
 
 ERREUR = "Identifiant ou mot de passe incorrect."
@@ -82,6 +84,49 @@ def panneau(request):
     response = HttpResponse(html, content_type="text/html; charset=utf-8")
     response["Content-Security-Policy"] = csp(nonce)
     return response
+
+
+# ---------- Modèles des e-mails de commande ----------
+@require_http_methods(["GET", "POST"])
+@admin_requis()
+def modeles_emails(request):
+    actif = request.POST.get("modele") or request.GET.get("modele") or "client"
+    if actif not in courriels.MODELES:
+        actif = "client"
+    message = erreur = ""
+    saisie = None   # texte en cours de modification (aperçu ou erreur) : on ne le perd pas
+    if request.method == "POST":
+        action = request.POST.get("action")
+        if action == "defaut":
+            ModeleEmail.objects.filter(nom=actif).delete()
+            message = "Modèle par défaut rétabli."
+        else:
+            objet = request.POST.get("objet", "").replace("\r\n", "\n")
+            corps = request.POST.get("corps", "").replace("\r\n", "\n")
+            try:
+                courriels.verifier(objet, corps)
+            except courriels.ModeleInvalide as e:
+                erreur, saisie = str(e), (objet, corps)
+            else:
+                if action == "enregistrer":
+                    ModeleEmail.objects.update_or_create(nom=actif, defaults={"objet": objet, "corps": corps})
+                    message = "Modèle enregistré : il servira dès la prochaine commande payée."
+                else:
+                    saisie, message = (objet, corps), "Aperçu mis à jour (pas encore enregistré)."
+
+    objet, corps, perso = courriels.source(actif)
+    if saisie:
+        objet, corps = saisie
+    try:
+        apercu = courriels.rendre(objet, corps, courriels.contexte(courriels.exemple()))
+    except Exception:
+        apercu = None
+    return render(request, "gestion/emails.html", {
+        "modeles": courriels.MODELES.items(), "actif": actif, "titre": courriels.MODELES[actif],
+        "objet": objet, "corps": corps, "perso": perso, "non_enregistre": bool(saisie),
+        "apercu": apercu, "message": message, "erreur": erreur, "variables": courriels.VARIABLES,
+        "destinataire": settings.COMMANDES_DESTINATAIRE,
+    }, status=400 if erreur else 200)
 
 
 # ---------- API du panneau (JSON) ----------

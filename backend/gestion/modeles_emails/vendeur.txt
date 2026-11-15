@@ -1,0 +1,18 @@
+Nouvelle commande payée en ligne : {{ ref }}
+
+{% for l in lignes %}- {{ l.quantite }} × {{ l.nom }}{% if l.options %} ({{ l.options }}){% endif %} : {{ l.total }}
+{% endfor %}
+Sous-total : {{ sous_total }}
+Livraison ({{ livraison.label }}) : {{ livraison.prix }}
+Total payé : {{ total }}
+
+Adresse de livraison :
+{{ nom }}
+{{ adresse }}
+{{ code_postal }} {{ ville }}
+{{ email }}
+{% if note %}
+Précision du client : {{ note }}
+{% endif %}
+Détail du paiement dans le Dashboard Stripe › Transactions (recherchez la référence).
+Répondre à cet e-mail écrit directement au client.

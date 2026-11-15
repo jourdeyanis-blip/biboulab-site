@@ -100,7 +100,20 @@ Avec `payment.mode: "stripe"` (dans `data.js`), le bouton **« Commander et paye
 
    Chaque envoi est noté dans le journal de l'application (« Commande BL-… : e-mail envoyé au client »), ou l'erreur s'il a échoué.
 
+   Le texte de ces deux e-mails se modifie dans l'administration : voir « Modèles des e-mails de commande » ci-dessous.
+
 Les commandes sont enregistrées dans la base de l'administration (`backend/db.sqlite3`). Les coordonnées d'un client qui abandonne le paiement sont effacées à l'expiration de la session (1 h).
+
+**Modèles des e-mails de commande**
+
+Dans l'administration, bouton **« E-mails de commande »** en haut du panneau (https://pprod.biboulab.fr/admin/emails/) :
+- un onglet par e-mail : *Confirmation envoyée au client* et *Nouvelle commande, envoyée à vous* ;
+- modifiez l'objet et le message, cliquez sur **Voir l'aperçu** (commande d'exemple, rien n'est envoyé), puis sur **Enregistrer**. Le nouveau texte sert dès la prochaine commande payée ;
+- **Rétablir le modèle par défaut** efface votre version.
+
+Le message est en texte simple. Les valeurs de la commande s'insèrent avec des variables entre doubles accolades, listées sous l'éditeur : `{{ nom }}`, `{{ ref }}`, `{{ total }}`, `{{ livraison.label }}`… Les articles se parcourent avec `{% for l in lignes %}- {{ l.quantite }} × {{ l.nom }} : {{ l.total }}{% endfor %}`, et un passage facultatif s'écrit `{% if note %}…{% endif %}`. Un modèle qui contient une erreur (balise non fermée, par exemple) est refusé à l'enregistrement, et votre texte est conservé pour que vous puissiez le corriger.
+
+Les modèles modifiés sont enregistrés dans la base de l'administration (`backend/db.sqlite3`) : une mise à jour du site (`git pull`) ne les écrase jamais. Les modèles par défaut sont dans `backend/gestion/modeles_emails/`. En ligne de commande, `python manage.py apercu_emails` affiche les deux e-mails tels qu'ils partiraient.
 
 **Activer le paiement (à faire d'abord en préproduction, en mode test)**
 1. Dashboard Stripe › **Développeurs › Clés API** : copiez la clé secrète (`sk_test_…` pour les essais). Possible aussi : une **clé restreinte** (`rk_…`) limitée à *Checkout Sessions : Écriture*, à essayer d'abord en préproduction.

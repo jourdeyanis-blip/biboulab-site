@@ -1,4 +1,4 @@
-"""Commandes payées en ligne (Stripe Checkout)."""
+"""Commandes payées en ligne (Stripe Checkout) et modèles des e-mails de commande."""
 from django.db import models
 
 
@@ -35,3 +35,14 @@ class Commande(models.Model):
 
     def __str__(self):
         return f"{self.ref} ({self.get_statut_display()})"
+
+
+class ModeleEmail(models.Model):
+    """Modèle d'e-mail modifié dans l'administration (sinon : gestion/modeles_emails/)."""
+    nom = models.CharField(max_length=20, unique=True)     # « client » ou « vendeur »
+    objet = models.CharField(max_length=300)
+    corps = models.TextField()
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return self.nom
