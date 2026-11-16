@@ -400,9 +400,8 @@
         </div></section>
         <section class="a-sec"><h2>Photos</h2>
           <div class="rows" id="imgs">${p.images.map((src, i) => `<div class="rowline img" draggable="true" data-drag="${i}"><img src="../${esc(src)}" alt=""><input class="input" data-img="${i}" value="${esc(src)}" aria-label="Chemin de la photo ${i + 1}"><button class="rm" type="button" data-mv-img="${i}" data-dir="-1" ${i === 0 ? "disabled" : ""} aria-label="Monter la photo ${i + 1}">↑</button><button class="rm" type="button" data-mv-img="${i}" data-dir="1" ${i === p.images.length - 1 ? "disabled" : ""} aria-label="Descendre la photo ${i + 1}">↓</button><button class="rm" type="button" data-rm-img="${i}" aria-label="Retirer la photo ${i + 1}">${icon("trash")}</button></div>`).join("")}</div>
-          <p class="hint">${p.images.length ? "La première photo est celle des listes. Glissez les photos ou utilisez ↑ ↓ pour changer l'ordre" : "Sans photo, un visuel d'illustration aux couleurs de la catégorie est affiché"}. Toutes les photos sont mises au même format carré de 1200 × 1200 px, en entier, sans être coupées (bandes de fond si besoin), et converties en WebP</p>
+          <p class="hint">${p.images.length ? "La première photo est celle des listes. Glissez les photos ou utilisez ↑ ↓ pour changer l'ordre" : "Sans photo, un visuel d'illustration aux couleurs de la catégorie est affiché"}. Les photos sont réduites à 1200 px et converties en WebP ; sur le site, elles s'affichent toutes dans des cadres carrés de même taille</p>
           <button class="btn btn-ghost btn-sm" type="button" data-act="photo" ${st.canSave ? "" : "disabled"}>${icon("plus")} Ajouter des photos</button>
-          ${p.images.length ? `<button class="btn btn-ghost btn-sm" type="button" data-act="square" ${st.canSave ? "" : "disabled"}>Mettre les photos au même format</button>` : ""}
           <input type="file" id="file" accept="image/*" multiple hidden>
         </section>
         <section class="a-sec"><h2>Couleurs de filament proposées</h2>
@@ -512,7 +511,6 @@
       if (act === "sub") return addCat(it);
       if (act === "size") { it.sizes.push({ label: "", extra: it.sizes.length ? 2 : 0 }); touch(); form(); const all = $$('[data-f="label"]', main); all[all.length - 1].focus(); return; }
       if (act === "photo") return $("#file").click();
-      if (act === "square") return squareAll(it);
       if (b.dataset.rmSize !== undefined) { it.sizes.splice(+b.dataset.rmSize, 1); touch(); form(); }
       if (b.dataset.mvImg !== undefined) { const i = +b.dataset.mvImg, j = i + +b.dataset.dir; if (it.images[j] === undefined) return; [it.images[i], it.images[j]] = [it.images[j], it.images[i]]; touch(); form(); list(); return; }
       if (b.dataset.rmImg !== undefined) { it.images.splice(+b.dataset.rmImg, 1); touch(); form(); list(); }
@@ -528,26 +526,12 @@
     });
     main.addEventListener("submit", (e) => e.preventDefault());
 
-    /* ---------- Photos : toutes au même format, carré 1200 × 1200, WebP, rangées dans assets/img/produits ----------
-       La photo entière est placée au centre du carré, sans être coupée ni déformée ;
-       les bandes autour prennent la couleur moyenne des bords de la photo. */
-    const PHOTO = 1200;
-    function edgeColor(bmp) {
-      const n = 64, cv = document.createElement("canvas"); cv.width = cv.height = n;
-      const g = cv.getContext("2d", { willReadFrequently: true }); g.drawImage(bmp, 0, 0, n, n);
-      const d = g.getImageData(0, 0, n, n).data; let r = 0, gr = 0, b = 0, c = 0;
-      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
-        if (x > 1 && x < n - 2 && y > 1 && y < n - 2) continue;
-        const i = (y * n + x) * 4; r += d[i]; gr += d[i + 1]; b += d[i + 2]; c++;
-      }
-      return `rgb(${Math.round(r / c)}, ${Math.round(gr / c)}, ${Math.round(b / c)})`;
-    }
-    async function squarePhoto(bmp) {
-      const k = Math.min(PHOTO / bmp.width, PHOTO / bmp.height), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
-      const cv = document.createElement("canvas"); cv.width = cv.height = PHOTO;
-      const g = cv.getContext("2d"); g.imageSmoothingQuality = "high";
-      g.fillStyle = edgeColor(bmp); g.fillRect(0, 0, PHOTO, PHOTO);
-      g.drawImage(bmp, Math.round((PHOTO - w) / 2), Math.round((PHOTO - h) / 2), w, h);
+    /* ---------- Photos : réduites à 1200 px (côté le plus long, proportions gardées), converties en WebP, rangées dans assets/img/produits ----------
+       Sur le site, toutes les photos s'affichent dans des cadres carrés de même taille. */
+    async function webpPhoto(bmp) {
+      const k = Math.min(1, 1200 / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+      cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
       return new Promise((ok) => cv.toBlob(ok, "image/webp", 0.86));
     }
     async function sendPhoto(p, blob, n) {
@@ -556,21 +540,6 @@
       const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
       return out.chemin;
     }
-    /* Remet au format carré les photos déjà en ligne d'un objet (celles envoyées avant ce réglage) */
-    async function squareAll(p) {
-      if (!ID.test(p.id)) return alert("Donnez d'abord un nom à l'objet.");
-      status("dirty", "Mise au format des photos");
-      let done = 0;
-      try {
-        for (let i = 0; i < p.images.length; i++) {
-          const res = await fetch(`../${p.images[i]}`, { cache: "no-store" }); if (!res.ok) throw new Error(`Photo introuvable : ${p.images[i]}`);
-          const bmp = await createImageBitmap(await res.blob());
-          if (bmp.width === PHOTO && bmp.height === PHOTO) continue;
-          p.images[i] = await sendPhoto(p, await squarePhoto(bmp), i); done++;
-        }
-        if (done) { touch(); form(); list(); } else status("saved", "Les photos sont déjà au bon format");
-      } catch (err) { status("bad", err.message || "Mise au format impossible"); if (done) { touch(); form(); list(); } }
-    }
     main.addEventListener("change", async (e) => {
       if (e.target.id === "pfile") return panelUpload(e);
       if (e.target.id !== "file") return;
@@ -578,7 +547,7 @@
       if (!ID.test(p.id)) return alert("Donnez d'abord un nom à l'objet.");
       status("dirty", "Envoi des photos");
       try {
-        for (const [n, f] of files.entries()) p.images.push(await sendPhoto(p, await squarePhoto(await createImageBitmap(f)), n));
+        for (const [n, f] of files.entries()) p.images.push(await sendPhoto(p, await webpPhoto(await createImageBitmap(f)), n));
         touch(); form(); list();
       } catch (err) { status("bad", err.message || "Envoi de la photo impossible"); }
     });
