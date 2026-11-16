@@ -340,7 +340,8 @@
         <ol class="crumbs"><li><a href="index.html">Accueil</a></li><li><a href="boutique.html">Boutique</a></li>${lineage(c).map((x) => `<li><a href="categorie.html?c=${x.slug}">${esc(x.name)}</a></li>`).join("")}<li aria-current="page">${esc(p.name)}</li></ol>
         <div class="product" style="--c:${c.color}">
           <div class="gallery" data-reveal="left">
-            <div class="zoom" id="zoom">${media(p, 0, true)}</div>
+            <div class="stage"><div class="zoom" id="zoom">${media(p, 0, true)}</div>
+              ${views + (p.model3d ? 1 : 0) > 1 ? `<button class="g-nav g-prev" type="button" aria-label="Photo précédente">${icon("arrow")}</button><button class="g-nav g-next" type="button" aria-label="Photo suivante">${icon("arrow")}</button>` : ""}</div>
             <div class="thumbs" role="group" aria-label="Vues du produit">
               ${Array.from({ length: views }, (_, i) => `<button class="thumb" type="button" data-v="${i}" aria-pressed="${i === 0}" aria-label="Afficher la vue ${i + 1}">${media(p, i)}</button>`).join("")}
               ${p.model3d ? `<button class="thumb" type="button" data-v="3d" aria-pressed="false" aria-label="Afficher le modèle 3D interactif" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</button>` : ""}
@@ -402,6 +403,10 @@
 
     /* Galerie : miniatures, zoom qui suit la souris, visionneuse 3D à la demande */
     const zoom = $("#zoom");
+    const thumbs = $$(".thumb");
+    const go = (d) => { const i = thumbs.findIndex((x) => x.getAttribute("aria-pressed") === "true"); thumbs[(i + d + thumbs.length) % thumbs.length].click(); };
+    $$(".g-nav").forEach((n) => n.addEventListener("click", () => go(n.classList.contains("g-next") ? 1 : -1)));
+    $(".gallery").addEventListener("keydown", (e) => { if (thumbs.length < 2 || e.target.closest("model-viewer")) return; if (e.key === "ArrowRight") { e.preventDefault(); go(1); } else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); } });
     $(".thumbs").addEventListener("click", (e) => {
       const t = e.target.closest(".thumb"); if (!t) return;
       $$(".thumb").forEach((x) => x.setAttribute("aria-pressed", x === t));
