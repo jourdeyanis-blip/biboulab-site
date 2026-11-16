@@ -400,7 +400,7 @@
         </div></section>
         <section class="a-sec"><h2>Photos</h2>
           <div class="rows" id="imgs">${p.images.map((src, i) => `<div class="rowline img" draggable="true" data-drag="${i}"><img src="../${esc(src)}" alt=""><input class="input" data-img="${i}" value="${esc(src)}" aria-label="Chemin de la photo ${i + 1}"><button class="rm" type="button" data-mv-img="${i}" data-dir="-1" ${i === 0 ? "disabled" : ""} aria-label="Monter la photo ${i + 1}">↑</button><button class="rm" type="button" data-mv-img="${i}" data-dir="1" ${i === p.images.length - 1 ? "disabled" : ""} aria-label="Descendre la photo ${i + 1}">↓</button><button class="rm" type="button" data-rm-img="${i}" aria-label="Retirer la photo ${i + 1}">${icon("trash")}</button></div>`).join("")}</div>
-          <p class="hint">${p.images.length ? "La première photo est celle des listes. Glissez les photos ou utilisez ↑ ↓ pour changer l'ordre" : "Sans photo, un visuel d'illustration aux couleurs de la catégorie est affiché"}. Toutes les photos sont recadrées au même format carré (1200 × 1200 px, centré) et converties en WebP</p>
+          <p class="hint">${p.images.length ? "La première photo est celle des listes. Glissez les photos ou utilisez ↑ ↓ pour changer l'ordre" : "Sans photo, un visuel d'illustration aux couleurs de la catégorie est affiché"}. Toutes les photos sont mises au même format carré de 1200 × 1200 px, en entier, sans être coupées (bandes de fond si besoin), et converties en WebP</p>
           <button class="btn btn-ghost btn-sm" type="button" data-act="photo" ${st.canSave ? "" : "disabled"}>${icon("plus")} Ajouter des photos</button>
           ${p.images.length ? `<button class="btn btn-ghost btn-sm" type="button" data-act="square" ${st.canSave ? "" : "disabled"}>Mettre les photos au même format</button>` : ""}
           <input type="file" id="file" accept="image/*" multiple hidden>
@@ -528,13 +528,26 @@
     });
     main.addEventListener("submit", (e) => e.preventDefault());
 
-    /* ---------- Photos : toutes au même format, carré 1200 × 1200 (recadrage centré), WebP, rangées dans assets/img/produits ---------- */
+    /* ---------- Photos : toutes au même format, carré 1200 × 1200, WebP, rangées dans assets/img/produits ----------
+       La photo entière est placée au centre du carré, sans être coupée ni déformée ;
+       les bandes autour prennent la couleur moyenne des bords de la photo. */
     const PHOTO = 1200;
+    function edgeColor(bmp) {
+      const n = 64, cv = document.createElement("canvas"); cv.width = cv.height = n;
+      const g = cv.getContext("2d", { willReadFrequently: true }); g.drawImage(bmp, 0, 0, n, n);
+      const d = g.getImageData(0, 0, n, n).data; let r = 0, gr = 0, b = 0, c = 0;
+      for (let y = 0; y < n; y++) for (let x = 0; x < n; x++) {
+        if (x > 1 && x < n - 2 && y > 1 && y < n - 2) continue;
+        const i = (y * n + x) * 4; r += d[i]; gr += d[i + 1]; b += d[i + 2]; c++;
+      }
+      return `rgb(${Math.round(r / c)}, ${Math.round(gr / c)}, ${Math.round(b / c)})`;
+    }
     async function squarePhoto(bmp) {
-      const s = Math.min(bmp.width, bmp.height);
+      const k = Math.min(PHOTO / bmp.width, PHOTO / bmp.height), w = Math.round(bmp.width * k), h = Math.round(bmp.height * k);
       const cv = document.createElement("canvas"); cv.width = cv.height = PHOTO;
       const g = cv.getContext("2d"); g.imageSmoothingQuality = "high";
-      g.drawImage(bmp, (bmp.width - s) / 2, (bmp.height - s) / 2, s, s, 0, 0, PHOTO, PHOTO);
+      g.fillStyle = edgeColor(bmp); g.fillRect(0, 0, PHOTO, PHOTO);
+      g.drawImage(bmp, Math.round((PHOTO - w) / 2), Math.round((PHOTO - h) / 2), w, h);
       return new Promise((ok) => cv.toBlob(ok, "image/webp", 0.86));
     }
     async function sendPhoto(p, blob, n) {
