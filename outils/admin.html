@@ -90,7 +90,11 @@
     .fil i { width: 20px; height: 20px; border-radius: 50%; background: var(--sw); border: 1px solid var(--line-2); }
     .rows { display: grid; gap: 8px; }
     .rowline { display: grid; grid-template-columns: 1fr 140px 44px; gap: 8px; align-items: center; }
-    .rowline.img { grid-template-columns: 48px 1fr 44px; }
+    .rowline.img { grid-template-columns: 48px 1fr 44px 44px 44px; cursor: grab; }
+    .rowline.img.drag { opacity: .4; }
+    .rowline.img.over { outline: 2px solid currentColor; outline-offset: 2px; border-radius: 8px; }
+    .rowline.img img { pointer-events: none; }
+    .rm[disabled] { opacity: .3; pointer-events: none; }
     .rowline img { width: 48px; height: 48px; border-radius: 8px; object-fit: cover; background: var(--surface-2); }
     .rm { width: 44px; height: 44px; border-radius: var(--r-s); display: grid; place-items: center; color: var(--muted); transition: background-color .18s var(--ease), color .18s var(--ease); }
     .rm:hover { background: var(--surface-2); color: var(--err); }
@@ -395,8 +399,8 @@
           ${F("description", "Description", { v: p.description, full: 1, area: 1 })}
         </div></section>
         <section class="a-sec"><h2>Photos</h2>
-          <div class="rows" id="imgs">${p.images.map((src, i) => `<div class="rowline img"><img src="../${esc(src)}" alt=""><input class="input" data-img="${i}" value="${esc(src)}" aria-label="Chemin de la photo ${i + 1}"><button class="rm" type="button" data-rm-img="${i}" aria-label="Retirer la photo ${i + 1}">${icon("trash")}</button></div>`).join("")}</div>
-          <p class="hint">${p.images.length ? "La première photo est celle des listes" : "Sans photo, un visuel d'illustration aux couleurs de la catégorie est affiché"}. Les photos sont recadrées à 1200 px et converties en WebP</p>
+          <div class="rows" id="imgs">${p.images.map((src, i) => `<div class="rowline img" draggable="true" data-drag="${i}"><img src="../${esc(src)}" alt=""><input class="input" data-img="${i}" value="${esc(src)}" aria-label="Chemin de la photo ${i + 1}"><button class="rm" type="button" data-mv-img="${i}" data-dir="-1" ${i === 0 ? "disabled" : ""} aria-label="Monter la photo ${i + 1}">↑</button><button class="rm" type="button" data-mv-img="${i}" data-dir="1" ${i === p.images.length - 1 ? "disabled" : ""} aria-label="Descendre la photo ${i + 1}">↓</button><button class="rm" type="button" data-rm-img="${i}" aria-label="Retirer la photo ${i + 1}">${icon("trash")}</button></div>`).join("")}</div>
+          <p class="hint">${p.images.length ? "La première photo est celle des listes. Glissez les photos ou utilisez ↑ ↓ pour changer l'ordre" : "Sans photo, un visuel d'illustration aux couleurs de la catégorie est affiché"}. Les photos sont recadrées à 1200 px et converties en WebP</p>
           <button class="btn btn-ghost btn-sm" type="button" data-act="photo" ${st.canSave ? "" : "disabled"}>${icon("plus")} Ajouter des photos</button>
           <input type="file" id="file" accept="image/*" multiple hidden>
         </section>
@@ -508,7 +512,17 @@
       if (act === "size") { it.sizes.push({ label: "", extra: it.sizes.length ? 2 : 0 }); touch(); form(); const all = $$('[data-f="label"]', main); all[all.length - 1].focus(); return; }
       if (act === "photo") return $("#file").click();
       if (b.dataset.rmSize !== undefined) { it.sizes.splice(+b.dataset.rmSize, 1); touch(); form(); }
+      if (b.dataset.mvImg !== undefined) { const i = +b.dataset.mvImg, j = i + +b.dataset.dir; if (it.images[j] === undefined) return; [it.images[i], it.images[j]] = [it.images[j], it.images[i]]; touch(); form(); list(); return; }
       if (b.dataset.rmImg !== undefined) { it.images.splice(+b.dataset.rmImg, 1); touch(); form(); list(); }
+    });
+    let dragFrom = null;
+    main.addEventListener("dragstart", (e) => { const r = e.target.closest?.("[data-drag]"); if (!r) return; dragFrom = +r.dataset.drag; r.classList.add("drag"); e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", String(dragFrom)); });
+    main.addEventListener("dragover", (e) => { const r = e.target.closest?.("[data-drag]"); if (dragFrom === null || !r) return; e.preventDefault(); $$(".rowline.over", main).forEach((x) => x.classList.remove("over")); r.classList.add("over"); });
+    main.addEventListener("dragend", () => { dragFrom = null; $$(".rowline.drag, .rowline.over", main).forEach((x) => x.classList.remove("drag", "over")); });
+    main.addEventListener("drop", (e) => {
+      const r = e.target.closest?.("[data-drag]"), it = cur(); if (dragFrom === null || !r || !it) return; e.preventDefault();
+      const to = +r.dataset.drag, from = dragFrom; dragFrom = null;
+      if (from !== to) { const [m] = it.images.splice(from, 1); it.images.splice(to, 0, m); touch(); form(); list(); }
     });
     main.addEventListener("submit", (e) => e.preventDefault());
 
