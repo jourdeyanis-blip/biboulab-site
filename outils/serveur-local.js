@@ -10,12 +10,14 @@
    sur le site en ligne.                                                  */
 const http = require("http"), fs = require("fs"), path = require("path"), vm = require("vm");
 const { execFile } = require("child_process");
+const crypto = require("crypto");
 const root = path.join(__dirname, "..");
 const port = process.env.PORT || 4173;
 const dataFile = path.join(root, "assets/js/data.js");
 const backupDir = path.join(__dirname, "sauvegardes");
 const photoDir = path.join(root, "assets/img/produits");
 const ordersFile = path.join(__dirname, "commandes.json");
+const siteFile = path.join(__dirname, "site.json"); // adresse du site en ligne + clé secrète (jamais sur GitHub)
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8", ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".glb": "model/gltf-binary", ".woff2": "font/woff2", ".woff": "font/woff" };
 
 /* ---------- Écriture de data.js ---------- */
@@ -129,6 +131,33 @@ function saveOrders(orders) {
   fs.renameSync(tmp, ordersFile);
 }
 
+/* ---------- Commandes passées sur le site en ligne (api/commandes.php) ---------- */
+function siteConf() {
+  let conf = {};
+  try { conf = JSON.parse(fs.readFileSync(siteFile, "utf8")); } catch (e) { /* pas encore relié */ }
+  if (!conf.url) { // par défaut : SITE.url de data.js
+    try { const box = { module: { exports: null } }; vm.runInNewContext(fs.readFileSync(dataFile, "utf8"), box); conf.url = box.module.exports.SITE.url; } catch (e) { conf.url = ""; }
+  }
+  return { url: conf.url || "", cle: conf.cle || "" };
+}
+async function remote(method, query, body) {
+  const conf = siteConf();
+  if (!conf.url || !conf.cle) throw new Error("Reliez d'abord le site à la page de gestion (bouton « Relier au site »).");
+  if (typeof fetch !== "function") throw new Error("Node.js 18 ou plus récent est nécessaire pour récupérer les commandes du site.");
+  const url = conf.url.replace(/\/+$/, "") + "/api/commandes.php" + query;
+  let r;
+  try {
+    r = await fetch(url, { method, headers: { "X-Cle": conf.cle, Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
+  } catch (e) { throw new Error(`Le site ${conf.url} ne répond pas. Vérifiez la connexion internet et l'adresse du site.`); }
+  const out = await r.json().catch(() => null);
+  if (r.status === 401) throw new Error("Le site refuse la clé. Vérifiez le secret CLE_COMMANDES sur GitHub, puis republiez le site.");
+  if (!out) throw new Error(r.status === 503 ? "Le site est en construction ou indisponible (erreur 503)."
+    : r.status === 404 ? "Le site ne reçoit pas encore les commandes : publiez la dernière version (dossier api/)."
+    : `Réponse inattendue du site (erreur ${r.status}).`);
+  if (!r.ok) throw new Error(out.erreur || `Erreur ${r.status} du site.`);
+  return out;
+}
+
 /* ---------- Requêtes de la page de gestion ---------- */
 const send = (res, code, obj) => { res.writeHead(code, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }); res.end(JSON.stringify(obj)); };
 const read = (req, max) => new Promise((ok, ko) => {
@@ -147,8 +176,24 @@ async function api(req, res, url) {
   if (url.pathname === "/api/commandes" && req.method === "GET") {
     try { return send(res, 200, { commandes: loadOrders() }); } catch (e) { return send(res, 500, { erreur: e.message }); }
   }
+  if (url.pathname === "/api/site" && req.method === "GET") return send(res, 200, siteConf());
+  if (url.pathname === "/api/site/commandes" && req.method === "GET") {
+    try { return send(res, 200, await remote("GET", "")); } catch (e) { return send(res, 502, { erreur: e.message }); }
+  }
   if (req.method !== "POST") return send(res, 405, { erreur: "Action inconnue." });
   try {
+    if (url.pathname === "/api/site") { // enregistre l'adresse du site ; « nouvelle » crée une clé
+      const d = JSON.parse((await read(req, 1e4)).toString("utf8"));
+      const conf = siteConf(), adresse = String(d.url || "").trim().replace(/\/+$/, "");
+      if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/.test(adresse)) return send(res, 400, { erreur: "Adresse du site invalide (ex. https://www.biboulab.fr)." });
+      const next = { url: adresse, cle: d.nouvelle || !conf.cle ? crypto.randomBytes(32).toString("base64url") : conf.cle };
+      fs.writeFileSync(siteFile, JSON.stringify(next, null, 2) + "\n", { mode: 0o600 });
+      return send(res, 200, next);
+    }
+    if (url.pathname === "/api/site/accuse") {
+      const { refs } = JSON.parse((await read(req, 1e5)).toString("utf8"));
+      try { return send(res, 200, await remote("POST", "?action=accuse", { refs })); } catch (e) { return send(res, 502, { erreur: e.message }); }
+    }
     if (url.pathname === "/api/commandes") {
       const { commandes } = JSON.parse((await read(req, 8e6)).toString("utf8"));
       saveOrders(commandes);

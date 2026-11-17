@@ -33,6 +33,20 @@ jobs:
             exit 1
           fi
 
+      # Clé qui permet à la page de gestion (outils/admin.html) de récupérer les
+      # commandes passées sur le site. Secret GitHub à créer : CLE_COMMANDES
+      # (la valeur affichée par « Relier au site » dans l'onglet Commandes).
+      # Seule son empreinte SHA-256 est envoyée sur le serveur.
+      - name: Installer la clé de récupération des commandes
+        env:
+          CLE: ${{ secrets.CLE_COMMANDES }}
+        run: |
+          if [ -n "$CLE" ]; then
+            printf "<?php return '%s';\n" "$(printf '%s' "$CLE" | sha256sum | cut -d' ' -f1)" > api/cle.php
+          else
+            echo "::warning::Secret CLE_COMMANDES absent : la page de gestion ne pourra pas récupérer les commandes du site."
+          fi
+
       - name: Envoyer le site en FTPS
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}

@@ -254,6 +254,14 @@
     .o-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
     .o-acts .btn { min-height: 40px; padding: 0 16px; font-size: .9375rem; }
 
+    .o-keyrow { display: flex; gap: 8px; }
+    .o-keyrow .input { font: .8125rem ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .o-keyrow .btn { min-height: 40px; padding: 0 14px; font-size: .875rem; }
+    .o-howto { margin: 16px 0 0; padding-left: 20px; list-style: decimal; display: grid; gap: 6px; font-size: .875rem; color: var(--muted); }
+    .o-howto b { color: var(--text); font-weight: 500; }
+    .o-howto code { font: .8125rem ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 1px 5px; color: var(--text); }
+    .o-ok { color: var(--ok); }
+
     @media (max-width: 860px) {
       .a-tabs { order: 3; width: 100%; }
       .o-view { display: block; }
@@ -302,9 +310,11 @@
   <section class="o-view" id="orders" aria-label="Suivi des commandes" hidden>
     <div class="o-bar">
       <div class="field"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><label class="sr" for="o-q">Rechercher une commande</label><input class="input" id="o-q" type="search" placeholder="Client, référence, objet…" autocomplete="off"></div>
-      <button class="btn btn-ghost" type="button" id="o-paste">Coller un e-mail de commande</button>
+      <button class="btn btn-primary" type="button" id="o-sync">Récupérer les commandes du site</button>
+      <button class="btn btn-ghost" type="button" id="o-paste">Coller un e-mail</button>
       <button class="btn btn-ghost" type="button" id="o-done" aria-pressed="false">Livrées</button>
       <p class="o-sum" id="o-sum"></p>
+      <button class="btn btn-ghost" type="button" id="o-link">Relier au site</button>
     </div>
     <div class="o-board" id="board"></div>
   </section>
@@ -316,6 +326,22 @@
       <textarea class="textarea" id="o-mailt" spellcheck="false"></textarea>
       <p class="o-err" id="o-mailerr" role="alert"></p>
       <div class="o-acts"><button class="btn btn-ghost" type="button" data-close>Annuler</button><button class="btn btn-primary" type="submit">Créer la commande</button></div>
+    </form>
+  </dialog>
+  <dialog class="o-dlg o-small" id="o-site" aria-labelledby="o-site-h">
+    <form class="o-mailf" id="o-sitef" novalidate>
+      <div class="o-dh"><h2 id="o-site-h">Relier le site à la page de gestion</h2><button class="o-x" type="button" data-close aria-label="Fermer"></button></div>
+      <p class="hint" style="margin:0 0 16px">Les commandes passées sur le site attendent sur votre hébergement. « Récupérer les commandes du site » les ajoute ici, dans la colonne Commande, puis les efface du serveur.</p>
+      <div class="fg"><label for="o-url">Adresse du site</label><input class="input" id="o-url" type="url" placeholder="https://www.biboulab.fr" autocomplete="off"></div>
+      <div class="fg"><label for="o-cle">Clé secrète</label>
+        <div class="o-keyrow"><input class="input" id="o-cle" readonly placeholder="Créée à l'enregistrement"><button class="btn btn-ghost" type="button" id="o-copy">Copier</button></div></div>
+      <ol class="o-howto">
+        <li>Enregistrez, puis copiez la clé.</li>
+        <li>Sur GitHub, dans le dépôt du site : <b>Settings › Secrets and variables › Actions › New repository secret</b>. Nom : <code>CLE_COMMANDES</code>, valeur : la clé.</li>
+        <li>Republiez le site (onglet <b>Actions</b> › Déploiement O2switch › <b>Run workflow</b>, ou à la prochaine publication).</li>
+      </ol>
+      <p class="o-err" id="o-siteerr" role="alert"></p>
+      <div class="o-acts"><button class="btn btn-ghost" type="button" id="o-newkey">Changer de clé</button><button class="btn btn-primary" type="submit">Enregistrer</button></div>
     </form>
   </dialog>
 
@@ -706,7 +732,7 @@
     const STEP_NAME = { commande: "Commande", impression: "En cours d'impression", livrer: "À livrer", livree: "Livrée" };
     const NEXT = { commande: "impression", impression: "livrer", livrer: "livree" };
     const API = { "X-Biboulab-Admin": "1" };
-    const O = { list: [], ready: false, error: "", q: "", done: false, open: null, drag: null, res: [], act: 0, timer: 0, seq: 0, pending: false, queue: Promise.resolve() };
+    const O = { list: [], ready: false, error: "", q: "", done: false, open: null, drag: null, res: [], act: 0, timer: 0, seq: 0, pending: false, queue: Promise.resolve(), site: { url: "", cle: "" }, syncing: false };
     const byId = (id) => O.list.find((o) => o.id === id);
     const prodOf = (id) => id && st.prods.find((p) => p.id === id);
     const round = (n) => Math.round((+n || 0) * 100) / 100;
@@ -735,16 +761,20 @@
     }
 
     /* ---------- Enregistrement automatique ---------- */
+    function saveNow() { // enregistre tout de suite ; la promesse échoue si l'écriture échoue
+      clearTimeout(O.timer); O.pending = true; status("dirty", "Enregistrement…", "commandes");
+      const seq = ++O.seq, body = JSON.stringify({ commandes: O.list });
+      const done = O.queue
+        .then(() => fetch("/api/commandes", { method: "POST", headers: { ...API, "Content-Type": "application/json" }, body }))
+        .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || "Enregistrement impossible"); });
+      O.queue = done.then(
+        () => { if (seq === O.seq) { O.pending = false; status("saved", `Commandes enregistrées à ${hhmm()}`, "commandes"); } },
+        (err) => status("bad", `${err.message || "Enregistrement impossible"} : ces changements ne sont pas sauvegardés`, "commandes"));
+      return done;
+    }
     function persist() {
       clearTimeout(O.timer); O.pending = true; status("dirty", "Enregistrement…", "commandes");
-      O.timer = setTimeout(() => {
-        const seq = ++O.seq, body = JSON.stringify({ commandes: O.list });
-        O.queue = O.queue
-          .then(() => fetch("/api/commandes", { method: "POST", headers: { ...API, "Content-Type": "application/json" }, body }))
-          .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || "Enregistrement impossible"); })
-          .then(() => { if (seq === O.seq) { O.pending = false; status("saved", `Commandes enregistrées à ${hhmm()}`, "commandes"); } })
-          .catch((err) => status("bad", `${err.message || "Enregistrement impossible"} : ces changements ne sont pas sauvegardés`, "commandes"));
-      }, 350);
+      O.timer = setTimeout(() => saveNow().catch(() => {}), 350);
     }
     function changed() { board(); obar(); persist(); }
 
@@ -755,7 +785,8 @@
       $("#o-done").textContent = O.done ? "Retour au tableau" : `Livrées · ${done}`;
       $("#o-done").setAttribute("aria-pressed", O.done);
       const b = $("#o-badge"); b.textContent = active.length; b.hidden = !active.length;
-      ["#o-q", "#o-paste", "#o-done"].forEach((s) => { $(s).disabled = !O.ready; });
+      ["#o-q", "#o-paste", "#o-done", "#o-sync", "#o-link"].forEach((s) => { $(s).disabled = !O.ready; });
+      $("#o-sync").disabled = !O.ready || O.syncing;
     }
     const hay = (o) => slugify([o.ref, o.client, o.email, o.adresse, o.note, o.tracking, o.payment, o.shipping, ...o.items.map((it) => it.name + " " + optsOf(it))].join(" "));
     const matches = (o) => { const w = slugify(O.q).split("-").filter(Boolean); return !w.length || w.every((x) => hay(o).includes(x)); };
@@ -766,7 +797,7 @@
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
           ${prods.length ? `<div class="o-cover" style="--n:${prods.length}">${prods.map((p) => pThumb(p, "o-cv")).join("")}</div>` : ""}
           <div class="o-cb">
-            <div class="o-labels"><span class="o-lab ${o.paid ? "ok" : "due"}">${o.paid ? "Payée" : "À encaisser"}</span>${o.note.trim() ? `<span class="o-lab">Note</span>` : ""}${o.tracking ? `<span class="o-lab">Suivi</span>` : ""}</div>
+            <div class="o-labels"><span class="o-lab ${o.paid ? "ok" : "due"}">${o.paid ? "Payée" : "À encaisser"}</span>${o.source === "site" ? `<span class="o-lab">Site</span>` : ""}${o.note.trim() ? `<span class="o-lab">Note</span>` : ""}${o.tracking ? `<span class="o-lab">Suivi</span>` : ""}</div>
             <h3><button class="o-open" type="button" data-open="${esc(o.id)}">${esc(o.client) || "Client à renseigner"}</button></h3>
             <p class="o-sub">${esc(o.ref) || "Sans référence"} · ${esc(shortDate(o.date))}${o.status === "livrer" && o.shipping ? ` · ${esc(o.shipping)}` : ""}</p>
             ${o.items.length ? `<ul class="o-items">${o.items.map((it) => `<li><span class="o-q">${+it.qty || 0} ×</span><span>${esc(it.name) || "Objet"}${optsOf(it) ? ` <small>${esc(optsOf(it))}</small>` : ""}</span></li>`).join("")}</ul>` : `<p class="o-sub">Aucun objet</p>`}
@@ -1058,6 +1089,70 @@
       mail.close(); create("commande", o);
     });
 
+    /* ---------- Commandes passées sur le site en ligne ---------- */
+    /* Une commande du site (format de api/commandes.php) devient un ticket. Les prix
+       payés par le client sont gardés ; un écart avec le catalogue est signalé en note. */
+    function fromSite(c) {
+      const cl = c.client || {}, liv = c.livraison || {}, notes = [];
+      const items = (Array.isArray(c.articles) ? c.articles : []).map((a) => {
+        const p = prodOf(a.id), qty = Math.max(1, Math.round(+a.qte) || 1), price = round(a.prix);
+        if (!p) return { product: null, name: a.nom || "Objet", color: null, size: null, qty, price, options: [a.couleurNom, a.taille].filter(Boolean).join(" · ") };
+        const z = a.taille ? p.sizes.find((x) => x.label === a.taille) : null, real = round(p.price + (z ? +z.extra || 0 : 0));
+        if (Math.abs(real - price) > 0.004) notes.push(`« ${p.name} » commandé à ${euro(price)}, ${euro(real)} au catalogue`);
+        return { product: p.id, name: p.name, color: a.couleur && FILAMENTS[a.couleur] ? a.couleur : null, size: a.taille || null, qty, price };
+      });
+      const o = { id: uid(), ref: String(c.ref || newRef()), status: "commande", date: String(c.recue || "").slice(0, 10) || today(), moved: today(),
+        client: [cl.prenom, cl.nom].filter(Boolean).join(" "), email: cl.email || "", adresse: [cl.adresse, [cl.cp, cl.ville].filter(Boolean).join(" ")].filter(Boolean).join("\n"),
+        items, shipping: liv.nom || "", shippingFee: round(liv.frais), payment: (c.paiement || {}).nom || "", paid: false, tracking: "", note: "", source: "site" };
+      const m = SITE.shipping.methods.find((x) => x.id === liv.id);
+      if (m) { const fee = subTotal(o) >= SITE.shipping.freeFrom ? 0 : m.price; if (Math.abs(fee - o.shippingFee) > 0.004) notes.push(`livraison facturée ${euro(o.shippingFee)}, ${euro(fee)} selon le tarif actuel`); }
+      if (Math.abs(orderTotal(o) - round(c.total)) > 0.01) notes.push(`total annoncé au client : ${euro(round(c.total))}`);
+      o.note = [c.note, ...notes.map((n) => "À vérifier : " + n)].filter(Boolean).join("\n");
+      return o;
+    }
+    async function syncSite(auto) {
+      if (!O.ready || O.syncing) return;
+      if (!O.site.cle) { if (!auto) openSite(); return; }
+      O.syncing = true; obar(); $("#o-sync").textContent = "Récupération…";
+      try {
+        const r = await fetch("/api/site/commandes", { headers: API }), out = await r.json();
+        if (!r.ok) throw new Error(out.erreur || "Récupération impossible");
+        const got = Array.isArray(out.commandes) ? out.commandes : [];
+        const fresh = got.filter((c) => !O.list.some((o) => o.ref === c.ref)).map(fromSite);
+        if (fresh.length) { O.list.push(...fresh); O.done = false; board(); obar(); await saveNow(); }
+        if (got.length) { // enregistrées ici : on peut les effacer du serveur
+          const a = await fetch("/api/site/accuse", { method: "POST", headers: { ...API, "Content-Type": "application/json" }, body: JSON.stringify({ refs: got.map((c) => c.ref) }) });
+          if (!a.ok) throw new Error(`Commandes récupérées, mais pas encore effacées du site : ${(await a.json().catch(() => ({}))).erreur || "réessayez plus tard"}`);
+        }
+        const n = fresh.length;
+        status("saved", n ? `${n} nouvelle${n > 1 ? "s" : ""} commande${n > 1 ? "s" : ""} du site à ${hhmm()}` : `Aucune nouvelle commande sur le site (${hhmm()})`, "commandes");
+      } catch (err) { status("bad", err.message || "Récupération impossible", "commandes"); }
+      finally { O.syncing = false; $("#o-sync").textContent = "Récupérer les commandes du site"; obar(); }
+    }
+    $("#o-sync").addEventListener("click", () => syncSite(false));
+
+    const siteDlg = $("#o-site");
+    $(".o-x", siteDlg).innerHTML = icon("plus");
+    function fillSite(msg) { $("#o-url").value = O.site.url; $("#o-cle").value = O.site.cle; $("#o-copy").disabled = $("#o-newkey").disabled = !O.site.cle; const e = $("#o-siteerr"); e.className = msg ? "o-err o-ok" : "o-err"; e.textContent = msg || ""; }
+    function openSite() { fillSite(); siteDlg.showModal(); (O.site.cle ? $("#o-copy") : $("#o-url")).focus(); }
+    async function saveSite(nouvelle) {
+      const e = $("#o-siteerr");
+      try {
+        const r = await fetch("/api/site", { method: "POST", headers: { ...API, "Content-Type": "application/json" }, body: JSON.stringify({ url: $("#o-url").value, nouvelle }) });
+        const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
+        O.site = out; fillSite(nouvelle ? "Nouvelle clé créée : mettez à jour le secret CLE_COMMANDES sur GitHub, puis republiez le site" : "Enregistré. Copiez la clé dans le secret CLE_COMMANDES sur GitHub");
+      } catch (err) { e.className = "o-err"; e.textContent = err.message || "Enregistrement impossible"; }
+    }
+    $("#o-link").addEventListener("click", openSite);
+    siteDlg.addEventListener("click", (e) => { if (e.target === siteDlg || e.target.closest("[data-close]")) siteDlg.close(); });
+    $("#o-sitef").addEventListener("submit", (e) => { e.preventDefault(); saveSite(false); });
+    $("#o-newkey").addEventListener("click", () => { if (confirm("Créer une nouvelle clé ?\nL'ancienne ne fonctionnera plus : il faudra remplacer le secret CLE_COMMANDES sur GitHub et republier le site.")) saveSite(true); });
+    $("#o-copy").addEventListener("click", async () => {
+      const k = $("#o-cle");
+      try { await navigator.clipboard.writeText(k.value); } catch { k.select(); document.execCommand("copy"); }
+      $("#o-copy").textContent = "Copiée"; setTimeout(() => { $("#o-copy").textContent = "Copier"; }, 1600);
+    });
+
     /* ---------- Onglets ---------- */
     function setTab() {
       tab = location.hash === "#commandes" ? "commandes" : "catalogue";
@@ -1081,7 +1176,11 @@
     fetch("/api/commandes", { headers: API })
       .then(async (r) => { const out = await r.json(); if (!r.ok) throw new Error(out.erreur); O.list = Array.isArray(out.commandes) ? out.commandes : []; O.ready = true; })
       .catch((err) => { O.error = err instanceof TypeError ? "" : err.message; })
-      .finally(() => { obar(); board(); });
+      .finally(() => {
+        obar(); board();
+        if (!O.ready) return;
+        fetch("/api/site", { headers: API }).then((r) => r.json()).then((conf) => { O.site = conf; syncSite(true); }).catch(() => {}); // à l'ouverture
+      });
   })();
   </script>
 </body>

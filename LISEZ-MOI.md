@@ -32,11 +32,33 @@ La page de gestion ne fonctionne que sur votre ordinateur. Le dossier `outils/` 
 
 Dans la page d'administration, l'onglet **Commandes** (ou directement http://localhost:4173/admin#commandes) présente vos commandes en tickets, façon Trello, sur trois colonnes : **Commande**, **En cours d'impression**, **À livrer**.
 
-- **Ajouter une commande** : le bouton « Coller un e-mail de commande » lit l'e-mail reçu depuis le site (« Commande GF-… ») et crée le ticket tout seul : objets avec leur photo, couleur et taille, client, adresse, livraison, paiement souhaité. Le « + Ajouter une commande » en bas d'une colonne crée un ticket vide.
+- **Commandes passées sur le site** : elles arrivent toutes seules. « Récupérer les commandes du site » (fait aussi automatiquement à l'ouverture de l'onglet) les ajoute dans la colonne Commande avec l'étiquette « Site ». Voir « Recevoir les commandes du site » plus bas pour le réglage à faire une fois.
+- **Ajouter une commande à la main** : le bouton « Coller un e-mail » lit l'e-mail de commande reçu depuis le site (« Commande GF-… ») et crée le ticket tout seul : objets avec leur photo, couleur et taille, client, adresse, livraison, paiement souhaité. Le « + Ajouter une commande » en bas d'une colonne crée un ticket vide.
 - **Objets du site** : dans la fiche d'une commande, la barre « Rechercher un objet du site » retrouve un produit par son nom ou sa catégorie et l'ajoute avec sa photo et son nom (flèches puis Entrée, ou clic). Couleur, taille, quantité et prix se règlent ensuite ; le prix suit la taille choisie.
 - **Avancer une commande** : glissez le ticket dans la colonne suivante, ou utilisez son bouton (« Lancer l'impression », « Imprimée », « Livrée »). Les commandes livrées quittent le tableau et restent consultables avec le bouton « Livrées ».
 - **Fiche** : un clic sur un ticket l'ouvre : client, adresse, paiement reçu ou non, mode et frais de livraison, numéro de suivi, note. L'étiquette « À encaisser » / « Payée » apparaît sur le ticket.
 - **Enregistrement** : automatique, dans `outils/commandes.json`, avec une copie par jour dans `outils/sauvegardes/` (30 jours). Ce fichier contient des données personnelles de vos clients : il n'est ni mis en ligne, ni envoyé sur GitHub (exclu dans `.gitignore`), et le serveur local refuse de le servir. Pensez à le sauvegarder avec vos autres fichiers.
+
+## Recevoir les commandes du site
+
+Quand un client valide son panier, la commande est envoyée à `api/commandes.php` (PHP, fourni par O2switch) :
+
+1. elle est rangée sur votre hébergement, **en dehors du dossier public** (`commandes-biboulab/`, à côté de `public_html`) ;
+2. vous recevez un e-mail « Nouvelle commande GF-… » à l'adresse `SITE.email` de `data.js` (tant qu'elle vaut `contact@votre-domaine.fr`, aucun e-mail n'est envoyé) ;
+3. le client voit « Commande GF-… reçue » ;
+4. dans la page de gestion, onglet Commandes, la commande devient un ticket ; elle est alors **effacée du serveur**.
+
+Si le serveur ne répond pas (aperçu local, panne), le panier repasse à l'ancien fonctionnement : la messagerie du client s'ouvre avec le récapitulatif. Pour ne jamais passer par le serveur, videz `orderEndpoint` dans `data.js`.
+
+**Réglage à faire une seule fois** (la page de gestion a besoin d'une clé secrète pour lire les commandes) :
+
+1. Onglet Commandes › **Relier au site** : vérifiez l'adresse du site, **Enregistrer**, puis **Copier** la clé. Elle est gardée dans `outils/site.json`, sur votre ordinateur uniquement.
+2. Sur GitHub, dans le dépôt : **Settings › Secrets and variables › Actions › New repository secret**. Nom : `CLE_COMMANDES`, valeur : la clé.
+3. Republiez le site (**Actions › Déploiement O2switch › Run workflow**). Le déploiement n'envoie sur le serveur que l'empreinte de la clé (`api/cle.php`), jamais la clé elle-même.
+
+Si la clé est perdue ou divulguée : « Changer de clé », puis remplacez le secret et republiez.
+
+Tant que le mode « site en construction » est actif, `www.biboulab.fr` ne prend pas de commandes : pour tester, indiquez l'adresse de la préproduction dans « Relier au site » (le même secret sert aux deux déploiements).
 
 ## Site en construction
 
@@ -55,6 +77,7 @@ Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les vis
 | `assets/js/icons.js` | Icônes du site (catégories, boutons). Une ligne par icône |
 | `outils/admin.html` | Page de gestion : catalogue (catégories, objets) et suivi des commandes (voir ci-dessus) |
 | `outils/commandes.json` | Vos commandes, créé par l'onglet « Commandes ». Local uniquement, jamais mis en ligne |
+| `api/commandes.php` | Reçoit les commandes du panier et les garde pour la page de gestion (voir « Recevoir les commandes du site ») |
 | `assets/js/app.js` | Moteur commun : menu, pied de page, thème, panier, curseur, préloader, transitions, cookies |
 | `assets/js/pages.js` | Contenu de chaque page (accueil, boutique, fiche produit, panier, contact…) |
 | `index.html` | Accueil |
@@ -110,7 +133,7 @@ Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré
 
 ## Paiement et formulaires
 
-- **Commande** : par défaut (`payment.mode: "email"`), valider la commande ouvre la messagerie du client avec le récapitulatif ; vous lui renvoyez un lien de paiement (Stripe Payment Links, PayPal, SumUp…). Aucun paiement n'est encaissé sur le site. Pour un paiement en ligne intégré, il faut un service marchand (Stripe Checkout, Shopify Buy Button, Snipcart…) : c'est une étape à part.
+- **Commande** : la commande est transmise à votre serveur (voir « Recevoir les commandes du site »), ou à défaut ouvre la messagerie du client avec le récapitulatif ; vous lui renvoyez ensuite un lien de paiement (Stripe Payment Links, PayPal, SumUp…). Aucun paiement n'est encaissé sur le site. Pour un paiement en ligne intégré, il faut un service marchand (Stripe Checkout, Shopify Buy Button, Snipcart…) : c'est une étape à part.
 - **Contact** : même principe (messagerie du visiteur). Pour recevoir les messages directement, créez un formulaire sur un service comme Formspree et collez son adresse dans `SITE.formEndpoint`.
 
 ## Animations et design : où régler quoi

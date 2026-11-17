@@ -1,0 +1,8 @@
+# Dans api/, seul commandes.php répond. La clé (cle.php) et, le cas échéant,
+# les commandes en attente (donnees/) ne sont jamais accessibles depuis le web.
+<IfModule mod_authz_core.c>
+  Require all denied
+  <Files "commandes.php">
+    Require all granted
+  </Files>
+</IfModule>

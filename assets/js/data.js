@@ -71,6 +71,11 @@ const SITE = {
      (ex. Formspree). Vide = le message s'ouvre dans la messagerie du visiteur. */
   formEndpoint: "",
 
+  /* Réception des commandes sur le serveur (fichier api/commandes.php, PHP).
+     La commande arrive directement dans la page de gestion, onglet Commandes.
+     Vide, ou si le serveur ne répond pas : la commande part par e-mail. */
+  orderEndpoint: "api/commandes.php",
+
   /* true = affiche les petites mentions "contenu d'exemple" (avis, chiffres).
      Passez à false quand vos vrais contenus sont en place. */
   demo: true,

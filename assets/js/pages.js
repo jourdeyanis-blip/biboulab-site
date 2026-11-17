@@ -602,7 +602,7 @@
       } else if (st.step === 3) {
         body = `<form class="co-main" id="pay-form" novalidate>
             <h2 class="h-sub">Mode de paiement</h2>
-            ${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est envoyée par e-mail et je vous retourne un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
+            ${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est transmise et je vous retourne par e-mail un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
             ${pays.map((m) => `<label class="radio-card"><input type="radio" name="pay" value="${m.id}" ${m.id === st.pay ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.note)}</small></span></label>`).join("")}
             <h2 class="h-sub" style="margin-top:32px">Livraison</h2>
             <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})</p>
@@ -624,13 +624,47 @@
       if (e.target.name === "ship") { st.ship = e.target.value; Object.assign(st.info, Object.fromEntries(new FormData($("#ship-form")))); render(); const r = $('input[name="ship"]:checked'); if (r) r.focus(); }
       if (e.target.name === "pay") st.pay = e.target.value;
     });
-    main.addEventListener("submit", (e) => {
+    /* Envoi au serveur (api/commandes.php). Renvoie la référence retenue, null si le
+       serveur n'est pas joignable (aperçu local, panne) : on passe alors par l'e-mail. */
+    async function sendOrder(ref, t, pay) {
+      if (!SITE.orderEndpoint || location.protocol === "file:") return null;
+      const i = st.info, lines = Cart.lines();
+      const body = {
+        ref, client: { prenom: i.prenom, nom: i.nom, email: i.email, adresse: i.adresse, cp: i.cp, ville: i.ville }, note: i.note || "",
+        articles: lines.map((l) => ({ id: l.p.id, nom: l.p.name, couleur: l.color || "", couleurNom: l.color && FILAMENTS[l.color] ? FILAMENTS[l.color].name : "", taille: l.size || "", qte: l.qty, prix: l.unit })),
+        livraison: { id: t.m.id, nom: t.m.label, frais: t.fee }, paiement: { id: pay.id, nom: pay.label }, total: t.total
+      };
+      let r, out;
+      try {
+        r = await fetch(SITE.orderEndpoint, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
+        out = await r.json();
+      } catch { return null; }
+      if (r.ok && out && out.ok) return out.ref || ref;
+      if (r.status === 400 || r.status === 429) throw new Error(out.erreur);
+      return null;
+    }
+
+    main.addEventListener("submit", async (e) => {
       e.preventDefault();
       if (!validate(e.target)) return;
       if (e.target.id === "ship-form") { Object.assign(st.info, Object.fromEntries(new FormData(e.target))); st.step = 3; render(true); return; }
-      /* Validation finale : on prépare l'e-mail de commande */
-      const t = totals(), i = st.info, ref = "GF-" + Date.now().toString(36).toUpperCase().slice(-6);
-      const pay = pays.find((m) => m.id === st.pay);
+      /* Validation finale : envoi au serveur, sinon e-mail de commande */
+      const t = totals(), i = st.info, pay = pays.find((m) => m.id === st.pay);
+      let ref = "GF-" + Date.now().toString(36).toUpperCase().slice(-6);
+      const btn = $('button[form="pay-form"]');
+      if (btn.disabled) return;
+      btn.disabled = true; const label = btn.innerHTML; btn.textContent = "Envoi de la commande…";
+      let sent = null;
+      try { sent = await sendOrder(ref, t, pay); }
+      catch (err) { btn.disabled = false; btn.innerHTML = label; toast(esc(err.message || "La commande n'a pas pu être envoyée.")); return; }
+      if (sent) {
+        st.done = `<section class="wrap section"><div class="success" role="status">${tick}
+          <h1 tabindex="-1">Commande ${esc(sent)} reçue</h1>
+          <p class="muted">Merci ${esc(i.prenom)} ! Votre commande m'est bien parvenue. Je la vérifie et je vous écris à <b>${esc(i.email)}</b> pour le paiement : ${esc(pay.label.toLowerCase())}. L'impression démarre dès le paiement reçu.</p>
+          <a class="btn btn-primary" href="boutique.html">Retour à la boutique</a></div></section>`;
+        st.step = 4; Cart.clear(); render(true); confetti();
+        return;
+      }
       const text = [`Commande ${ref}`, "", ...Cart.lines().map((l) => `- ${l.qty} × ${l.p.name}${optText(l) ? ` (${optText(l)})` : ""} : ${euro(l.total)}`), "",
         `Sous-total : ${euro(t.sub)}`, `Livraison (${t.m.label}) : ${t.free ? "offerte" : euro(t.fee)}`, `TOTAL : ${euro(t.total)}`, "",
         `Paiement souhaité : ${pay.label}`, "", "Livraison :", `${i.prenom} ${i.nom}`, i.adresse, `${i.cp} ${i.ville}`, i.email, i.note ? `Précision : ${i.note}` : ""].join("\n");

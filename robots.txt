@@ -2,5 +2,6 @@ User-agent: *
 Allow: /
 Disallow: /panier.html
 Disallow: /outils/
+Disallow: /api/
 
 Sitemap: https://www.biboulab.fr/sitemap.xml

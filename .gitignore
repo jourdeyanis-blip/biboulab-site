@@ -3,3 +3,6 @@ outils/sauvegardes/
 .claude/settings.local.json
 outils/commandes.json
 outils/commandes.json.tmp
+outils/site.json
+api/cle.php
+api/donnees/
