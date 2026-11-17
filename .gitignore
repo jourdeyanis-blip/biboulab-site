@@ -1,3 +1,5 @@
 .DS_Store
 outils/sauvegardes/
 .claude/settings.local.json
+outils/commandes.json
+outils/commandes.json.tmp

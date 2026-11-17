@@ -98,6 +98,174 @@
     .preview .cat { min-height: 200px; }
     .a-empty { height: 100%; display: grid; place-items: center; text-align: center; color: var(--muted); }
     .a-empty h1 { font: 500 1.25rem/1.3 var(--font-b); color: var(--text); margin-bottom: 8px; letter-spacing: 0; }
+    [hidden] { display: none !important; }
+    .a-warn { grid-row: 2; } .a-shell, .o-view { grid-row: 3; }
+
+    /* ---------- Onglets ---------- */
+    .a-tabs { display: flex; gap: 4px; }
+    .a-tab { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; padding: 0 12px; border-radius: 8px; font-size: .9375rem; color: var(--muted); transition: background-color .18s var(--ease), color .18s var(--ease); }
+    .a-tab:hover { background: var(--surface-2); color: var(--text); }
+    .a-tab[aria-current="page"] { background: var(--surface-2); color: var(--text); box-shadow: inset 0 0 0 1px var(--line-2); }
+    .a-tab .num { min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--text); color: var(--bg); font-size: .75rem; font-weight: 500; display: grid; place-items: center; font-variant-numeric: tabular-nums; }
+
+    /* ---------- Commandes : tableau façon Trello ---------- */
+    .o-view { --col: var(--surface); --card: var(--surface-2); display: grid; grid-template-rows: auto 1fr; min-height: 0; }
+    [data-theme="light"] .o-view, [data-theme="light"] .o-dlg { --col: var(--surface-2); --card: var(--surface); }
+    .o-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 16px 24px; border-bottom: 1px solid var(--line); }
+    .o-bar .field { flex: 0 1 340px; }
+    .o-bar .input { min-height: 40px; padding: 8px 12px 8px 40px !important; background: var(--surface); }
+    .o-bar .field > .ic { left: 12px; }
+    .o-bar .btn { min-height: 40px; padding: 0 14px; font-size: .875rem; }
+    .o-bar .btn[aria-pressed="true"] { background: var(--text); color: var(--bg); border-color: var(--text); }
+    .o-sum { margin: 0 0 0 auto; color: var(--muted); font-size: .875rem; }
+    .o-board { min-height: 0; overflow: auto; padding: 16px 24px 24px; display: grid; grid-auto-flow: column; grid-auto-columns: minmax(288px, 340px); gap: 12px; align-items: start; }
+    .o-col { max-height: 100%; min-height: 0; display: flex; flex-direction: column; background: var(--col); border: 1px solid var(--line); border-radius: 14px; transition: box-shadow .18s var(--ease); }
+    .o-col.drop { box-shadow: inset 0 0 0 2px var(--accent); }
+    .o-ch { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
+    .o-ch h2 { font: 500 .9375rem/1.3 var(--font-b); letter-spacing: 0; }
+    .o-ch .num { color: var(--faint); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+    .o-list { flex: 1; min-height: 48px; overflow-y: auto; padding: 4px 8px; display: grid; gap: 8px; align-content: start; }
+    .o-list.drop-end::after { content: ""; height: 2px; border-radius: 1px; background: var(--accent); }
+    .o-empty { margin: 0; padding: 14px 8px; border: 1px dashed var(--line-2); border-radius: 10px; color: var(--faint); font-size: .8125rem; text-align: center; }
+    .o-add { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 4px 8px 8px; padding: 0 8px; border-radius: 8px; color: var(--muted); font-size: .875rem; transition: background-color .18s var(--ease), color .18s var(--ease); }
+    .o-add:hover { background: var(--card); color: var(--text); }
+    .o-add .ic { width: 16px; height: 16px; }
+
+    .o-card { position: relative; background: var(--card); border: 1px solid var(--line); border-radius: 10px; overflow: hidden; cursor: grab; transition: border-color .18s var(--ease), box-shadow .18s var(--ease), opacity .18s var(--ease); }
+    .o-card:hover { border-color: var(--line-2); }
+    .o-card:has(.o-open:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
+    .o-card.dragging { opacity: .4; }
+    .o-card.drop-before::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--accent); z-index: 2; }
+    .o-cover { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 2px; height: 112px; background: var(--line); }
+    .o-cv { width: 100%; height: 100%; object-fit: cover; }
+    .o-cb { padding: 10px 12px 12px; }
+    .o-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+    .o-lab { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 4px; font-size: .75rem; font-weight: 500; background: var(--line); color: var(--muted); }
+    .o-lab.ok { background: color-mix(in oklab, var(--ok) 18%, transparent); color: color-mix(in oklab, var(--ok) 72%, var(--text)); }
+    .o-lab.due { background: color-mix(in oklab, var(--orange) 18%, transparent); color: color-mix(in oklab, var(--orange) 72%, var(--text)); }
+    .o-card h3 { font: 500 .9375rem/1.35 var(--font-b); letter-spacing: 0; }
+    .o-open { text-align: left; }
+    .o-open::after { content: ""; position: absolute; inset: 0; z-index: 1; } /* toute la carte ouvre la fiche */
+    .o-open:focus-visible { outline: none; }
+    .o-sub { margin: 2px 0 0; color: var(--faint); font-size: .8125rem; }
+    .o-items { margin-top: 8px; display: grid; gap: 2px; font-size: .8125rem; color: var(--muted); }
+    .o-items li { display: flex; gap: 6px; }
+    .o-items .o-q { color: var(--faint); font-variant-numeric: tabular-nums; flex: none; }
+    .o-items small { color: var(--faint); font-size: inherit; }
+    .o-foot { display: flex; align-items: center; gap: 8px; margin-top: 10px; }
+    .o-foot b { font-weight: 500; font-size: .875rem; font-variant-numeric: tabular-nums; }
+    .o-next { position: relative; z-index: 2; margin-left: auto; display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); font-size: .8125rem; color: var(--muted); transition: background-color .18s var(--ease), color .18s var(--ease); }
+    .o-next:hover { background: var(--col); color: var(--text); }
+    .o-next .ic { width: 14px; height: 14px; }
+    .o-msg { grid-column: 1 / -1; max-width: 520px; margin: 48px auto; text-align: center; color: var(--muted); }
+    .o-msg h2 { font: 500 1.25rem/1.3 var(--font-b); color: var(--text); margin-bottom: 8px; letter-spacing: 0; }
+    .o-msg code { font: .875em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; }
+
+    /* Commandes livrées */
+    .o-done { grid-auto-flow: row; grid-auto-columns: auto; align-content: start; gap: 8px; max-width: 960px; width: 100%; margin-inline: auto; }
+    .o-done h2 { font: 500 1rem/1.3 var(--font-b); letter-spacing: 0; margin: 8px 0 4px; }
+    .o-row { position: relative; display: grid; grid-template-columns: 1fr auto auto auto; gap: 16px; align-items: center; padding: 10px 12px; border: 1px solid var(--line); border-radius: 10px; background: var(--col); font-size: .875rem; }
+    .o-row:hover { border-color: var(--line-2); }
+    .o-row .o-open b { font-weight: 500; } .o-row .o-open span { color: var(--faint); }
+    .o-row .num { color: var(--faint); font-variant-numeric: tabular-nums; }
+    .o-row .o-next { margin: 0; }
+
+    /* Vignettes produits */
+    .o-th { width: 40px; height: 40px; border-radius: 8px; object-fit: cover; flex: none; }
+    .o-lth { width: 56px; height: 56px; border-radius: 10px; object-fit: cover; }
+    .o-art { position: relative; display: grid; place-items: center; background: #14141c; overflow: hidden; }
+    .o-art::before { content: ""; position: absolute; inset: 14%; border-radius: 50%; background: linear-gradient(140deg, var(--c), var(--c2)); opacity: .92; }
+    .o-art .ic { position: relative; width: 38%; height: 38%; color: #fff; }
+    .o-art.o-none { background: var(--surface-2); } .o-art.o-none::before { display: none; } .o-art.o-none .ic { color: var(--faint); }
+    .o-cover .o-art .ic { width: 40px; height: 40px; }
+    .o-cover .o-art::before { inset: auto; width: 84px; height: 84px; }
+
+    /* Fiche d'une commande (s'ouvre au clic, comme le dos d'une carte Trello) */
+    .o-dlg { width: min(940px, 100% - 32px); max-height: calc(100% - 48px); padding: 0; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--bg); color: var(--text); box-shadow: var(--shadow); }
+    .o-dlg::backdrop { background: rgba(5, 6, 9, .64); }
+    .o-dlg.o-small { width: min(620px, 100% - 32px); }
+    .o-dlg .input, .o-dlg .select { min-height: 40px; padding: 8px 12px; }
+    .o-dlg .select { padding-right: 36px; }
+    .o-dlg .textarea { min-height: 80px; padding: 10px 12px; }
+    .o-dlg .fg + .fg { margin-top: 12px; }
+    .o-dlg .fg label { margin-bottom: 6px; font-size: .8125rem; color: var(--muted); }
+    .o-in-wrap { display: grid; grid-template-columns: 1fr 272px; gap: 0 32px; padding: 20px 24px 24px; }
+    .o-dh { grid-column: 1 / -1; display: flex; align-items: flex-start; gap: 16px; padding-bottom: 16px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+    .o-dh > div { flex: 1; min-width: 0; }
+    .o-title { width: 100%; font: 500 1.375rem/1.3 var(--font-b); padding: 4px 8px; margin-left: -8px; border-radius: 8px; border: 1px solid transparent; background: none; }
+    .o-title:hover { background: var(--surface); }
+    .o-title:focus { outline: none; border-color: var(--accent); background: var(--surface); }
+    .o-where { margin: 4px 0 0; display: flex; flex-wrap: wrap; align-items: center; gap: 8px; color: var(--muted); font-size: .875rem; }
+    .o-where .select { width: auto; min-height: 32px; padding: 4px 32px 4px 10px; font-size: .875rem; background-position: right 8px center; background-size: 16px; }
+    .o-x { width: 40px; height: 40px; flex: none; display: grid; place-items: center; border-radius: 8px; color: var(--muted); transition: background-color .18s var(--ease), color .18s var(--ease); }
+    .o-x:hover { background: var(--surface-2); color: var(--text); }
+    .o-x .ic { transform: rotate(45deg); }
+    .o-ds { padding: 16px 0; }
+    .o-ds + .o-ds { border-top: 1px solid var(--line); }
+    .o-dlg h3 { font: 500 .9375rem/1.3 var(--font-b); letter-spacing: 0; margin-bottom: 12px; }
+    .o-side section { padding: 16px 0; } .o-side section + section { border-top: 1px solid var(--line); }
+    .o-side .btn { width: 100%; min-height: 40px; font-size: .875rem; margin-top: 8px; }
+    .o-mailto { display: inline-block; margin-top: 8px; font-size: .8125rem; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
+    .o-mailto:hover { color: var(--text); }
+    .o-check { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: .875rem; cursor: pointer; }
+    .o-check input { width: 18px; height: 18px; accent-color: var(--ok); }
+
+    /* Recherche d'un objet du site */
+    .o-find { position: relative; margin-bottom: 12px; }
+    .o-find .input { padding-left: 40px !important; background: var(--surface); }
+    .o-find .field > .ic { left: 12px; }
+    .o-res { position: absolute; z-index: 5; top: calc(100% + 4px); left: 0; right: 0; max-height: 340px; overflow-y: auto; padding: 4px; background: var(--surface); border: 1px solid var(--line-2); border-radius: 12px; box-shadow: var(--shadow); }
+    .o-opt { display: grid; grid-template-columns: 40px 1fr auto; gap: 12px; align-items: center; padding: 6px 8px; border-radius: 8px; cursor: pointer; }
+    .o-opt[aria-selected="true"] { background: var(--surface-2); }
+    .o-opt b { display: block; font-weight: 500; font-size: .875rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o-opt small { display: block; color: var(--faint); font-size: .75rem; }
+    .o-opt span { min-width: 0; }
+    .o-opt .num { color: var(--muted); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+    .o-nores { margin: 0; padding: 12px; color: var(--faint); font-size: .875rem; }
+
+    /* Lignes de la commande */
+    .o-lines { display: grid; gap: 8px; }
+    .o-line { display: grid; grid-template-columns: 56px 1fr auto 40px; gap: 4px 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
+    .o-lname { min-width: 0; }
+    .o-lname b { display: block; font-weight: 500; font-size: .9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o-lname a, .o-lname small { font-size: .75rem; color: var(--faint); }
+    .o-lname a { text-decoration: underline; text-underline-offset: 2px; } .o-lname a:hover { color: var(--text); }
+    .o-ltot { font-weight: 500; font-size: .9375rem; font-variant-numeric: tabular-nums; }
+    .o-line .rm { width: 40px; height: 40px; }
+    .o-lctl { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+    .o-lctl .select { width: auto; flex: 1 1 0; min-width: 120px; }
+    .o-lctl .input { width: 100%; }
+    .o-mini { display: flex; align-items: center; gap: 6px; font-size: .75rem; color: var(--faint); }
+    .o-mini .input { width: 72px; }
+    .o-mini.p .input { width: 88px; }
+    .o-lctl .o-opts { flex: 1 1 160px; }
+    .o-tot { margin: 16px 0 0; display: grid; gap: 4px; font-size: .875rem; }
+    .o-tot div { display: flex; justify-content: space-between; color: var(--muted); }
+    .o-tot dd { margin: 0; font-variant-numeric: tabular-nums; }
+    .o-tot .t { color: var(--text); font-weight: 500; font-size: 1rem; padding-top: 8px; margin-top: 4px; border-top: 1px solid var(--line); }
+    .o-two { display: grid; grid-template-columns: 1fr 96px; gap: 8px; }
+    .o-two .fg + .fg { margin-top: 0; }
+
+    /* Coller un e-mail */
+    .o-mailf { padding: 20px 24px 24px; }
+    .o-mailf .o-dh h2 { font: 500 1.125rem/1.3 var(--font-b); letter-spacing: 0; flex: 1; padding-top: 8px; }
+    .o-mailf .textarea { min-height: 260px; font: .8125rem/1.5 ui-monospace, SFMono-Regular, Menlo, monospace; }
+    .o-err { min-height: 1.4em; margin: 8px 0 0; color: var(--err); font-size: .875rem; }
+    .o-acts { display: flex; justify-content: flex-end; gap: 8px; margin-top: 8px; }
+    .o-acts .btn { min-height: 40px; padding: 0 16px; font-size: .9375rem; }
+
+    @media (max-width: 860px) {
+      .a-tabs { order: 3; width: 100%; }
+      .o-view { display: block; }
+      .o-bar { padding: 12px 16px; } .o-bar .field { flex: 1 1 100%; } .o-sum { margin-left: 0; }
+      .o-board { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: 1fr; padding: 16px; overflow: visible; }
+      .o-col, .o-list { max-height: none; overflow: visible; }
+      .o-row { grid-template-columns: 1fr auto; }
+      .o-in-wrap { grid-template-columns: 1fr; padding: 16px; }
+      .o-dlg { width: calc(100% - 16px); max-height: calc(100% - 16px); }
+      .o-line { grid-template-columns: 48px 1fr 40px; } .o-lth { width: 48px; height: 48px; }
+      .o-ltot { grid-column: 2; grid-row: 2; }
+    }
     @media (max-width: 860px) {
       body { overflow: auto; height: auto; display: block; }
       .a-top { flex-wrap: wrap; height: auto; padding: 12px 16px; gap: 8px 12px; }
@@ -113,7 +281,10 @@
 <body>
   <header class="a-top">
     <a class="logo" href="../index.html" target="_blank" rel="noopener" title="Ouvrir le site"><span class="logo-a">Biboulab</span></a>
-    <span class="sub">Administration</span>
+    <nav class="a-tabs" aria-label="Sections de l'administration">
+      <a class="a-tab" href="#catalogue" data-tab="catalogue">Catalogue</a>
+      <a class="a-tab" href="#commandes" data-tab="commandes">Commandes <span class="num" id="o-badge" hidden></span></a>
+    </nav>
     <span class="sub" id="counts"></span>
     <p class="a-status" id="status" role="status"><i></i><span></span></p>
     <button class="btn btn-primary" type="button" id="save" disabled>Enregistrer</button>
@@ -128,6 +299,25 @@
     </aside>
     <main class="a-main" id="main"></main>
   </div>
+  <section class="o-view" id="orders" aria-label="Suivi des commandes" hidden>
+    <div class="o-bar">
+      <div class="field"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><label class="sr" for="o-q">Rechercher une commande</label><input class="input" id="o-q" type="search" placeholder="Client, référence, objet…" autocomplete="off"></div>
+      <button class="btn btn-ghost" type="button" id="o-paste">Coller un e-mail de commande</button>
+      <button class="btn btn-ghost" type="button" id="o-done" aria-pressed="false">Livrées</button>
+      <p class="o-sum" id="o-sum"></p>
+    </div>
+    <div class="o-board" id="board"></div>
+  </section>
+  <dialog class="o-dlg" id="o-dlg"></dialog>
+  <dialog class="o-dlg o-small" id="o-mail" aria-labelledby="o-mail-h">
+    <form class="o-mailf" id="o-mailf" novalidate>
+      <div class="o-dh"><h2 id="o-mail-h">Créer une commande depuis un e-mail</h2><button class="o-x" type="button" data-close aria-label="Fermer"></button></div>
+      <label class="hint" for="o-mailt" style="display:block;margin:0 0 12px">Copiez tout le texte de l'e-mail « Commande GF-… » reçu depuis le site et collez-le ici. Les objets du site sont reconnus avec leur photo, le client et l'adresse sont remplis</label>
+      <textarea class="textarea" id="o-mailt" spellcheck="false"></textarea>
+      <p class="o-err" id="o-mailerr" role="alert"></p>
+      <div class="o-acts"><button class="btn btn-ghost" type="button" data-close>Annuler</button><button class="btn btn-primary" type="submit">Créer la commande</button></div>
+    </form>
+  </dialog>
 
   <script src="../assets/js/data.js"></script>
   <script src="../assets/js/icons.js"></script>
@@ -171,7 +361,11 @@
     const pathName = (c) => { const out = []; for (let x = c; x && !out.includes(x); x = parentA(x)) out.unshift(x); return out.map((x) => x.name || x.slug).join(" › "); };
 
     /* ---------- Barre du haut ---------- */
-    function status(kind, text) { const el = $("#status"); el.className = "a-status " + kind; $("span", el).textContent = text; }
+    /* Chaque onglet a son propre état (catalogue : bouton Enregistrer ; commandes : enregistrement automatique) */
+    let tab = "catalogue";
+    const ST = { catalogue: ["", "Aucune modification"], commandes: ["", "Enregistrement automatique"] };
+    function paintStatus() { const [kind, text] = ST[tab], el = $("#status"); el.className = "a-status " + kind; $("span", el).textContent = text; }
+    function status(kind, text, which = "catalogue") { ST[which] = [kind, text]; if (which === tab) paintStatus(); }
     function touch() { st.dirty = true; status("dirty", "Modifications non enregistrées"); $("#save").disabled = !st.canSave; counts(); }
     function counts() { const c = st.cats.length, p = st.prods.length; $("#counts").textContent = `${c} catégorie${c > 1 ? "s" : ""} · ${p} objet${p > 1 ? "s" : ""}`; }
 
@@ -495,18 +689,399 @@
     }
     $("#save").addEventListener("click", save);
     addEventListener("keydown", (e) => { if ((e.metaKey || e.ctrlKey) && e.key === "s") { e.preventDefault(); if (st.dirty && st.canSave) save(); } });
-    addEventListener("beforeunload", (e) => { if (st.dirty) e.preventDefault(); });
+    addEventListener("beforeunload", (e) => { if (st.dirty || O.pending) e.preventDefault(); });
 
     function render() { counts(); tools(); list(); form(); }
 
+    /* =====================================================================
+       COMMANDES — tableau façon Trello : Commande → En cours d'impression → À livrer
+       Chaque commande est un ticket qu'on glisse d'une colonne à l'autre ; un clic
+       ouvre sa fiche. Tout est enregistré automatiquement dans outils/commandes.json.
+       ===================================================================== */
+    const STEPS = [
+      { id: "commande", label: "Commande", next: "Lancer l'impression" },
+      { id: "impression", label: "En cours d'impression", next: "Imprimée" },
+      { id: "livrer", label: "À livrer", next: "Livrée" }
+    ];
+    const STEP_NAME = { commande: "Commande", impression: "En cours d'impression", livrer: "À livrer", livree: "Livrée" };
+    const NEXT = { commande: "impression", impression: "livrer", livrer: "livree" };
+    const API = { "X-Biboulab-Admin": "1" };
+    const O = { list: [], ready: false, error: "", q: "", done: false, open: null, drag: null, res: [], act: 0, timer: 0, seq: 0, pending: false, queue: Promise.resolve() };
+    const byId = (id) => O.list.find((o) => o.id === id);
+    const prodOf = (id) => id && st.prods.find((p) => p.id === id);
+    const round = (n) => Math.round((+n || 0) * 100) / 100;
+    const lineTotal = (it) => round((+it.qty || 0) * (+it.price || 0));
+    const subTotal = (o) => round(o.items.reduce((s, it) => s + lineTotal(it), 0));
+    const orderTotal = (o) => round(subTotal(o) + (+o.shippingFee || 0));
+    const optsOf = (it) => [it.color && FILAMENTS[it.color] ? FILAMENTS[it.color].name : "", it.size || "", it.options || ""].filter(Boolean).join(" · ");
+    const shortDate = (d) => (d ? new Date(d + "T12:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "");
+    const hhmm = () => new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
+    const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+    const newRef = () => "GF-" + Date.now().toString(36).toUpperCase().slice(-6); // même format que les commandes du site
+    const isEmpty = (o) => !o.items.length && !o.client.trim() && !o.email.trim() && !o.adresse.trim() && !o.note.trim();
+    const blank = (step) => {
+      const m = SITE.shipping.methods[0], pay = SITE.payment.methods[0];
+      return { id: uid(), ref: newRef(), status: step, date: today(), moved: today(), client: "", email: "", adresse: "", items: [],
+        shipping: m ? m.label : "", shippingFee: m ? m.price : 0, payment: pay ? pay.label : "", paid: false, tracking: "", note: "" };
+    };
+
+    /* Vignette d'un objet : sa première photo, sinon le visuel aux couleurs de sa catégorie (comme sur le site) */
+    const srcOf = (s) => (/^(https?:|data:|\/)/.test(s) ? s : "../" + s);
+    function pThumb(p, cls = "o-th") {
+      if (!p) return `<span class="${cls} o-art o-none" aria-hidden="true">${icon("box")}</span>`;
+      if (p.images && p.images[0]) return `<img class="${cls}" src="${esc(srcOf(p.images[0]))}" alt="" loading="lazy" decoding="async">`;
+      const c = catOf(p.category) || st.cats[0] || {};
+      return `<span class="${cls} o-art" style="--c:${esc(c.color)};--c2:${esc(c.color2)}" aria-hidden="true">${icon(c.icon)}</span>`;
+    }
+
+    /* ---------- Enregistrement automatique ---------- */
+    function persist() {
+      clearTimeout(O.timer); O.pending = true; status("dirty", "Enregistrement…", "commandes");
+      O.timer = setTimeout(() => {
+        const seq = ++O.seq, body = JSON.stringify({ commandes: O.list });
+        O.queue = O.queue
+          .then(() => fetch("/api/commandes", { method: "POST", headers: { ...API, "Content-Type": "application/json" }, body }))
+          .then(async (r) => { if (!r.ok) throw new Error((await r.json().catch(() => ({}))).erreur || "Enregistrement impossible"); })
+          .then(() => { if (seq === O.seq) { O.pending = false; status("saved", `Commandes enregistrées à ${hhmm()}`, "commandes"); } })
+          .catch((err) => status("bad", `${err.message || "Enregistrement impossible"} : ces changements ne sont pas sauvegardés`, "commandes"));
+      }, 350);
+    }
+    function changed() { board(); obar(); persist(); }
+
+    /* ---------- Barre d'outils et tableau ---------- */
+    function obar() {
+      const active = O.list.filter((o) => o.status !== "livree"), due = active.filter((o) => !o.paid).length, done = O.list.length - active.length;
+      $("#o-sum").textContent = O.ready ? `${active.length} commande${active.length > 1 ? "s" : ""} en cours${due ? ` · ${due} à encaisser` : ""}` : "";
+      $("#o-done").textContent = O.done ? "Retour au tableau" : `Livrées · ${done}`;
+      $("#o-done").setAttribute("aria-pressed", O.done);
+      const b = $("#o-badge"); b.textContent = active.length; b.hidden = !active.length;
+      ["#o-q", "#o-paste", "#o-done"].forEach((s) => { $(s).disabled = !O.ready; });
+    }
+    const hay = (o) => slugify([o.ref, o.client, o.email, o.adresse, o.note, o.tracking, o.payment, o.shipping, ...o.items.map((it) => it.name + " " + optsOf(it))].join(" "));
+    const matches = (o) => { const w = slugify(O.q).split("-").filter(Boolean); return !w.length || w.every((x) => hay(o).includes(x)); };
+
+    function ticket(o) {
+      const prods = [...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).slice(0, 3);
+      const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
+      return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
+          ${prods.length ? `<div class="o-cover" style="--n:${prods.length}">${prods.map((p) => pThumb(p, "o-cv")).join("")}</div>` : ""}
+          <div class="o-cb">
+            <div class="o-labels"><span class="o-lab ${o.paid ? "ok" : "due"}">${o.paid ? "Payée" : "À encaisser"}</span>${o.note.trim() ? `<span class="o-lab">Note</span>` : ""}${o.tracking ? `<span class="o-lab">Suivi</span>` : ""}</div>
+            <h3><button class="o-open" type="button" data-open="${esc(o.id)}">${esc(o.client) || "Client à renseigner"}</button></h3>
+            <p class="o-sub">${esc(o.ref) || "Sans référence"} · ${esc(shortDate(o.date))}${o.status === "livrer" && o.shipping ? ` · ${esc(o.shipping)}` : ""}</p>
+            ${o.items.length ? `<ul class="o-items">${o.items.map((it) => `<li><span class="o-q">${+it.qty || 0} ×</span><span>${esc(it.name) || "Objet"}${optsOf(it) ? ` <small>${esc(optsOf(it))}</small>` : ""}</span></li>`).join("")}</ul>` : `<p class="o-sub">Aucun objet</p>`}
+            <div class="o-foot"><b>${euro(orderTotal(o))}</b>${nextLabel ? `<button class="o-next" type="button" data-next="${esc(o.id)}">${esc(nextLabel)} ${icon(o.status === "livrer" ? "check" : "arrow")}</button>` : ""}</div>
+          </div></article>`;
+    }
+    function board() {
+      const box = $("#board");
+      if (!O.ready) {
+        box.className = "o-board";
+        box.innerHTML = `<div class="o-msg"><h2>Suivi des commandes indisponible</h2><p>${O.error ? esc(O.error) : "Le suivi des commandes s'enregistre sur cet ordinateur. Lancez <code>node outils/serveur-local.js</code> dans le dossier du site, puis ouvrez <code>http://localhost:4173/admin#commandes</code>"}</p></div>`;
+        return;
+      }
+      if (O.done) {
+        const rows = O.list.filter((o) => o.status === "livree" && matches(o)).sort((a, b) => (b.moved || "").localeCompare(a.moved || ""));
+        box.className = "o-board o-done";
+        box.innerHTML = `<h2>Commandes livrées</h2>${rows.map((o) => `<div class="o-row">
+            <button class="o-open" type="button" data-open="${esc(o.id)}"><b>${esc(o.client) || "Client"}</b> <span>· ${esc(o.ref)} · ${((n) => `${n} objet${n > 1 ? "s" : ""}`)(o.items.reduce((s, it) => s + (+it.qty || 0), 0))}</span></button>
+            <span class="num">livrée le ${esc(shortDate(o.moved))}</span><b>${euro(orderTotal(o))}</b>
+            <button class="o-next" type="button" data-back="${esc(o.id)}">Remettre à livrer</button></div>`).join("") || `<p class="o-empty">${O.q ? "Aucun résultat" : "Aucune commande livrée pour l'instant"}</p>`}`;
+        return;
+      }
+      box.className = "o-board";
+      box.innerHTML = STEPS.map((s) => {
+        const cards = O.list.filter((o) => o.status === s.id && matches(o));
+        return `<section class="o-col" data-col="${s.id}" aria-labelledby="col-${s.id}">
+            <header class="o-ch"><h2 id="col-${s.id}">${s.label}</h2><span class="num">${cards.length}</span></header>
+            <div class="o-list">${cards.map(ticket).join("") || `<p class="o-empty">${O.q ? "Aucun résultat" : "Glissez une commande ici"}</p>`}</div>
+            <button class="o-add" type="button" data-add="${s.id}">${icon("plus")} Ajouter une commande</button>
+          </section>`;
+      }).join("");
+    }
+    function moveTo(o, step, beforeId) {
+      O.list.splice(O.list.indexOf(o), 1);
+      if (o.status !== step) { o.status = step; o.moved = today(); }
+      const at = beforeId ? O.list.indexOf(byId(beforeId)) : -1;
+      if (at >= 0) O.list.splice(at, 0, o); else O.list.push(o); // en bas de la colonne
+      changed();
+    }
+    function create(step, from) {
+      const o = Object.assign(blank(step), from || {});
+      O.list.push(o); O.q = ""; $("#o-q").value = ""; O.done = false; changed(); openOrder(o, !from);
+    }
+
+    const boardEl = $("#board");
+    boardEl.addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.open) return openOrder(byId(b.dataset.open));
+      if (b.dataset.next) { const o = byId(b.dataset.next); return moveTo(o, NEXT[o.status]); }
+      if (b.dataset.back) return moveTo(byId(b.dataset.back), "livrer");
+      if (b.dataset.add) return create(b.dataset.add);
+    });
+    /* Glisser-déposer des tickets entre colonnes (et dans une colonne pour les réordonner) */
+    const clearDrops = () => $$(".drop, .drop-before, .drop-end", boardEl).forEach((x) => x.classList.remove("drop", "drop-before", "drop-end"));
+    function dropAt(e) {
+      const col = e.target.closest(".o-col"); if (!col || !O.drag) return null;
+      const before = $$(".o-card", col).filter((c) => c.dataset.id !== O.drag).find((c) => { const r = c.getBoundingClientRect(); return e.clientY < r.top + r.height / 2; });
+      return { col, before };
+    }
+    boardEl.addEventListener("dragstart", (e) => {
+      const c = e.target.closest(".o-card"); if (!c) return;
+      O.drag = c.dataset.id; e.dataTransfer.effectAllowed = "move"; e.dataTransfer.setData("text/plain", c.dataset.id);
+      requestAnimationFrame(() => c.classList.add("dragging"));
+    });
+    boardEl.addEventListener("dragover", (e) => {
+      const t = dropAt(e); clearDrops(); if (!t) return;
+      e.preventDefault(); e.dataTransfer.dropEffect = "move";
+      t.col.classList.add("drop"); if (t.before) t.before.classList.add("drop-before"); else $(".o-list", t.col).classList.add("drop-end");
+    });
+    boardEl.addEventListener("dragleave", (e) => { if (!boardEl.contains(e.relatedTarget)) clearDrops(); });
+    boardEl.addEventListener("dragend", () => { O.drag = null; clearDrops(); $$(".dragging", boardEl).forEach((x) => x.classList.remove("dragging")); });
+    boardEl.addEventListener("drop", (e) => {
+      const t = dropAt(e); if (!t) return; e.preventDefault();
+      const o = byId(O.drag); O.drag = null; clearDrops();
+      if (o) moveTo(o, t.col.dataset.col, t.before && t.before.dataset.id);
+    });
+    $("#o-q").addEventListener("input", (e) => { O.q = e.target.value; board(); });
+    $("#o-done").addEventListener("click", () => { O.done = !O.done; obar(); board(); });
+
+    /* ---------- Fiche d'une commande ---------- */
+    const dlg = $("#o-dlg");
+    const options = (list, v) => [...new Set([...list, ...(v ? [v] : [])])].map((x) => `<option${x === v ? " selected" : ""}>${esc(x)}</option>`).join("");
+    function lines(o) {
+      if (!o.items.length) return `<p class="hint" style="margin:0">Aucun objet pour l'instant. Cherchez-le ci-dessus par son nom</p>`;
+      return o.items.map((it, i) => {
+        const p = prodOf(it.product), sizes = p ? p.sizes : [], colors = p ? [...new Set([...p.colors, ...(it.color ? [it.color] : [])])] : [];
+        return `<div class="o-line">
+            ${pThumb(p, "o-lth")}
+            <div class="o-lname"><b>${esc(it.name) || "Objet"}</b>${p ? `<a href="../produit.html?id=${esc(p.id)}" target="_blank" rel="noopener">Voir sur le site</a>` : `<small>Hors catalogue</small>`}</div>
+            <b class="o-ltot" data-ltot="${i}">${euro(lineTotal(it))}</b>
+            <button class="rm" type="button" data-rm-line="${i}" aria-label="Retirer ${esc(it.name)}">${icon("trash")}</button>
+            <div class="o-lctl">
+              ${colors.length ? `<select class="select" data-it="${i}" data-f="color" aria-label="Couleur de ${esc(it.name)}"><option value="">Couleur ?</option>${colors.map((k) => `<option value="${esc(k)}"${k === it.color ? " selected" : ""}>${esc(FILAMENTS[k] ? FILAMENTS[k].name : k)}</option>`).join("")}</select>` : ""}
+              ${sizes.length ? `<select class="select" data-it="${i}" data-f="size" aria-label="Taille de ${esc(it.name)}">${options(sizes.map((z) => z.label), it.size)}</select>` : ""}
+              ${p ? "" : `<input class="input o-opts" data-it="${i}" data-f="options" value="${esc(it.options || "")}" placeholder="Couleur, taille…" aria-label="Options de ${esc(it.name)}">`}
+              <label class="o-mini">Qté <input class="input" type="number" min="1" step="1" inputmode="numeric" data-it="${i}" data-f="qty" value="${esc(it.qty)}"></label>
+              <label class="o-mini p">Prix unitaire <input class="input" type="number" min="0" step="0.1" inputmode="decimal" data-it="${i}" data-f="price" value="${esc(it.price)}"></label>
+            </div></div>`;
+      }).join("");
+    }
+    function totals(o) {
+      const set = (id, v) => { const el = $(id, dlg); if (el) el.textContent = v; };
+      set("#o-subt", euro(subTotal(o))); set("#o-feet", +o.shippingFee ? euro(o.shippingFee) : "Offerte"); set("#o-total", euro(orderTotal(o)));
+    }
+    function detail(o) {
+      const F2 = (k, label, extra = "") => `<div class="fg"><label for="o-${k}">${label}</label><input class="input" id="o-${k}" data-o="${k}" value="${esc(o[k])}" autocomplete="off" ${extra}></div>`;
+      return `<div class="o-in-wrap">
+          <div class="o-dh"><div>
+              <label class="sr" for="o-ref">Référence de la commande</label><input class="o-title" id="o-ref" data-o="ref" value="${esc(o.ref)}" placeholder="Référence" autocomplete="off">
+              <p class="o-where"><span id="o-who">${o.client ? `Commande de ${esc(o.client)}` : "Nouvelle commande"}</span> · <label for="o-status">dans la colonne</label>
+                <select class="select" id="o-status" data-o="status">${["commande", "impression", "livrer", "livree"].map((k) => `<option value="${k}"${k === o.status ? " selected" : ""}>${STEP_NAME[k]}</option>`).join("")}</select></p>
+            </div><button class="o-x" type="button" data-close aria-label="Fermer la fiche">${icon("plus")}</button></div>
+          <div>
+            <section class="o-ds"><h3>Objets commandés</h3>
+              <div class="o-find"><div class="field">${icon("search")}<label class="sr" for="o-find">Rechercher un objet du site</label>
+                <input class="input" id="o-find" type="search" role="combobox" aria-expanded="false" aria-controls="o-res" aria-autocomplete="list" placeholder="Rechercher un objet du site pour l'ajouter" autocomplete="off"></div>
+                <div class="o-res" id="o-res" role="listbox" aria-label="Objets du site" hidden></div></div>
+              <div class="o-lines" id="o-lines">${lines(o)}</div>
+              <dl class="o-tot"><div><dt>Objets</dt><dd id="o-subt"></dd></div><div><dt>Livraison</dt><dd id="o-feet"></dd></div><div class="t"><dt>Total</dt><dd id="o-total"></dd></div></dl>
+            </section>
+            <section class="o-ds"><h3><label for="o-note">Note</label></h3><textarea class="textarea" id="o-note" data-o="note" placeholder="Précision du client, idée de finition, rappel…">${esc(o.note)}</textarea></section>
+          </div>
+          <aside class="o-side">
+            <section><h3>Client</h3>
+              ${F2("client", "Nom", 'autocomplete="off" placeholder="Prénom Nom"')}
+              ${F2("email", "E-mail", 'type="email" placeholder="client@exemple.fr"')}
+              <a class="o-mailto" id="o-mailto" href="#" ${o.email ? "" : "hidden"}>Écrire au client</a>
+              <div class="fg"><label for="o-adresse">Adresse</label><textarea class="textarea" id="o-adresse" data-o="adresse" rows="3" placeholder="Rue&#10;Code postal Ville">${esc(o.adresse)}</textarea></div>
+            </section>
+            <section><h3>Paiement</h3>
+              <div class="fg"><label for="o-payment">Moyen de paiement</label><select class="select" id="o-payment" data-o="payment">${options(SITE.payment.methods.map((m) => m.label), o.payment)}</select></div>
+              <label class="o-check"><input type="checkbox" data-o="paid"${o.paid ? " checked" : ""}> Paiement reçu</label>
+            </section>
+            <section><h3>Livraison</h3>
+              <div class="o-two"><div class="fg"><label for="o-shipping">Mode</label><select class="select" id="o-shipping" data-o="shipping">${options([...SITE.shipping.methods.map((m) => m.label), "Remise en main propre"], o.shipping)}</select></div>
+                <div class="fg"><label for="o-shippingFee">Frais (€)</label><input class="input" id="o-shippingFee" data-o="shippingFee" type="number" min="0" step="0.1" inputmode="decimal" value="${esc(o.shippingFee)}"></div></div>
+              <p class="hint">Offerte dès ${euro(SITE.shipping.freeFrom)} d'achats</p>
+              ${F2("tracking", "Numéro de suivi", 'placeholder="À remplir à l\'envoi"')}
+            </section>
+            <section>${F2("date", "Date de la commande", 'type="date"')}
+              <button class="btn btn-ghost btn-danger" type="button" data-del>${icon("trash")} Supprimer la commande</button></section>
+          </aside></div>`;
+    }
+    function mailto(o) { const a = $("#o-mailto", dlg); if (!a) return; a.hidden = !o.email; a.href = `mailto:${o.email}?subject=${encodeURIComponent(`Votre commande ${o.ref} — ${SITE.name}`)}`; }
+    function openOrder(o, find) {
+      if (!o) return;
+      O.open = o; dlg.innerHTML = detail(o); dlg.setAttribute("aria-label", `Commande ${o.ref || ""}`);
+      totals(o); mailto(o);
+      if (!dlg.open) dlg.showModal();
+      (find ? $("#o-find", dlg) : $(".o-x", dlg)).focus();
+    }
+    function refreshLines() { const o = O.open; $("#o-lines", dlg).innerHTML = lines(o); totals(o); }
+
+    /* Recherche d'un objet du site : nom, catégorie, identifiant */
+    function results(q) {
+      const words = slugify(q).split("-").filter(Boolean);
+      const text = (p) => slugify([p.name, p.id, pathName(catOf(p.category)), p.short].join(" "));
+      const found = st.prods.filter((p) => words.every((w) => text(p).includes(w)));
+      return (words.length ? found : found.sort((a, b) => (b.popularity || 0) - (a.popularity || 0))).slice(0, 8);
+    }
+    function showResults() {
+      const inp = $("#o-find", dlg), box = $("#o-res", dlg); if (!inp) return;
+      O.res = results(inp.value); O.act = 0;
+      box.innerHTML = O.res.length
+        ? O.res.map((p, i) => `<div class="o-opt" role="option" id="o-opt-${i}" data-pick="${i}" aria-selected="${i === O.act}">${pThumb(p)}<span><b>${esc(p.name)}</b><small>${esc(pathName(catOf(p.category)))}</small></span><span class="num">${euro(p.price)}</span></div>`).join("")
+        : `<p class="o-nores">Aucun objet du site ne correspond</p>`;
+      box.hidden = false; inp.setAttribute("aria-expanded", "true");
+      if (O.res.length) inp.setAttribute("aria-activedescendant", "o-opt-0"); else inp.removeAttribute("aria-activedescendant");
+    }
+    function hideResults() { const box = $("#o-res", dlg), inp = $("#o-find", dlg); if (!box) return; box.hidden = true; inp.setAttribute("aria-expanded", "false"); inp.removeAttribute("aria-activedescendant"); }
+    function activate(i) {
+      O.act = (i + O.res.length) % O.res.length;
+      $$(".o-opt", dlg).forEach((x, j) => x.setAttribute("aria-selected", j === O.act));
+      const el = $(`#o-opt-${O.act}`, dlg); $("#o-find", dlg).setAttribute("aria-activedescendant", el.id); el.scrollIntoView({ block: "nearest" });
+    }
+    function addLine(p) {
+      const o = O.open, size = p.sizes[0];
+      const it = { product: p.id, name: p.name, color: p.colors[0] || null, size: size ? size.label : null, qty: 1, price: round(p.price + (size ? +size.extra || 0 : 0)) };
+      const same = o.items.find((x) => x.product === it.product && x.color === it.color && x.size === it.size);
+      if (same) same.qty = (+same.qty || 0) + 1; else o.items.push(it);
+      const inp = $("#o-find", dlg); inp.value = ""; hideResults(); refreshLines(); changed(); inp.focus();
+    }
+
+    dlg.addEventListener("input", (e) => {
+      const t = e.target, o = O.open; if (!o) return;
+      if (t.id === "o-find") return showResults();
+      if (t.dataset.o) {
+        const k = t.dataset.o;
+        if (k === "paid") o.paid = t.checked;
+        else if (k === "shippingFee") o.shippingFee = t.value === "" ? 0 : round(t.value.replace(",", "."));
+        else o[k] = t.value;
+        if (k === "status") o.moved = today();
+        if (k === "shipping") { // frais du mode choisi, ou offerts au-delà du seuil
+          const m = SITE.shipping.methods.find((x) => x.label === t.value);
+          o.shippingFee = !m || subTotal(o) >= SITE.shipping.freeFrom ? 0 : m.price; $("#o-shippingFee", dlg).value = o.shippingFee;
+        }
+        if (k === "client") $("#o-who", dlg).textContent = o.client ? `Commande de ${o.client}` : "Nouvelle commande";
+        if (k === "email" || k === "ref") mailto(o);
+        if (k === "ref") dlg.setAttribute("aria-label", `Commande ${o.ref}`);
+      } else if (t.dataset.it !== undefined) {
+        const i = +t.dataset.it, it = o.items[i], f = t.dataset.f, p = prodOf(it.product);
+        if (f === "qty") it.qty = Math.max(1, Math.round(+t.value) || 1);
+        else if (f === "price") it.price = t.value === "" ? 0 : round(t.value.replace(",", "."));
+        else if (f === "color") it.color = t.value || null;
+        else if (f === "options") it.options = t.value;
+        else if (f === "size") { // le prix suit la taille choisie
+          it.size = t.value; const z = p && p.sizes.find((x) => x.label === t.value);
+          if (z) { it.price = round(p.price + (+z.extra || 0)); $(`[data-it="${i}"][data-f="price"]`, dlg).value = it.price; }
+        }
+        $(`[data-ltot="${i}"]`, dlg).textContent = euro(lineTotal(it));
+      } else return;
+      totals(o); changed();
+    });
+    dlg.addEventListener("click", (e) => {
+      if (e.target === dlg) return dlg.close(); // clic sur le fond : on ferme, comme Trello
+      const pick = e.target.closest("[data-pick]"); if (pick) return addLine(O.res[+pick.dataset.pick]);
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.close !== undefined) return dlg.close();
+      if (b.dataset.rmLine !== undefined) { O.open.items.splice(+b.dataset.rmLine, 1); refreshLines(); return changed(); }
+      if (b.dataset.del !== undefined) {
+        if (!confirm(`Supprimer la commande ${O.open.ref || ""} ${O.open.client ? `de ${O.open.client} ` : ""}?\nElle disparaît du tableau définitivement.`)) return;
+        O.list.splice(O.list.indexOf(O.open), 1); O.open = null; dlg.close(); changed();
+      }
+    });
+    dlg.addEventListener("pointerdown", (e) => { if (e.target.closest(".o-opt")) e.preventDefault(); }); // garde le curseur dans la recherche
+    dlg.addEventListener("focusin", (e) => { if (e.target.id === "o-find") showResults(); });
+    dlg.addEventListener("focusout", (e) => { if (e.target.id === "o-find" && !(e.relatedTarget && e.relatedTarget.closest(".o-find"))) hideResults(); });
+    dlg.addEventListener("keydown", (e) => {
+      if (e.target.id !== "o-find" || $("#o-res", dlg).hidden) return;
+      if (e.key === "ArrowDown" && O.res.length) { e.preventDefault(); activate(O.act + 1); }
+      else if (e.key === "ArrowUp" && O.res.length) { e.preventDefault(); activate(O.act - 1); }
+      else if (e.key === "Enter") { e.preventDefault(); if (O.res[O.act]) addLine(O.res[O.act]); }
+    });
+    dlg.addEventListener("cancel", (e) => { const box = $("#o-res", dlg); if (box && !box.hidden) { e.preventDefault(); hideResults(); } }); // Échap ferme d'abord la liste
+    dlg.addEventListener("close", () => {
+      const o = O.open; O.open = null;
+      if (o && isEmpty(o)) { O.list.splice(O.list.indexOf(o), 1); changed(); } // ticket créé puis laissé vide : on l'enlève
+      else board();
+    });
+
+    /* ---------- Créer une commande en collant l'e-mail reçu du site ---------- */
+    function parseMail(text) {
+      const rows = String(text).replace(/\r/g, "").split("\n").map((l) => l.replace(/^\s*(>\s*)+/, "").trim());
+      const all = rows.join("\n");
+      const num = (s) => { const v = parseFloat(String(s).replace(/[^\d,.-]/g, "").replace(",", ".")); return isFinite(v) ? v : 0; };
+      const o = blank("commande"); o.payment = ""; o.shipping = ""; o.shippingFee = 0;
+      const ref = all.match(/Commande\s+([A-Z0-9]+-[A-Z0-9]+)/i); if (ref) o.ref = ref[1].toUpperCase();
+      for (const l of rows) { // « - 2 × Dragon articulé (Noir · 15 cm) : 24,00 € »
+        const m = l.match(/^[-•*]\s*(\d+)\s*[×x]\s*(.+?)\s*:\s*([\d\s\u00a0\u202f.,]+)\s*€?$/); if (!m) continue;
+        let name = m[2].trim(), opts = "";
+        const par = name.match(/^(.*?)\s*\(([^()]*)\)$/); if (par) { name = par[1]; opts = par[2]; }
+        const qty = Math.max(1, +m[1] || 1), p = st.prods.find((x) => slugify(x.name) === slugify(name));
+        const it = { product: p ? p.id : null, name: p ? p.name : name, color: null, size: null, qty, price: round(num(m[3]) / qty) };
+        const rest = [];
+        opts.split("·").map((x) => x.trim()).filter(Boolean).forEach((x) => {
+          const col = p && Object.keys(FILAMENTS).find((k) => slugify(FILAMENTS[k].name) === slugify(x));
+          const size = p && p.sizes.find((z) => slugify(z.label) === slugify(x));
+          if (col) it.color = col; else if (size) it.size = size.label; else rest.push(x);
+        });
+        if (rest.length) it.options = rest.join(" · ");
+        o.items.push(it);
+      }
+      const sh = all.match(/Livraison\s*\(([^)]+)\)\s*:\s*(.+)/i);
+      if (sh) { o.shipping = sh[1].trim(); o.shippingFee = /offert/i.test(sh[2]) ? 0 : round(num(sh[2])); }
+      const pay = all.match(/Paiement souhait[ée]\s*:\s*(.+)/i); if (pay) o.payment = pay[1].trim();
+      const at = rows.findIndex((l) => /^Livraison\s*:\s*$/i.test(l));
+      if (at >= 0) { // bloc d'adresse : nom, rue, code postal et ville, e-mail, précision
+        const block = [];
+        for (const l of rows.slice(at + 1)) { if (!l) { if (block.length) break; continue; } block.push(l); }
+        const addr = [];
+        block.forEach((l) => {
+          const pr = l.match(/^Précision\s*:\s*(.*)$/i);
+          if (pr) o.note = pr[1]; else if (/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(l)) o.email = l; else if (!o.client) o.client = l; else addr.push(l);
+        });
+        o.adresse = addr.join("\n");
+      }
+      return o.items.length || o.client || o.email ? o : null;
+    }
+    const mail = $("#o-mail");
+    $(".o-x", mail).innerHTML = icon("plus");
+    $("#o-paste").addEventListener("click", () => { $("#o-mailt").value = ""; $("#o-mailerr").textContent = ""; mail.showModal(); $("#o-mailt").focus(); });
+    mail.addEventListener("click", (e) => { if (e.target === mail || e.target.closest("[data-close]")) mail.close(); });
+    $("#o-mailf").addEventListener("submit", (e) => {
+      e.preventDefault();
+      const o = parseMail($("#o-mailt").value), err = $("#o-mailerr");
+      if (!o) { err.textContent = "Je ne reconnais pas de commande dans ce texte. Collez l'e-mail en entier, depuis « Commande GF-… »"; return; }
+      const twin = O.list.find((x) => x.ref && x.ref === o.ref);
+      if (twin) { err.textContent = `La commande ${o.ref} est déjà dans le tableau (${STEP_NAME[twin.status]}).`; return; }
+      mail.close(); create("commande", o);
+    });
+
+    /* ---------- Onglets ---------- */
+    function setTab() {
+      tab = location.hash === "#commandes" ? "commandes" : "catalogue";
+      $$(".a-tab").forEach((a) => a.setAttribute("aria-current", a.dataset.tab === tab ? "page" : "false"));
+      $(".a-shell").hidden = tab !== "catalogue"; $("#orders").hidden = tab !== "commandes";
+      $("#save").hidden = $("#counts").hidden = tab !== "catalogue";
+      $("#warn").hidden = st.canSave || tab !== "catalogue";
+      document.title = `${tab === "commandes" ? "Commandes" : "Catalogue"} | Administration Biboulab`;
+      paintStatus();
+    }
+    addEventListener("hashchange", setTab);
+
     /* ---------- Démarrage ---------- */
     render();
-    status("", "Aucune modification");
+    setTab(); obar(); board();
     fetch("/api/etat").then((r) => r.json()).then((o) => { st.canSave = !!o.ok; }).catch(() => {}).finally(() => {
-      $("#warn").hidden = st.canSave;
+      setTab();
       if (st.dirty) $("#save").disabled = !st.canSave;
       form();
     });
+    fetch("/api/commandes", { headers: API })
+      .then(async (r) => { const out = await r.json(); if (!r.ok) throw new Error(out.erreur); O.list = Array.isArray(out.commandes) ? out.commandes : []; O.ready = true; })
+      .catch((err) => { O.error = err instanceof TypeError ? "" : err.message; })
+      .finally(() => { obar(); board(); });
   })();
   </script>
 </body>

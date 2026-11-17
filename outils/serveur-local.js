@@ -1,9 +1,11 @@
 /* Petit serveur local pour prévisualiser le site ET le gérer :
        node outils/serveur-local.js
    puis ouvrir  http://localhost:4173          (le site)
-           ou   http://localhost:4173/admin    (ajouter catégories et objets)
+           ou   http://localhost:4173/admin    (catalogue et suivi des commandes)
 
-   La page de gestion enregistre directement dans assets/js/data.js.
+   La page de gestion enregistre directement dans assets/js/data.js, et le
+   suivi des commandes dans outils/commandes.json (données clients : ce
+   fichier n'est jamais mis en ligne ni envoyé sur GitHub).
    Elle ne fonctionne que sur cet ordinateur : rien de tout cela n'existe
    sur le site en ligne.                                                  */
 const http = require("http"), fs = require("fs"), path = require("path"), vm = require("vm");
@@ -13,6 +15,7 @@ const port = process.env.PORT || 4173;
 const dataFile = path.join(root, "assets/js/data.js");
 const backupDir = path.join(__dirname, "sauvegardes");
 const photoDir = path.join(root, "assets/img/produits");
+const ordersFile = path.join(__dirname, "commandes.json");
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8", ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".glb": "model/gltf-binary", ".woff2": "font/woff2", ".woff": "font/woff" };
 
 /* ---------- Écriture de data.js ---------- */
@@ -98,6 +101,34 @@ function save(categories, products) {
   execFile(process.execPath, [path.join(__dirname, "generer-sitemap.js")], () => {}); // sitemap à jour
 }
 
+/* ---------- Suivi des commandes : outils/commandes.json ---------- */
+const STEPS = ["commande", "impression", "livrer", "livree"];
+function loadOrders() {
+  try { return JSON.parse(fs.readFileSync(ordersFile, "utf8")); }
+  catch (e) { if (e.code === "ENOENT") return []; throw new Error("commandes.json est illisible : corrigez-le ou reprenez une copie dans outils/sauvegardes/."); }
+}
+function saveOrders(orders) {
+  if (!Array.isArray(orders)) throw new Error("Liste de commandes invalide.");
+  const ids = new Set();
+  for (const o of orders) {
+    if (!o || typeof o.id !== "string" || !o.id || ids.has(o.id)) throw new Error("Une commande n'a pas d'identifiant unique.");
+    if (!STEPS.includes(o.status)) throw new Error(`Étape inconnue pour la commande « ${o.ref || o.id} ».`);
+    if (!Array.isArray(o.items)) throw new Error(`La commande « ${o.ref || o.id} » est incomplète.`);
+    ids.add(o.id);
+  }
+  /* Une copie par jour de l'état précédent, les 30 derniers jours */
+  if (fs.existsSync(ordersFile)) {
+    fs.mkdirSync(backupDir, { recursive: true });
+    const daily = path.join(backupDir, `commandes-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.json`);
+    if (!fs.existsSync(daily)) fs.copyFileSync(ordersFile, daily);
+    const old = fs.readdirSync(backupDir).filter((f) => /^commandes-.*\.json$/.test(f)).sort();
+    old.slice(0, Math.max(0, old.length - 30)).forEach((f) => fs.unlinkSync(path.join(backupDir, f)));
+  }
+  const tmp = ordersFile + ".tmp"; // écrit à côté puis renommé : jamais de fichier à moitié écrit
+  fs.writeFileSync(tmp, JSON.stringify(orders, null, 2) + "\n");
+  fs.renameSync(tmp, ordersFile);
+}
+
 /* ---------- Requêtes de la page de gestion ---------- */
 const send = (res, code, obj) => { res.writeHead(code, { "Content-Type": "application/json; charset=utf-8", "Cache-Control": "no-store" }); res.end(JSON.stringify(obj)); };
 const read = (req, max) => new Promise((ok, ko) => {
@@ -112,8 +143,17 @@ const trusted = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.s
 
 async function api(req, res, url) {
   if (url.pathname === "/api/etat" && req.method === "GET") return send(res, 200, { ok: true });
-  if (req.method !== "POST" || !trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
+  if (!trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
+  if (url.pathname === "/api/commandes" && req.method === "GET") {
+    try { return send(res, 200, { commandes: loadOrders() }); } catch (e) { return send(res, 500, { erreur: e.message }); }
+  }
+  if (req.method !== "POST") return send(res, 405, { erreur: "Action inconnue." });
   try {
+    if (url.pathname === "/api/commandes") {
+      const { commandes } = JSON.parse((await read(req, 8e6)).toString("utf8"));
+      saveOrders(commandes);
+      return send(res, 200, { ok: true });
+    }
     if (url.pathname === "/api/sauver") {
       const { categories, products } = JSON.parse((await read(req, 5e6)).toString("utf8"));
       save(categories, products);
@@ -139,9 +179,13 @@ http.createServer((req, res) => {
   if (rel.endsWith("/")) rel += "index.html";
   const file = path.join(root, path.normalize(rel));
   if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
+  /* Dans outils/, seule la page de gestion est servie : commandes.json et les
+     sauvegardes contiennent des données clients (comparaison sans casse pour macOS/Windows) */
+  const low = file.toLowerCase(), tools = __dirname.toLowerCase() + path.sep;
+  if (low.startsWith(tools) && low !== path.join(__dirname, "admin.html").toLowerCase()) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("Page introuvable"); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("Page introuvable"); }
     res.writeHead(200, { "Content-Type": types[path.extname(file).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store" });
     res.end(data);
   });
-}).listen(port, () => console.log(`Site :    http://localhost:${port}\nGestion : http://localhost:${port}/admin`));
+}).listen(port, () => console.log(`Site :    http://localhost:${port}\nGestion : http://localhost:${port}/admin  (onglet Commandes : http://localhost:${port}/admin#commandes)`));

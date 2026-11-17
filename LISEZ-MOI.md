@@ -28,6 +28,16 @@ node outils/serveur-local.js
 
 La page de gestion ne fonctionne que sur votre ordinateur. Le dossier `outils/` n'a pas besoin d'être mis en ligne.
 
+## Suivre les commandes (onglet « Commandes »)
+
+Dans la page d'administration, l'onglet **Commandes** (ou directement http://localhost:4173/admin#commandes) présente vos commandes en tickets, façon Trello, sur trois colonnes : **Commande**, **En cours d'impression**, **À livrer**.
+
+- **Ajouter une commande** : le bouton « Coller un e-mail de commande » lit l'e-mail reçu depuis le site (« Commande GF-… ») et crée le ticket tout seul : objets avec leur photo, couleur et taille, client, adresse, livraison, paiement souhaité. Le « + Ajouter une commande » en bas d'une colonne crée un ticket vide.
+- **Objets du site** : dans la fiche d'une commande, la barre « Rechercher un objet du site » retrouve un produit par son nom ou sa catégorie et l'ajoute avec sa photo et son nom (flèches puis Entrée, ou clic). Couleur, taille, quantité et prix se règlent ensuite ; le prix suit la taille choisie.
+- **Avancer une commande** : glissez le ticket dans la colonne suivante, ou utilisez son bouton (« Lancer l'impression », « Imprimée », « Livrée »). Les commandes livrées quittent le tableau et restent consultables avec le bouton « Livrées ».
+- **Fiche** : un clic sur un ticket l'ouvre : client, adresse, paiement reçu ou non, mode et frais de livraison, numéro de suivi, note. L'étiquette « À encaisser » / « Payée » apparaît sur le ticket.
+- **Enregistrement** : automatique, dans `outils/commandes.json`, avec une copie par jour dans `outils/sauvegardes/` (30 jours). Ce fichier contient des données personnelles de vos clients : il n'est ni mis en ligne, ni envoyé sur GitHub (exclu dans `.gitignore`), et le serveur local refuse de le servir. Pensez à le sauvegarder avec vos autres fichiers.
+
 ## Fichiers
 
 | Fichier | Rôle |
@@ -35,7 +45,8 @@ La page de gestion ne fonctionne que sur votre ordinateur. Le dossier `outils/` 
 | `assets/js/data.js` | **Le fichier à modifier** : marque, slogan, liens, catégories, produits, avis, textes « À propos », livraison, mentions légales |
 | `assets/css/style.css` | Design et animations. Couleurs et polices en haut du fichier (section 1) |
 | `assets/js/icons.js` | Icônes du site (catégories, boutons). Une ligne par icône |
-| `outils/admin.html` | Page de gestion des catégories et des objets (voir ci-dessus) |
+| `outils/admin.html` | Page de gestion : catalogue (catégories, objets) et suivi des commandes (voir ci-dessus) |
+| `outils/commandes.json` | Vos commandes, créé par l'onglet « Commandes ». Local uniquement, jamais mis en ligne |
 | `assets/js/app.js` | Moteur commun : menu, pied de page, thème, panier, curseur, préloader, transitions, cookies |
 | `assets/js/pages.js` | Contenu de chaque page (accueil, boutique, fiche produit, panier, contact…) |
 | `index.html` | Accueil |
