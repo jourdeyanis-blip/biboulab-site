@@ -38,6 +38,14 @@ Dans la page d'administration, l'onglet **Commandes** (ou directement http://loc
 - **Fiche** : un clic sur un ticket l'ouvre : client, adresse, paiement reçu ou non, mode et frais de livraison, numéro de suivi, note. L'étiquette « À encaisser » / « Payée » apparaît sur le ticket.
 - **Enregistrement** : automatique, dans `outils/commandes.json`, avec une copie par jour dans `outils/sauvegardes/` (30 jours). Ce fichier contient des données personnelles de vos clients : il n'est ni mis en ligne, ni envoyé sur GitHub (exclu dans `.gitignore`), et le serveur local refuse de le servir. Pensez à le sauvegarder avec vos autres fichiers.
 
+## Site en construction
+
+Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les visiteurs de `biboulab.fr` voient `construction.html` à la place du site. Le blocage ne vaut que pour ce domaine : en local, ou sur une autre adresse (par exemple une préproduction `preprod.biboulab.fr`), le site complet s'affiche.
+
+- **Voir la page en local** : http://localhost:4173/construction.html
+- **Modifier son texte** : directement dans `construction.html` (page autonome, sans `data.js`).
+- **Ouvrir le site** : supprimez dans `.htaccess` tout le bloc compris entre « DÉBUT CONSTRUCTION » et « FIN CONSTRUCTION », puis publiez.
+
 ## Fichiers
 
 | Fichier | Rôle |
@@ -50,6 +58,7 @@ Dans la page d'administration, l'onglet **Commandes** (ou directement http://loc
 | `assets/js/app.js` | Moteur commun : menu, pied de page, thème, panier, curseur, préloader, transitions, cookies |
 | `assets/js/pages.js` | Contenu de chaque page (accueil, boutique, fiche produit, panier, contact…) |
 | `index.html` | Accueil |
+| `construction.html`, `.htaccess` | Page « site en construction » et son activation (voir ci-dessus) |
 | `boutique.html` | Tous les produits, filtres et tri |
 | `categorie.html` | Page d'une catégorie (`categorie.html?c=noel`) |
 | `produit.html` | Fiche produit (`produit.html?id=dragon-articule`) |
