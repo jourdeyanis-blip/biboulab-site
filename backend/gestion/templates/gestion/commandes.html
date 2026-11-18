@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>Commandes | Biboulab</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <style>
+    body { min-height: 100vh; }
+    .e-top { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
+    .e-top .sub { color: var(--faint); font-size: .875rem; }
+    .e-top .back { margin-left: auto; }
+    .e-wrap { max-width: 1100px; margin: 0 auto; padding: 28px 24px 64px; }
+    .e-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+    .e-tabs a { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); font-size: .9rem; }
+    .e-tabs a[aria-current="page"] { background: var(--surface-2); border-color: var(--text); }
+    .e-msg { padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); margin: 0 0 20px; }
+    .e-msg.err { border-color: var(--err); color: var(--err); }
+    .cdes { display: grid; gap: 20px; }
+    .cde { padding: 22px; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 20px 32px; }
+    @media (max-width: 860px) { .cde { grid-template-columns: minmax(0, 1fr); } }
+    .cde-head { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 16px; }
+    .cde-head h2 { font-size: 1.15rem; margin: 0; }
+    .cde h3 { font: 500 .95rem/1.3 var(--font-b); margin: 0 0 10px; }
+    .cde ul { margin: 0 0 10px; padding-left: 20px; }
+    .cde p { margin: 0 0 8px; }
+    .eti { width: 100%; border-collapse: collapse; font-size: .9375rem; }
+    .eti td { padding: 6px 8px; border-top: 1px solid var(--line); vertical-align: middle; overflow-wrap: anywhere; }
+    .eti td:first-child { color: var(--muted); white-space: nowrap; width: 1%; }
+    .eti td:last-child { width: 1%; text-align: right; white-space: nowrap; }
+    .copie { white-space: nowrap; min-height: 32px; padding: 0 10px; border-radius: 8px; border: 1px solid var(--line-2); font-size: .8125rem; color: var(--muted); }
+    .copie:hover { color: var(--text); background: var(--surface-2); }
+    .point { padding: 12px 14px; border-radius: 12px; background: var(--surface-2); }
+    .suivi { grid-column: 1 / -1; display: flex; flex-wrap: wrap; gap: 10px; align-items: end; border-top: 1px solid var(--line); padding-top: 18px; }
+    .suivi .fg { flex: 1 1 260px; margin: 0; }
+    .vide { padding: 40px 24px; text-align: center; }
+  </style>
+</head>
+<body>
+  <header class="e-top">
+    <span class="logo"><span class="logo-a">Biboulab</span></span>
+    <span class="sub">Administration · Commandes</span>
+    <a class="btn btn-ghost back" href="../emails/">E-mails de commande</a>
+    <a class="btn btn-ghost" href="../">← Catalogue</a>
+  </header>
+  <main class="e-wrap">
+    <h1 style="font-size:1.6rem;margin:0 0 6px">Commandes</h1>
+    <p class="muted" style="margin:0 0 20px">Recopiez les coordonnées dans le formulaire Colissimo ou Mondial Relay, déposez le colis, puis indiquez son numéro de suivi : le client reçoit aussitôt l'e-mail « Colis expédié » avec le lien de suivi.</p>
+
+    <nav class="e-tabs" aria-label="Commandes">
+      {% for cle, libelle, n in vues %}<a href="?vue={{ cle }}"{% if cle == vue %} aria-current="page"{% endif %}>{{ libelle }} ({{ n }})</a>{% endfor %}
+    </nav>
+
+    {% if erreur %}<p class="e-msg err" role="alert">{{ erreur }}</p>{% endif %}{% if message %}<p class="e-msg" role="status">{{ message }}</p>{% endif %}
+
+    <div class="cdes">
+    {% for f in fiches %}{% with c=f.cde %}
+      <article class="panel cde" aria-labelledby="t-{{ c.ref }}">
+        <header class="cde-head">
+          <h2 id="t-{{ c.ref }}">{{ c.ref }}</h2>
+          <span class="muted">{{ c.nom }} · {{ f.total }} · {% if c.payee_le %}payée le {{ c.payee_le|date:"d/m/Y à H:i" }}{% else %}créée le {{ c.creee_le|date:"d/m/Y à H:i" }}{% endif %}</span>
+        </header>
+        <div>
+          <h3>Articles</h3>
+          <ul>{% for l in f.lignes %}<li>{{ l.quantite }} × {{ l.nom }}{% if l.options %} <span class="muted">({{ l.options }})</span>{% endif %}</li>{% endfor %}</ul>
+          <h3>Livraison</h3>
+          <p>{{ c.livraison.label }}{% if f.livraison.delai %} <span class="muted">· {{ f.livraison.delai }}</span>{% endif %}</p>
+          {% if c.point_retrait %}<div class="point"><span class="muted">Point de retrait choisi :</span><br><span data-texte>{{ c.point_retrait }}</span> <button class="copie" type="button" data-copie="{{ c.point_retrait }}">Copier</button></div>{% endif %}
+          {% if c.note %}<p style="margin-top:12px"><span class="muted">Précision du client :</span> {{ c.note }}</p>{% endif %}
+        </div>
+        <div>
+          <h3>Pour l'étiquette</h3>
+          <table class="eti">
+            {% for libelle, valeur in f.etiquette %}<tr><td>{{ libelle }}</td><td>{{ valeur }}</td><td><button class="copie" type="button" data-copie="{{ valeur }}" aria-label="Copier : {{ libelle }}">Copier</button></td></tr>{% endfor %}
+            <tr><td>Pays</td><td>France</td><td></td></tr>
+          </table>
+        </div>
+        <form class="suivi" method="post" action="?vue={{ vue }}">
+          {% csrf_token %}
+          <input type="hidden" name="ref" value="{{ c.ref }}">
+          <div class="fg"><label for="n-{{ c.ref }}">Numéro de suivi</label>
+            <input class="input" id="n-{{ c.ref }}" name="numero_suivi" value="{{ c.numero_suivi }}" required maxlength="40" autocomplete="off" spellcheck="false" placeholder="ex. 6A12345678901"></div>
+          {% if c.statut == "expediee" %}
+            <button class="btn btn-ghost" type="submit">Corriger et renvoyer l'e-mail</button>
+            <p class="muted" style="flex-basis:100%;margin:0">Expédiée le {{ c.expediee_le|date:"d/m/Y à H:i" }}{% if f.lien_suivi %} · <a href="{{ f.lien_suivi }}" target="_blank" rel="noopener noreferrer" style="text-decoration:underline">voir le suivi</a>{% endif %}</p>
+          {% else %}
+            <button class="btn btn-primary" type="submit"{% if c.statut != "payee" %} disabled{% endif %}>Marquer comme expédiée et prévenir le client</button>
+          {% endif %}
+        </form>
+      </article>
+    {% endwith %}{% empty %}
+      <p class="panel vide muted">{% if vue == "a-expedier" %}Aucune commande à expédier pour le moment.{% else %}Aucune commande ici.{% endif %}</p>
+    {% endfor %}
+    </div>
+  </main>
+  <script nonce="{{ nonce }}">
+    document.addEventListener("click", async (e) => {
+      const b = e.target.closest("[data-copie]"); if (!b) return;
+      try { await navigator.clipboard.writeText(b.dataset.copie); b.textContent = "Copié"; }
+      catch { b.textContent = "Sélectionnez le texte"; }
+      setTimeout(() => { b.textContent = "Copier"; }, 1500);
+    });
+  </script>
+</body>
+</html>

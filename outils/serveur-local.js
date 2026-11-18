@@ -1,23 +1,19 @@
 /* Petit serveur local pour prévisualiser le site ET le gérer :
        node outils/serveur-local.js
    puis ouvrir  http://localhost:4173          (le site)
-           ou   http://localhost:4173/admin    (catalogue et suivi des commandes)
+           ou   http://localhost:4173/admin    (catégories, objets, pages, réglages)
 
-   La page de gestion enregistre directement dans assets/js/data.js, et le
-   suivi des commandes dans outils/commandes.json (données clients : ce
-   fichier n'est jamais mis en ligne ni envoyé sur GitHub).
-   Elle ne fonctionne que sur cet ordinateur : rien de tout cela n'existe
-   sur le site en ligne.                                                  */
+   La page de gestion enregistre directement dans assets/js/data.js
+   (et recopie titres et descriptions des pages légales dans leur HTML).
+   Elle ne fonctionne que sur cet ordinateur. L'administration du site en
+   ligne utilise la même page, servie par l'application Django du dossier
+   backend/ (identifiant + mot de passe), qui écrit catalogue.js et contenu.js. */
 const http = require("http"), fs = require("fs"), path = require("path"), vm = require("vm");
 const { execFile } = require("child_process");
-const crypto = require("crypto");
 const root = path.join(__dirname, "..");
 const port = process.env.PORT || 4173;
 const dataFile = path.join(root, "assets/js/data.js");
 const backupDir = path.join(__dirname, "sauvegardes");
-const photoDir = path.join(root, "assets/img/produits");
-const ordersFile = path.join(__dirname, "commandes.json");
-const siteFile = path.join(__dirname, "site.json"); // adresse du site en ligne + clé secrète (jamais sur GitHub)
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8", ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".glb": "model/gltf-binary", ".woff2": "font/woff2", ".woff": "font/woff" };
 
 /* ---------- Écriture de data.js ---------- */
@@ -70,9 +66,68 @@ function check(categories, products) {
   return "";
 }
 
-function save(categories, products) {
-  const problem = check(categories, products);
+/* Écriture lisible d'une valeur : sur une ligne si elle est courte, sinon dépliée */
+function pretty(v, ind = "") {
+  const flat = js(v);
+  if (!v || typeof v !== "object" || ind.length + flat.length <= 110) return flat;
+  const ni = ind + "  ";
+  if (Array.isArray(v)) return `[\n${v.map((x) => ni + pretty(x, ni)).join(",\n")}\n${ind}]`;
+  return `{\n${Object.entries(v).map(([k, x]) => `${ni}${isKey(k) ? k : JSON.stringify(k)}: ${pretty(x, ni)}`).join(",\n")}\n${ind}}`;
+}
+
+/* Contrôle des réglages, pages, couleurs et avis envoyés par la page de gestion */
+const str = (v) => typeof v === "string";
+function checkContent({ site, filaments, reviews, about, pages }, products) {
+  if (!site || !str(site.name) || !site.name.trim()) return "Le nom de la boutique est obligatoire.";
+  if (!str(site.email) || !str(site.url) || !site.legal || typeof site.legal !== "object") return "Réglages incomplets.";
+  for (const k of ["stores", "stats", "marquee"]) if (!Array.isArray(site[k])) return "Réglages incomplets.";
+  if (!site.hero || !site.shipping || !Array.isArray(site.shipping.methods) || !site.payment || !Array.isArray(site.payment.methods)) return "Réglages incomplets.";
+  if (!site.shipping.methods.length) return "Il faut au moins un mode de livraison.";
+  if (!site.payment.methods.length) return "Il faut au moins un moyen de paiement.";
+  for (const list of [site.shipping.methods, site.payment.methods, site.stores]) {
+    const seen = new Set();
+    for (const m of list) {
+      if (!m || !ID.test(m.id || "")) return `Identifiant invalide : « ${m && m.id} » (minuscules, chiffres et tirets).`;
+      if (seen.has(m.id)) return `Deux éléments portent l'identifiant « ${m.id} ».`;
+      seen.add(m.id);
+    }
+  }
+  if (!filaments || typeof filaments !== "object" || !Object.keys(filaments).length) return "Il faut au moins une couleur de filament.";
+  for (const [k, f] of Object.entries(filaments)) if (!/^[a-z0-9]+$/.test(k) || !f || !str(f.name) || !str(f.hex)) return `Couleur de filament invalide : « ${k} ».`;
+  for (const p of products) for (const c of p.colors) if (!(c in filaments)) return `L'objet « ${p.name} » utilise la couleur « ${c} », qui n'existe plus.`;
+  if (!Array.isArray(reviews)) return "Avis incomplets.";
+  for (const r of reviews) if (!r || !str(r.name) || !(r.stars >= 1 && r.stars <= 5)) return "Un avis client est incomplet (nom et note de 1 à 5).";
+  if (!about || !str(about.title) || !Array.isArray(about.story) || !Array.isArray(about.photos) || !about.photos.length || !Array.isArray(about.process)) return "Page « À propos » incomplète.";
+  if (!pages || typeof pages !== "object") return "Pages incomplètes.";
+  for (const [k, d] of Object.entries(pages)) {
+    if (!LEGAL_FILES.includes(k)) return `Page inconnue : « ${k} ».`;
+    if (!d || !str(d.title) || !d.title.trim() || !Array.isArray(d.sections)) return `La page « ${k} » est incomplète.`;
+  }
+  return "";
+}
+const LEGAL_FILES = ["mentions-legales", "cgv", "confidentialite", "retractation"];
+
+/* Titre et description des pages légales : on les recopie dans l'en-tête HTML (référencement) */
+const attr = (s) => String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+function syncHeads(pages, siteName) {
+  for (const [k, d] of Object.entries(pages)) {
+    const file = path.join(root, k + ".html");
+    if (!fs.existsSync(file)) continue;
+    const before = fs.readFileSync(file, "utf8"), title = attr(`${d.title} | ${siteName}`), desc = attr(d.description || "");
+    const after = before
+      .replace(/<title>[^<]*<\/title>/, () => `<title>${title}</title>`)
+      .replace(/(<meta name="description" content=")[^"]*(")/, (m, a, b) => a + desc + b)
+      .replace(/(<meta property="og:title" content=")[^"]*(")/, (m, a, b) => a + title + b)
+      .replace(/(<meta property="og:description" content=")[^"]*(")/, (m, a, b) => a + desc + b);
+    if (after !== before) fs.writeFileSync(file, after);
+  }
+}
+
+function save(payload) {
+  const { categories, products } = payload;
+  const problem = check(categories, products) || checkContent(payload, products);
   if (problem) throw new Error(problem);
+  const { site, filaments, reviews, about, pages } = payload;
   const before = fs.readFileSync(dataFile, "utf8");
   const catsJs = `const CATEGORIES = [\n${categories.map((c) => layout(c, CAT_ROWS)).join(",\n")}\n];`;
   const names = Object.fromEntries(categories.map((c) => [c.slug, c.name]));
@@ -84,15 +139,28 @@ function save(categories, products) {
     last = p.category;
     return head + layout(p, PROD_ROWS);
   }).join(",\n")}\n];`;
-  const reC = /const CATEGORIES = \[[\s\S]*?\n\];/, reP = /const PRODUCTS = \[[\s\S]*?\n\];/;
-  if (!reC.test(before) || !reP.test(before)) throw new Error("data.js n'a plus la forme attendue : les blocs CATEGORIES et PRODUCTS sont introuvables.");
-  const after = before.replace(reC, () => catsJs).replace(reP, () => prodsJs);
+  const blocks = [
+    [/const SITE = \{[\s\S]*?\n\};/, `const SITE = ${pretty(site)};`],
+    [/const FILAMENTS = \{[\s\S]*?\n\};/, `const FILAMENTS = {\n${Object.entries(filaments).map(([k, f]) => `  ${k}: ${js(f)}`).join(",\n")}\n};`],
+    [/const CATEGORIES = \[[\s\S]*?\n\];/, catsJs],
+    [/const PRODUCTS = \[[\s\S]*?\n\];/, prodsJs],
+    [/const REVIEWS = (?:\[\]|\[[\s\S]*?\n\]);/, `const REVIEWS = ${reviews.length ? `[\n${reviews.map((r) => "  " + js(r)).join(",\n")}\n]` : "[]"};`],
+    [/const ABOUT = \{[\s\S]*?\n\};/, `const ABOUT = ${pretty(about)};`],
+    [/const PAGES = \{[\s\S]*?\n\};/, `const PAGES = ${pretty(pages)};`]
+  ];
+  let after = before;
+  for (const [re, txt] of blocks) {
+    if (!re.test(after)) throw new Error(`data.js n'a plus la forme attendue : le bloc ${txt.slice(6, txt.indexOf(" ="))} est introuvable.`);
+    after = after.replace(re, () => txt);
+  }
 
   /* On vérifie que le nouveau fichier se lit correctement avant de remplacer l'ancien */
   const box = { module: { exports: null } };
   vm.runInNewContext(after, box);
   const out = box.module.exports;
-  if (!out || out.PRODUCTS.length !== products.length || out.CATEGORIES.length !== categories.length) throw new Error("Le fichier généré est incohérent, rien n'a été modifié.");
+  if (!out || out.PRODUCTS.length !== products.length || out.CATEGORIES.length !== categories.length
+    || JSON.stringify(out.SITE) !== JSON.stringify(site) || JSON.stringify(out.PAGES) !== JSON.stringify(pages) || JSON.stringify(out.ABOUT) !== JSON.stringify(about))
+    throw new Error("Le fichier généré est incohérent, rien n'a été modifié.");
 
   fs.mkdirSync(backupDir, { recursive: true });
   const stamp = new Date().toISOString().replace(/[-:]/g, "").replace("T", "-").slice(0, 15);
@@ -100,62 +168,8 @@ function save(categories, products) {
   const old = fs.readdirSync(backupDir).filter((f) => /^data-.*\.js$/.test(f)).sort();
   old.slice(0, Math.max(0, old.length - 30)).forEach((f) => fs.unlinkSync(path.join(backupDir, f))); // on garde les 30 dernières
   fs.writeFileSync(dataFile, after);
+  syncHeads(pages, site.name);
   execFile(process.execPath, [path.join(__dirname, "generer-sitemap.js")], () => {}); // sitemap à jour
-}
-
-/* ---------- Suivi des commandes : outils/commandes.json ---------- */
-const STEPS = ["commande", "impression", "livrer", "livree"];
-function loadOrders() {
-  try { return JSON.parse(fs.readFileSync(ordersFile, "utf8")); }
-  catch (e) { if (e.code === "ENOENT") return []; throw new Error("commandes.json est illisible : corrigez-le ou reprenez une copie dans outils/sauvegardes/."); }
-}
-function saveOrders(orders) {
-  if (!Array.isArray(orders)) throw new Error("Liste de commandes invalide.");
-  const ids = new Set();
-  for (const o of orders) {
-    if (!o || typeof o.id !== "string" || !o.id || ids.has(o.id)) throw new Error("Une commande n'a pas d'identifiant unique.");
-    if (!STEPS.includes(o.status)) throw new Error(`Étape inconnue pour la commande « ${o.ref || o.id} ».`);
-    if (!Array.isArray(o.items)) throw new Error(`La commande « ${o.ref || o.id} » est incomplète.`);
-    ids.add(o.id);
-  }
-  /* Une copie par jour de l'état précédent, les 30 derniers jours */
-  if (fs.existsSync(ordersFile)) {
-    fs.mkdirSync(backupDir, { recursive: true });
-    const daily = path.join(backupDir, `commandes-${new Date().toISOString().slice(0, 10).replace(/-/g, "")}.json`);
-    if (!fs.existsSync(daily)) fs.copyFileSync(ordersFile, daily);
-    const old = fs.readdirSync(backupDir).filter((f) => /^commandes-.*\.json$/.test(f)).sort();
-    old.slice(0, Math.max(0, old.length - 30)).forEach((f) => fs.unlinkSync(path.join(backupDir, f)));
-  }
-  const tmp = ordersFile + ".tmp"; // écrit à côté puis renommé : jamais de fichier à moitié écrit
-  fs.writeFileSync(tmp, JSON.stringify(orders, null, 2) + "\n");
-  fs.renameSync(tmp, ordersFile);
-}
-
-/* ---------- Commandes passées sur le site en ligne (api/commandes.php) ---------- */
-function siteConf() {
-  let conf = {};
-  try { conf = JSON.parse(fs.readFileSync(siteFile, "utf8")); } catch (e) { /* pas encore relié */ }
-  if (!conf.url) { // par défaut : SITE.url de data.js
-    try { const box = { module: { exports: null } }; vm.runInNewContext(fs.readFileSync(dataFile, "utf8"), box); conf.url = box.module.exports.SITE.url; } catch (e) { conf.url = ""; }
-  }
-  return { url: conf.url || "", cle: conf.cle || "" };
-}
-async function remote(method, query, body) {
-  const conf = siteConf();
-  if (!conf.url || !conf.cle) throw new Error("Reliez d'abord le site à la page de gestion (bouton « Relier au site »).");
-  if (typeof fetch !== "function") throw new Error("Node.js 18 ou plus récent est nécessaire pour récupérer les commandes du site.");
-  const url = conf.url.replace(/\/+$/, "") + "/api/commandes.php" + query;
-  let r;
-  try {
-    r = await fetch(url, { method, headers: { "X-Cle": conf.cle, Accept: "application/json", ...(body ? { "Content-Type": "application/json" } : {}) }, body: body ? JSON.stringify(body) : undefined, signal: AbortSignal.timeout(15000) });
-  } catch (e) { throw new Error(`Le site ${conf.url} ne répond pas. Vérifiez la connexion internet et l'adresse du site.`); }
-  const out = await r.json().catch(() => null);
-  if (r.status === 401) throw new Error("Le site refuse la clé. Vérifiez le secret CLE_COMMANDES sur GitHub, puis republiez le site.");
-  if (!out) throw new Error(r.status === 503 ? "Le site est en construction ou indisponible (erreur 503)."
-    : r.status === 404 ? "Le site ne reçoit pas encore les commandes : publiez la dernière version (dossier api/)."
-    : `Réponse inattendue du site (erreur ${r.status}).`);
-  if (!r.ok) throw new Error(out.erreur || `Erreur ${r.status} du site.`);
-  return out;
 }
 
 /* ---------- Requêtes de la page de gestion ---------- */
@@ -172,45 +186,20 @@ const trusted = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.s
 
 async function api(req, res, url) {
   if (url.pathname === "/api/etat" && req.method === "GET") return send(res, 200, { ok: true });
-  if (!trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
-  if (url.pathname === "/api/commandes" && req.method === "GET") {
-    try { return send(res, 200, { commandes: loadOrders() }); } catch (e) { return send(res, 500, { erreur: e.message }); }
-  }
-  if (url.pathname === "/api/site" && req.method === "GET") return send(res, 200, siteConf());
-  if (url.pathname === "/api/site/commandes" && req.method === "GET") {
-    try { return send(res, 200, await remote("GET", "")); } catch (e) { return send(res, 502, { erreur: e.message }); }
-  }
-  if (req.method !== "POST") return send(res, 405, { erreur: "Action inconnue." });
+  if (req.method !== "POST" || !trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
   try {
-    if (url.pathname === "/api/site") { // enregistre l'adresse du site ; « nouvelle » crée une clé
-      const d = JSON.parse((await read(req, 1e4)).toString("utf8"));
-      const conf = siteConf(), adresse = String(d.url || "").trim().replace(/\/+$/, "");
-      if (!/^https?:\/\/[^\s/]+(\/[^\s]*)?$/.test(adresse)) return send(res, 400, { erreur: "Adresse du site invalide (ex. https://www.biboulab.fr)." });
-      const next = { url: adresse, cle: d.nouvelle || !conf.cle ? crypto.randomBytes(32).toString("base64url") : conf.cle };
-      fs.writeFileSync(siteFile, JSON.stringify(next, null, 2) + "\n", { mode: 0o600 });
-      return send(res, 200, next);
-    }
-    if (url.pathname === "/api/site/accuse") {
-      const { refs } = JSON.parse((await read(req, 1e5)).toString("utf8"));
-      try { return send(res, 200, await remote("POST", "?action=accuse", { refs })); } catch (e) { return send(res, 502, { erreur: e.message }); }
-    }
-    if (url.pathname === "/api/commandes") {
-      const { commandes } = JSON.parse((await read(req, 8e6)).toString("utf8"));
-      saveOrders(commandes);
-      return send(res, 200, { ok: true });
-    }
     if (url.pathname === "/api/sauver") {
-      const { categories, products } = JSON.parse((await read(req, 5e6)).toString("utf8"));
-      save(categories, products);
+      save(JSON.parse((await read(req, 8e6)).toString("utf8")));
       return send(res, 200, { ok: true });
     }
     if (url.pathname === "/api/photo") {
       const name = path.basename(url.searchParams.get("nom") || "");
       if (!/^[a-z0-9][a-z0-9-]*\.(webp|png|jpe?g)$/.test(name)) return send(res, 400, { erreur: "Nom de photo invalide." });
+      const folder = url.searchParams.get("dossier") === "atelier" ? "atelier" : "produits"; // photos d'objets ou de l'atelier
       const data = await read(req, 12e6);
-      fs.mkdirSync(photoDir, { recursive: true });
-      fs.writeFileSync(path.join(photoDir, name), data);
-      return send(res, 200, { ok: true, chemin: `assets/img/produits/${name}` });
+      fs.mkdirSync(path.join(root, "assets/img", folder), { recursive: true });
+      fs.writeFileSync(path.join(root, "assets/img", folder, name), data);
+      return send(res, 200, { ok: true, chemin: `assets/img/${folder}/${name}` });
     }
     send(res, 404, { erreur: "Action inconnue." });
   } catch (e) { send(res, 400, { erreur: e.message || "Enregistrement impossible." }); }
@@ -224,13 +213,9 @@ http.createServer((req, res) => {
   if (rel.endsWith("/")) rel += "index.html";
   const file = path.join(root, path.normalize(rel));
   if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
-  /* Dans outils/, seule la page de gestion est servie : commandes.json et les
-     sauvegardes contiennent des données clients (comparaison sans casse pour macOS/Windows) */
-  const low = file.toLowerCase(), tools = __dirname.toLowerCase() + path.sep;
-  if (low.startsWith(tools) && low !== path.join(__dirname, "admin.html").toLowerCase()) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("Page introuvable"); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("Page introuvable"); }
     res.writeHead(200, { "Content-Type": types[path.extname(file).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store" });
     res.end(data);
   });
-}).listen(port, () => console.log(`Site :    http://localhost:${port}\nGestion : http://localhost:${port}/admin  (onglet Commandes : http://localhost:${port}/admin#commandes)`));
+}).listen(port, () => console.log(`Site :    http://localhost:${port}\nGestion : http://localhost:${port}/admin`));

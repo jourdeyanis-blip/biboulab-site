@@ -13,40 +13,18 @@
   <script>document.documentElement.className="js";try{document.documentElement.dataset.theme=localStorage.getItem("theme")||"dark"}catch(e){document.documentElement.dataset.theme="dark"}</script>
   <link rel="stylesheet" href="assets/css/style.css">
   <link rel="icon" href="assets/img/favicon.svg" type="image/svg+xml">
+  <link rel="icon" href="assets/img/favicon-48.png" type="image/png" sizes="48x48">
+  <link rel="apple-touch-icon" href="assets/img/apple-touch-icon.png">
 </head>
-<body data-page="legal">
-  <!-- L'en-tête, le pied de page et le contenu sont générés par assets/js (textes et produits : assets/js/data.js) -->
-  <main id="main">
-    <section class="wrap page-head"><p class="kicker">Informations légales</p><h1>Droit de rétractation</h1><p class="muted" style="margin-top:14px">Dernière mise à jour : <span data-fill="updated"></span></p></section>
-    <section class="wrap prose">
-      <h2>Votre droit</h2>
-      <p>Vous avez le droit de vous rétracter de votre commande, sans donner de motif, dans un délai de <b>14 jours</b> à compter du jour où vous (ou un tiers désigné par vous, autre que le transporteur) prenez physiquement possession du bien.</p>
-      <h2>Comment l'exercer</h2>
-      <p>Informez-nous de votre décision par une déclaration dénuée d'ambiguïté, par e-mail à <a data-mail href="#"></a> ou par courrier à : <span data-fill="owner"></span>, <span data-fill="address"></span>. Vous pouvez utiliser le modèle de formulaire ci-dessous, sans obligation.</p>
-      <h2>Retour et remboursement</h2>
-      <ul>
-        <li>Renvoyez le bien, dans son état d'origine, au plus tard 14 jours après nous avoir communiqué votre décision.</li>
-        <li>Les frais directs de renvoi sont à votre charge.</li>
-        <li>Nous vous remboursons l'ensemble des sommes versées, y compris les frais de livraison standard, au plus tard 14 jours après avoir été informés de votre décision. Le remboursement peut être différé jusqu'à réception du bien ou d'une preuve d'expédition.</li>
-        <li>Le remboursement utilise le même moyen de paiement que celui de la commande, sauf accord différent de votre part.</li>
-      </ul>
-      <h2>Exceptions</h2>
-      <p>Conformément à l'article L221-28, 3° du Code de la consommation, le droit de rétractation ne s'applique pas aux biens <b>confectionnés selon vos spécifications ou nettement personnalisés</b> : pièces sur mesure, modélisations à la demande, gravures et personnalisations.</p>
-      <h2>Modèle de formulaire de rétractation</h2>
-      <div class="box">
-        <p>À l'attention de <span data-fill="owner"></span> — <span data-fill="name"></span>, <span data-fill="address"></span> — <a data-mail href="#"></a></p>
-        <p>Je vous notifie par la présente ma rétractation du contrat portant sur la vente du bien ci-dessous :</p>
-        <p>Commandé le : ……………… / reçu le : ………………<br>
-        Numéro de commande : ………………<br>
-        Nom du client : ………………<br>
-        Adresse du client : ………………</p>
-        <p style="margin:0">Date : ………………<br>Signature (uniquement en cas de notification sur papier) :</p>
-      </div>
-    </section>
-  </main>
+<body data-page="legal" data-doc="retractation">
+  <!-- L'en-tête, le pied de page et le contenu sont générés par assets/js (textes : assets/js/data.js, modifiables depuis l'administration) -->
+  <main id="main"></main>
   <noscript><p style="padding:40px;text-align:center">Ce site a besoin de JavaScript pour afficher la boutique. Activez-le dans votre navigateur, ou écrivez-moi directement par e-mail.</p></noscript>
+  <script src="assets/js/catalogue.js"></script>
+  <script src="assets/js/contenu.js"></script>
   <script src="assets/js/data.js"></script>
   <script src="assets/js/icons.js"></script>
+  <script src="assets/js/rich.js"></script>
   <script src="assets/js/app.js"></script>
   <script src="assets/js/pages.js"></script>
 </body>

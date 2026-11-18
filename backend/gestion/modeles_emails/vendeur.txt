@@ -1,0 +1,24 @@
+Nouvelle commande payée en ligne : {{ ref }}
+
+{% for l in lignes %}- {{ l.quantite }} × {{ l.nom }}{% if l.options %} ({{ l.options }}){% endif %} : {{ l.total }}
+{% endfor %}
+Sous-total : {{ sous_total }}
+Livraison ({{ livraison.label }}) : {{ livraison.prix }}
+Total payé : {{ total }}
+{% if note %}
+Précision du client : {{ note }}
+{% endif %}
+--- Pour l'étiquette {{ livraison.transporteur|default:"d'envoi" }} (à recopier) ---
+Prénom : {{ prenom }}
+Nom : {{ nom_famille }}
+Adresse : {{ adresse }}
+Code postal : {{ code_postal }}
+Ville : {{ ville }}
+Pays : France
+E-mail : {{ email }}
+{% if point_retrait %}Point de retrait choisi : {{ point_retrait }}
+{% endif %}
+Une fois le colis déposé, indiquez le numéro de suivi dans l'administration, page Commandes{% if lien_commandes %} ({{ lien_commandes }}){% endif %} : le client reçoit alors le lien de suivi par e-mail.
+
+Détail du paiement dans le Dashboard Stripe › Transactions (recherchez la référence).
+Répondre à cet e-mail écrit directement au client.

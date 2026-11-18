@@ -5,8 +5,8 @@
    ===================================================================== */
 (() => {
   "use strict";
-  const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT } = window.SHOP;
-  const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, media, card, storeLogo, extAttrs, Cart, toast, flyToCart, enhance, jsonLd, setMeta, RM } = window.UI;
+  const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT, PAGES = {} } = window.SHOP;
+  const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM } = window.UI;
   const main = $("#main");
   const params = new URLSearchParams(location.search);
 
@@ -330,7 +330,7 @@
     }
     const c = cat(p.category);
     const views = p.images.length || 3;
-    const sel = { color: p.colors[0] || null, size: p.sizes[0] ? p.sizes[0].label : null, qty: 1 };
+    const sel = { color: p.colors[0] || null, size: p.sizes[0] ? p.sizes[0].label : null };
     const unit = () => p.price + ((p.sizes.find((s) => s.label === sel.size) || {}).extra || 0);
     const similar = [...PRODUCTS.filter((x) => x.category === p.category && x !== p), ...PRODUCTS.filter((x) => x.category !== p.category).sort((a, b) => b.popularity - a.popularity)].slice(0, 7);
     setMeta(`${p.name} — ${c.name}`, `${p.short} ${p.material}, ${p.dimensions}. ${euro(p.price)}.`);
@@ -340,11 +340,10 @@
         <ol class="crumbs"><li><a href="index.html">Accueil</a></li><li><a href="boutique.html">Boutique</a></li>${lineage(c).map((x) => `<li><a href="categorie.html?c=${x.slug}">${esc(x.name)}</a></li>`).join("")}<li aria-current="page">${esc(p.name)}</li></ol>
         <div class="product" style="--c:${c.color}">
           <div class="gallery" data-reveal="left">
-            <div class="zoom" id="zoom">${media(p, 0, true)}</div>
+            <div class="stage"><div class="zoom" id="zoom">${media(p, 0, true)}</div>
+              ${views + (p.model3d ? 1 : 0) > 1 ? `<button class="g-nav g-prev" type="button" aria-label="Photo précédente">${icon("arrow")}</button><button class="g-nav g-next" type="button" aria-label="Photo suivante">${icon("arrow")}</button>` : ""}</div>
             <div class="thumbs" role="group" aria-label="Vues du produit">
-              ${Array.from({ length: views }, (_, i) => `<button class="thumb" type="button" data-v="${i}" aria-pressed="${i === 0}" aria-label="Afficher la vue ${i + 1}">${media(p, i)}</button>`).join("")}
-              ${p.model3d ? `<button class="thumb" type="button" data-v="3d" aria-pressed="false" aria-label="Afficher le modèle 3D interactif" style="background:var(--surface-2);color:var(--text)">${icon("cube")}3D</button>` : ""}
-            </div>
+              ${Array.from({ length: views }, (_, i) => `<button class="thumb" type="button" data-v="${i}" aria-pressed="${i === 0}" aria-label="Afficher la vue ${i + 1}">${media(p, i)}</button>`).join("")}            </div>
           </div>
 
           <div class="p-info" data-reveal="right">
@@ -360,15 +359,11 @@
               ${p.sizes.length ? `<fieldset class="opt"><legend>Taille</legend>
                 <div class="swatches">${p.sizes.map((s, i) => `<label class="pill"><input type="radio" name="size" value="${esc(s.label)}" ${i ? "" : "checked"}><span>${esc(s.label)}${s.extra ? ` <small>+${euro(s.extra)}</small>` : ""}</span></label>`).join("")}</div></fieldset>` : ""}
               <div class="buy">
-                <div class="qty" role="group" aria-label="Quantité">
-                  <button type="button" data-q="-1" aria-label="Diminuer la quantité">${icon("minus")}</button>
-                  <output id="qty" aria-live="polite">1</output>
-                  <button type="button" data-q="1" aria-label="Augmenter la quantité">${icon("plus")}</button>
+                <button class="btn btn-primary add-btn" type="submit" data-magnetic>${icon("cart")} Ajouter au panier</button>
+                <div class="in-cart" hidden>
+                  ${qtyHTML(1, "Quantité dans le panier")}
+                  <a class="btn btn-ghost" href="panier.html">Voir le panier ${icon("arrow", "ic-arrow")}</a>
                 </div>
-                <button class="btn btn-primary add-btn" type="submit" data-magnetic>
-                  <span class="lbl">${icon("cart")} Ajouter au panier</span>
-                  <span class="done" aria-hidden="true">${icon("check")} Ajouté</span>
-                </button>
               </div>
             </form>
 
@@ -376,6 +371,11 @@
               <li>${icon("clock")}Imprimé à la commande · fabrication : ${esc(p.printTime)}</li>
               <li>${icon("box")}Emballage protecteur, livraison offerte dès ${euro(SITE.shipping.freeFrom)}</li>
               <li>${icon("shield")}Rétractation 14 jours (hors pièces personnalisées)</li>
+            </ul>
+
+            <ul class="assure credits">
+              <li>${icon("etoile")}Créateur : ${esc(p.creator || "Non renseigné")}</li>
+              <li>${icon("shield")}Licence : ${esc(p.license || "Non renseignée")}</li>
             </ul>
 
             <dl class="specs">
@@ -387,9 +387,12 @@
 
             <div class="p-desc"><h2>Description détaillée</h2><p>${esc(p.description)}</p></div>
 
-            <p class="also">Aussi disponible sur
-              ${SITE.stores.map((s) => `<a href="${esc(p[s.id] || s.url)}" ${extAttrs} style="--sc:${s.color}">${storeLogo(s)}${esc(s.name)}<span class="sr"> (nouvel onglet)</span></a>`).join("")}
-            </p>
+            ${(() => {
+              const links = SITE.stores.filter((s) => p[s.id]);
+              return links.length ? `<p class="also">Aussi disponible sur
+              ${links.map((s) => `<a href="${esc(p[s.id])}" ${extAttrs} style="--sc:${s.color}">${storeLogo(s)}${esc(s.name)}<span class="sr"> (nouvel onglet)</span></a>`).join("")}
+            </p>` : "";
+            })()}
           </div>
         </div>
       </section>
@@ -400,17 +403,17 @@
         <div class="carousel" tabindex="0" aria-label="Carrousel de produits similaires">${similar.map(card).join("")}</div>
       </div></section>`;
 
-    /* Galerie : miniatures, zoom qui suit la souris, visionneuse 3D à la demande */
+    /* Galerie : miniatures, zoom qui suit la souris */
     const zoom = $("#zoom");
+    const thumbs = $$(".thumb");
+    const go = (d) => { const i = thumbs.findIndex((x) => x.getAttribute("aria-pressed") === "true"); thumbs[(i + d + thumbs.length) % thumbs.length].click(); };
+    $$(".g-nav").forEach((n) => n.addEventListener("click", () => go(n.classList.contains("g-next") ? 1 : -1)));
+    $(".gallery").addEventListener("keydown", (e) => { if (thumbs.length < 2 || e.target.closest("model-viewer")) return; if (e.key === "ArrowRight") { e.preventDefault(); go(1); } else if (e.key === "ArrowLeft") { e.preventDefault(); go(-1); } });
     $(".thumbs").addEventListener("click", (e) => {
       const t = e.target.closest(".thumb"); if (!t) return;
       $$(".thumb").forEach((x) => x.setAttribute("aria-pressed", x === t));
       zoom.classList.remove("zoomed", "swap"); void zoom.offsetWidth; zoom.classList.add("swap");
-      if (t.dataset.v === "3d") {
-        if (!customElements.get("model-viewer")) { const s = document.createElement("script"); s.type = "module"; s.src = "https://cdn.jsdelivr.net/npm/@google/model-viewer@3.5.0/dist/model-viewer.min.js"; document.head.append(s); }
-        zoom.innerHTML = `<model-viewer src="${esc(p.model3d)}" alt="Modèle 3D de ${esc(p.name)}" camera-controls auto-rotate shadow-intensity="1" style="background:#14141c"></model-viewer>`;
-        zoom.style.cursor = "grab";
-      } else { zoom.innerHTML = media(p, +t.dataset.v, true); zoom.style.cursor = ""; }
+      zoom.innerHTML = media(p, +t.dataset.v, true); zoom.style.cursor = "";
     });
     zoom.addEventListener("pointermove", (e) => { const r = zoom.getBoundingClientRect(); zoom.style.setProperty("--zx", ((e.clientX - r.left) / r.width) * 100 + "%"); zoom.style.setProperty("--zy", ((e.clientY - r.top) / r.height) * 100 + "%"); });
     zoom.addEventListener("pointerenter", (e) => { if (e.pointerType === "mouse") zoom.classList.add("zoomed"); });
@@ -418,21 +421,29 @@
     zoom.addEventListener("click", (e) => { if (e.pointerType && e.pointerType !== "mouse") zoom.classList.toggle("zoomed"); });
 
     /* Options, quantité, ajout au panier */
-    const form = $("#buy"), addBtn = $(".add-btn");
+    const form = $("#buy"), addBtn = $(".add-btn"), inCart = $(".in-cart");
+    /* Bouton « Ajouter » tant que la variante choisie n'est pas au panier, sinon − quantité + */
+    const syncBuy = () => {
+      const n = Cart.qtyOf(p.id, sel), focused = form.contains(document.activeElement) && document.activeElement.closest(".buy");
+      addBtn.hidden = n > 0; inCart.hidden = !n;
+      if (n) $("output", inCart).textContent = n;
+      if (focused) (n ? $('[data-step="1"]', inCart) : addBtn).focus();
+    };
     form.addEventListener("change", () => {
       const d = new FormData(form);
       sel.color = d.get("color"); sel.size = d.get("size");
       if (sel.color) $("#color-name").textContent = FILAMENTS[sel.color].name;
       $("#price").textContent = euro(unit());
+      syncBuy();
     });
-    form.addEventListener("click", (e) => { const b = e.target.closest("[data-q]"); if (!b) return; sel.qty = Math.max(1, Math.min(20, sel.qty + +b.dataset.q)); $("#qty").textContent = sel.qty; });
+    form.addEventListener("click", (e) => { const b = e.target.closest("[data-step]"); if (b) stepQty(p, sel, +b.dataset.step); });
     form.addEventListener("submit", (e) => {
       e.preventDefault();
-      Cart.add(p.id, sel, sel.qty);
-      addBtn.classList.add("ok"); flyToCart(addBtn);
-      toast(`${sel.qty} × ${esc(p.name)} ajouté · <a href="panier.html">Voir le panier</a>`);
-      setTimeout(() => addBtn.classList.remove("ok"), 1900);
+      flyToCart(addBtn); Cart.add(p.id, sel);
+      toast(`${esc(p.name)} ajouté au panier`);
     });
+    document.addEventListener("cart:change", syncBuy);
+    syncBuy();
 
     /* Carrousel */
     const car = $(".carousel");
@@ -452,25 +463,25 @@
   function about() {
     main.innerHTML = `
       <section class="wrap page-head">
-        <p class="kicker" data-reveal>À propos</p>
+        <p class="kicker" data-reveal>${esc(ABOUT.kicker || "À propos")}</p>
         <h1 data-reveal>${esc(ABOUT.title)}</h1>
       </section>
       <section class="wrap split">
         <div data-reveal="left">${ABOUT.story.map((t, i) => `<p${i ? ' class="muted"' : ' style="font-size:1.15rem"'}>${esc(t)}</p>`).join("")}
-          <a class="btn btn-primary" href="contact.html?sur-mesure=1" data-magnetic style="margin-top:12px">Parler de votre projet ${icon("arrow", "ic-arrow")}</a></div>
+          <a class="btn btn-primary" href="contact.html?sur-mesure=1" data-magnetic style="margin-top:12px">${esc(ABOUT.cta || "Parler de votre projet")} ${icon("arrow", "ic-arrow")}</a></div>
         <div class="split-media" data-reveal="right"><div data-parallax=".1">${printer("a")}</div></div>
       </section>
 
       <section class="section" aria-labelledby="ph-t"><div class="wrap">
-        <header class="sec-h" data-reveal><div><p class="kicker">L'atelier en images</p><h2 id="ph-t">Ma Bambu Lab et ses bobines</h2></div>
-          ${SITE.demo && ABOUT.photos.some((x) => !x.src) ? '<span class="demo-note">Visuels d\'illustration — ajoutez vos photos dans data.js</span>' : ""}</header>
+        <header class="sec-h" data-reveal><div><p class="kicker">${esc(ABOUT.photosKicker || "")}</p><h2 id="ph-t">${esc(ABOUT.photosTitle || "")}</h2></div>
+          ${SITE.demo && ABOUT.photos.some((x) => !x.src) ? '<span class="demo-note">Visuels d\'illustration — ajoutez vos photos depuis l\'administration</span>' : ""}</header>
         <div class="photos">${ABOUT.photos.map((ph, i) => `<figure data-reveal="scale" style="--i:${i}">
           ${ph.src ? `<img src="${esc(ph.src)}" alt="${esc(ph.alt)}" loading="lazy" decoding="async">` : i === 0 ? printer("f") : UI.art({ id: "atelier" + i, name: ph.alt, category: (CATEGORIES[i === 1 ? 1 : 7] || CATEGORIES[0]).slug }, i)}
           <figcaption>${esc(ph.caption)}</figcaption></figure>`).join("")}</div>
       </div></section>
 
       <section class="section" style="padding-top:0" aria-labelledby="pr-t"><div class="wrap">
-        <header class="sec-h" data-reveal style="justify-content:center;text-align:center"><div><p class="kicker" style="justify-content:center">Le process</p><h2 id="pr-t">Du modèle 3D à <span class="grad-text">la finition</span></h2></div></header>
+        <header class="sec-h" data-reveal style="justify-content:center;text-align:center"><div><p class="kicker" style="justify-content:center">${esc(ABOUT.processKicker || "")}</p><h2 id="pr-t">${esc(ABOUT.processTitle || "").replace(/\*(.+?)\*/g, '<span class="grad-text">$1</span>')}</h2></div></header>
         <ol class="timeline">
           ${ABOUT.process.map((s, i) => `<li class="tl-item" data-reveal><span class="tl-num" aria-hidden="true">${String(i + 1).padStart(2, "0")}</span><h3>${esc(s.title)}</h3><p>${esc(s.text)}</p></li>`).join("")}
         </ol>
@@ -502,14 +513,16 @@
         </div>
         <div class="panel" data-reveal="right" id="contact-panel">
           <form class="form" id="contact-form" novalidate>
-            ${fg("nom", "Votre nom", { required: true, auto: "name" })}
-            ${fg("email", "Votre e-mail", { required: true, type: "email", auto: "email" })}
+            ${fg("prenom", "Prénom", { required: true, auto: "given-name" })}
+            ${fg("nom", "Nom", { required: true, auto: "family-name" })}
+            ${fg("email", "Votre e-mail", { required: true, type: "email", auto: "email", full: true })}
             <div class="fg full"><label class="check"><input type="checkbox" id="f-perso" name="personnalisation" ${custom ? "checked" : ""}><span><b>C'est une demande de personnalisation</b><br><span class="muted">Pièce sur mesure, couleur spéciale, gravure…</span></span></label></div>
             <div class="custom-fields full${custom ? " open" : ""}"><div><div class="form">
               ${fg("dimensions", "Dimensions approximatives", { placeholder: "ex. 12 × 8 × 5 cm" })}
               ${fg("couleur", "Couleur souhaitée", { placeholder: "ex. noir mat" })}
             </div></div></div>
             ${fg("message", "Votre message", { required: true, area: true, full: true, placeholder: "Décrivez votre idée, l'usage prévu, la quantité…" })}
+            <div aria-hidden="true" style="position:absolute;left:-9999px;width:1px;height:1px;overflow:hidden"><label>Ne pas remplir<input type="text" name="site_web" tabindex="-1" autocomplete="off"></label></div>
             <div class="fg full"><label class="check"><input type="checkbox" name="accord" required><span>J'accepte que ces informations servent à répondre à ma demande (<a href="confidentialite.html">confidentialité</a>).</span></label><p class="err-msg" role="alert"></p></div>
             <div class="full"><button class="btn btn-primary" type="submit" data-magnetic>Envoyer le message ${icon("arrow", "ic-arrow")}</button></div>
           </form>
@@ -524,17 +537,18 @@
       if (!validate(form)) return;
       const d = Object.fromEntries(new FormData(form));
       const perso = !!d.personnalisation;
-      const subject = `${perso ? "Demande de personnalisation" : "Message"} — ${d.nom}`;
-      const body = `${d.message}\n\n${perso ? `Dimensions : ${d.dimensions || "—"}\nCouleur : ${d.couleur || "—"}\n\n` : ""}${d.nom}\n${d.email}`;
+      const fullName = `${d.prenom} ${d.nom}`.trim();
+      const subject = `${perso ? "Demande de personnalisation" : "Message"} — ${fullName}`;
+      const body = `${d.message}\n\n${perso ? `Dimensions : ${d.dimensions || "—"}\nCouleur : ${d.couleur || "—"}\n\n` : ""}${fullName}\n${d.email}`;
       let viaMail = !SITE.formEndpoint;
       if (SITE.formEndpoint) {
         const btn = $("button[type=submit]", form); btn.disabled = true;
         try { const r = await fetch(SITE.formEndpoint, { method: "POST", headers: { Accept: "application/json" }, body: new FormData(form) }); if (!r.ok) throw 0; }
-        catch { btn.disabled = false; toast("L'envoi a échoué. Réessayez ou écrivez-moi par e-mail."); return; }
+        catch { btn.disabled = false; toast(`L'envoi a échoué. Réessayez ou écrivez-moi à ${SITE.email}.`); return; }
       } else location.href = mailto(subject, body);
       $("#contact-panel").innerHTML = `<div class="success" role="status">${tick}
         <h2>${viaMail ? "Votre message est prêt" : "Message envoyé"}</h2>
-        <p class="muted">${viaMail ? "Votre messagerie vient de s'ouvrir avec le message pré-rempli : il ne reste qu'à cliquer sur « Envoyer »." : `Merci ${esc(d.nom)}, je vous réponds très vite.`}</p>
+        <p class="muted">${viaMail ? "Votre messagerie vient de s'ouvrir avec le message pré-rempli : il ne reste qu'à cliquer sur « Envoyer »." : `Merci ${esc(d.prenom)}, je vous réponds très vite.`}</p>
         ${viaMail ? `<a class="btn btn-ghost btn-sm" href="${esc(mailto(subject, body))}">Rouvrir l'e-mail</a>` : ""}
         <a class="btn btn-ghost btn-sm" href="boutique.html">Retour à la boutique</a></div>`;
       confetti();
@@ -543,11 +557,74 @@
 
   /* ================= PANIER & COMMANDE (3 étapes) ================= */
   function cartPage() {
-    const methods = SITE.shipping.methods, pays = SITE.payment.methods;
-    const st = { step: 1, ship: methods[0].id, pay: pays[0].id, info: {} };
+    const methods = SITE.shipping.methods, pays = SITE.payment.methods, stripe = SITE.payment.mode === "stripe";
+    /* Mode coché par défaut : le premier sans point de retrait (livraison à domicile) */
+    const st = { step: 1, ship: (methods.find((m) => !m.point) || methods[0]).id, pay: pays[0].id, info: {}, mrDown: false, mrCode: "" };
+    /* Coordonnées saisies + point de retrait recopié à la main (le choix fait dans le widget est déjà dans st.info.point) */
+    const keepInfo = () => { const f = $("#ship-form"); if (f) Object.assign(st.info, Object.fromEntries(new FormData(f))); const pt = $("#f-point"); if (pt) st.info.point = pt.value; };
+    /* Coordonnées gardées le temps du passage sur la page Stripe (retour après annulation) */
+    const KEEP = "biboulab-commande";
+    const keep = { get() { try { return JSON.parse(sessionStorage.getItem(KEEP)); } catch { return null; } }, set(v) { try { sessionStorage.setItem(KEEP, JSON.stringify(v)); } catch { /* stockage indisponible */ } }, clear() { try { sessionStorage.removeItem(KEEP); } catch { /* idem */ } } };
     const totals = () => { const sub = Cart.subtotal(), m = methods.find((x) => x.id === st.ship), free = sub >= SITE.shipping.freeFrom, fee = free ? 0 : m.price; return { sub, m, free, fee, total: sub + fee }; };
     const stepsHTML = () => `<ol class="steps" aria-label="Étapes de la commande">${["Panier", "Livraison", "Paiement"].map((l, i) => `<li class="${i + 1 === st.step ? "on" : i + 1 < st.step ? "past" : ""}"${i + 1 === st.step ? ' aria-current="step"' : ""}><i aria-hidden="true"></i><span>${l}</span></li>`).join("")}</ol>`;
     const optText = (l) => [l.color && FILAMENTS[l.color] ? FILAMENTS[l.color].name : null, l.size].filter(Boolean).join(" · ");
+
+    /* ----- Widget Mondial Relay : choix du Point Relais sur une carte -----
+       Affiché pour les modes « mondialrelay » avec point de retrait quand un code enseigne est renseigné.
+       Le point choisi est rangé dans st.info.point, comme s'il avait été recopié à la main.
+       Si le widget ne se charge pas, on retombe sur la saisie manuelle. */
+    const MR_BRAND = String(SITE.shipping.mondialRelayBrand || "").trim();
+    const useMR = () => { const m = methods.find((x) => x.id === st.ship); return !!(m && m.point && m.carrier === "mondialrelay" && MR_BRAND && !st.mrDown); };
+    const shipLogo = (m) => (m.carrier === "mondialrelay" ? `<img class="ship-logo" src="assets/img/mondial-relay.png" alt="" width="207" height="72" loading="lazy">` : "");
+    const loadScript = (src) => new Promise((ok, ko) => { const s = document.createElement("script"); s.src = src; s.onload = ok; s.onerror = ko; document.head.append(s); });
+    let mrLoading = null;
+    const loadMR = () => mrLoading || (mrLoading = (async () => {
+      if (!$("#leaflet-css")) { const l = document.createElement("link"); l.id = "leaflet-css"; l.rel = "stylesheet"; l.href = "assets/vendor/leaflet/leaflet.css"; document.head.append(l); }
+      if (!window.jQuery) await loadScript("assets/vendor/jquery-2.2.4.min.js");
+      if (!window.L) await loadScript("assets/vendor/leaflet/leaflet.js");
+      if (!window.jQuery.fn.MR_ParcelShopPicker) await loadScript("https://widget.mondialrelay.com/parcelshop-picker/jquery.plugin.mondialrelay.parcelshoppicker.min.js");
+    })().catch((e) => { mrLoading = null; throw e; }));
+    const showRelay = () => {
+      const c = $("#mr-choice"); if (!c) return;
+      const pt = st.info.point;
+      c.innerHTML = pt ? `${icon("check")}<span><b>Point Relais choisi :</b> ${esc(pt)}</span>` : "Recherchez puis sélectionnez votre Point Relais® ci-dessous.";
+      c.classList.toggle("on", !!pt);
+      const e = $("#mr-err"); if (e && pt) e.textContent = "";
+    };
+    function mountRelay() {
+      const zone = $("#mr-zone"); if (!zone) return;
+      showRelay();
+      loadMR().then(() => {
+        if (!zone.isConnected) return;
+        const cp = (($("#f-cp") || {}).value || st.info.cp || "").trim(); // lu au dernier moment : le client a pu le saisir pendant le chargement
+        window.jQuery(zone).MR_ParcelShopPicker({
+          Target: "#mr-target",
+          Brand: MR_BRAND.padEnd(8), // le code enseigne fait 8 caractères, complété par des espaces
+          Country: "FR",
+          ColLivMod: "24R",
+          NbResults: 7,
+          PostCode: /^\d{5}$/.test(cp) ? cp : "",
+          AutoSelect: st.info.point ? st.mrCode : "",
+          Responsive: true,
+          ShowResultsOnMap: true,
+          Theme: "mondialrelay",
+          /* La carte change de taille sur mobile (feuille de style du site) : Leaflet doit la recalculer */
+          OnSearchSuccess: () => setTimeout(() => window.jQuery(zone).trigger("MR_RebindMap"), 50),
+          OnParcelShopSelected: (d) => {
+            const t = (v) => String(v || "").replace(/''/g, "'").trim();
+            st.mrCode = `${t(d.Pays) || "FR"}-${t(d.ID)}`;
+            st.info.point = `${t(d.Nom)} (n° ${t(d.ID)}) — ${[t(d.Adresse1), t(d.Adresse2)].filter(Boolean).join(" ")}, ${t(d.CP)} ${t(d.Ville)}`.slice(0, 300);
+            showRelay();
+          }
+        });
+      }).catch(() => {
+        if (!zone.isConnected) return;
+        /* Widget indisponible : on repasse à la saisie manuelle du point de retrait */
+        st.mrDown = true;
+        keepInfo();
+        render();
+      });
+    }
 
     function summary(t, cta) {
       const left = SITE.shipping.freeFrom - t.sub;
@@ -584,8 +661,9 @@
           ${summary(t, `<button class="btn btn-primary" type="button" data-go="2">Choisir la livraison ${icon("arrow", "ic-arrow")}</button><a class="back" href="boutique.html">Continuer mes achats</a>`)}`;
       } else if (st.step === 2) {
         const i = st.info;
-        body = `<form class="co-main" id="ship-form" novalidate>
-            <h2 class="h-sub">Adresse de livraison</h2>
+        const mr = useMR();
+        body = `<div class="co-main"><form id="ship-form" novalidate>
+            <h2 class="h-sub">Vos coordonnées</h2>
             <div class="form">
               ${fg("prenom", "Prénom", { required: true, auto: "given-name", value: i.prenom })}
               ${fg("nom", "Nom", { required: true, auto: "family-name", value: i.nom })}
@@ -595,79 +673,83 @@
               ${fg("ville", "Ville", { required: true, auto: "address-level2", value: i.ville })}
               ${fg("note", "Précision pour la commande", { full: true, value: i.note, placeholder: "ex. référence d'appareil, ville pour une skyline…" })}
             </div>
-            <h2 class="h-sub" style="margin-top:32px">Mode de livraison <small class="muted" style="font:500 .85rem var(--font-b)">(France métropolitaine)</small></h2>
-            ${methods.map((m) => `<label class="radio-card"><input type="radio" name="ship" value="${m.id}" ${m.id === st.ship ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.delay)}</small></span><span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>`).join("")}
           </form>
+          <h2 class="h-sub" style="margin-top:32px">Mode de livraison <small class="muted" style="font:500 .85rem var(--font-b)">(France métropolitaine)</small></h2>
+          ${methods.map((m) => {
+            const on = m.id === st.ship;
+            /* Le choix du point de retrait s'ouvre dans le cadre de l'option cochée. Il reste hors du
+               formulaire : les boutons du widget Mondial Relay sont de type submit. */
+            const panel = !on || !m.point ? "" : mr
+              ? `<div class="ship-panel mr-box">
+                  <p class="mr-choice" id="mr-choice" aria-live="polite"></p>
+                  <p class="mr-err" id="mr-err" role="alert"></p>
+                  <input type="hidden" id="mr-target">
+                  <div class="mr-zone" id="mr-zone"><p class="muted" style="padding:16px;margin:0">Chargement de la carte des Points Relais…</p></div></div>`
+              : `<div class="ship-panel form point-box">
+                  <p class="full" style="margin:0">Choisissez votre point de retrait${m.finder ? ` sur <a href="${esc(m.finder)}" target="_blank" rel="noopener">le site ${m.carrier === "mondialrelay" ? "Mondial Relay" : m.carrier === "colissimo" ? "de La Poste" : "du transporteur"}<span class="sr"> (nouvel onglet)</span></a>` : ""}, puis recopiez son nom et son adresse ci-dessous.</p>
+                  ${fg("point", "Point de retrait choisi", { required: true, area: true, full: true, value: i.point, placeholder: m.carrier === "mondialrelay" ? "ex. Tabac de la Gare, 12 rue de la Gare, 75011 Paris" : "ex. Bureau de poste Paris Voltaire, 4 rue Popincourt, 75011 Paris" })}
+                </div>`;
+            return `<div class="ship-opt${panel ? " open" : ""}"><label class="radio-card"><input type="radio" name="ship" form="ship-form" value="${m.id}" ${on ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc([m.note, m.delay].filter(Boolean).join(" · "))}</small></span>${shipLogo(m)}<span class="price">${t.free ? "Offerte" : euro(m.price)}</span></label>${panel}</div>`;
+          }).join("")}
+          </div>
           ${summary(t, `<button class="btn btn-primary" type="submit" form="ship-form">Passer au paiement ${icon("arrow", "ic-arrow")}</button><button class="back" type="button" data-go="1">← Retour au panier</button>`)}`;
       } else if (st.step === 3) {
         body = `<form class="co-main" id="pay-form" novalidate>
             <h2 class="h-sub">Mode de paiement</h2>
-            ${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est transmise et je vous retourne par e-mail un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
-            ${pays.map((m) => `<label class="radio-card"><input type="radio" name="pay" value="${m.id}" ${m.id === st.pay ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.note)}</small></span></label>`).join("")}
+            ${st.notice ? `<p class="notice" role="status">${esc(st.notice)}</p>` : ""}
+            ${stripe
+              ? `<p class="notice">Paiement sécurisé par carte bancaire (ou Apple Pay, Google Pay selon votre appareil) sur la page de Stripe, le prestataire de paiement. Vos coordonnées bancaires ne passent jamais par ce site.</p>
+                 <p class="notice pay-err" role="alert" style="border-color:var(--err)" hidden></p>`
+              : `${SITE.payment.mode === "email" ? `<p class="notice">Pas de paiement en ligne sur cette page : votre commande m'est envoyée par e-mail et je vous retourne un moyen de paiement sécurisé. Vous ne payez qu'après confirmation.</p>` : ""}
+                 ${pays.map((m) => `<label class="radio-card"><input type="radio" name="pay" value="${m.id}" ${m.id === st.pay ? "checked" : ""}><span><b>${esc(m.label)}</b><small>${esc(m.note)}</small></span></label>`).join("")}`}
             <h2 class="h-sub" style="margin-top:32px">Livraison</h2>
-            <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})</p>
+            <p class="muted">${esc(st.info.prenom)} ${esc(st.info.nom)} — ${esc(st.info.adresse)}, ${esc(st.info.cp)} ${esc(st.info.ville)}<br>${esc(t.m.label)} (${esc(t.m.delay)})${t.m.point && st.info.point ? `<br>Point de retrait : ${esc(st.info.point)}` : ""}</p>
             <div class="fg" style="margin-top:22px"><label class="check"><input type="checkbox" name="cgv" required><span>J'ai lu et j'accepte les <a href="cgv.html" target="_blank" rel="noopener">conditions générales de vente</a> et je reconnais que ma commande implique une obligation de paiement.</span></label><p class="err-msg" role="alert"></p></div>
           </form>
-          ${summary(t, `<button class="btn btn-primary" type="submit" form="pay-form">Valider la commande · ${euro(t.total)}</button><button class="back" type="button" data-go="2">← Retour à la livraison</button>`)}`;
+          ${summary(t, `<button class="btn btn-primary" type="submit" form="pay-form">${stripe ? "Commander et payer" : "Valider la commande"} · ${euro(t.total)}</button><button class="back" type="button" data-go="2">← Retour à la livraison</button>`)}`;
       }
       main.innerHTML = st.step === 4 ? st.done : `<section class="wrap page-head" style="padding-bottom:0"><h1 tabindex="-1">${["Votre panier", "Livraison", "Paiement"][st.step - 1]}</h1>${stepsHTML()}</section><section class="wrap checkout">${body}</section>`;
       enhance(main);
+      if (st.step === 2 && useMR()) mountRelay();
       if (focus) { scrollTo({ top: 0, behavior: RM ? "auto" : "smooth" }); const h = $("h1, h2", main); if (h) h.focus({ preventScroll: true }); }
     }
 
-    main.addEventListener("click", (e) => {
+    main.addEventListener("click", async (e) => {
       const q = e.target.closest("[data-q]"), go = e.target.closest("[data-go]");
-      if (q) { Cart.setQty(+q.dataset.i, +q.dataset.q); render(); }
+      if (q) {
+        const i = +q.dataset.i, n = +q.dataset.q;
+        /* Le bouton « − » qui fait tomber la quantité à 0 demande confirmation avant de retirer la ligne */
+        if (n < 1 && !q.classList.contains("line-del")) {
+          const l = Cart.lines().find((x) => x.index === i);
+          if (!l || !(await confirmRemove(l.p.name))) return;
+        }
+        Cart.setQty(i, n); render();
+      }
       if (go) { st.step = +go.dataset.go; render(true); }
     });
     main.addEventListener("change", (e) => {
-      if (e.target.name === "ship") { st.ship = e.target.value; Object.assign(st.info, Object.fromEntries(new FormData($("#ship-form")))); render(); const r = $('input[name="ship"]:checked'); if (r) r.focus(); }
+      if (e.target.name === "ship") { st.ship = e.target.value; keepInfo(); render(); const r = $('input[name="ship"]:checked'); if (r) r.focus(); }
       if (e.target.name === "pay") st.pay = e.target.value;
+      /* Code postal saisi après l'affichage du widget : on relance la recherche de Points Relais */
+      if (e.target.id === "f-cp" && useMR() && /^\d{5}$/.test(e.target.value.trim()) && window.jQuery && $("#mr-zone")) window.jQuery("#mr-zone").trigger("MR_DoSearch", [e.target.value.trim(), "FR"]);
     });
-    /* Envoi au serveur (api/commandes.php). Renvoie la référence retenue, null si le
-       serveur n'est pas joignable (aperçu local, panne) : on passe alors par l'e-mail. */
-    async function sendOrder(ref, t, pay) {
-      if (!SITE.orderEndpoint || location.protocol === "file:") return null;
-      const i = st.info, lines = Cart.lines();
-      const body = {
-        ref, client: { prenom: i.prenom, nom: i.nom, email: i.email, adresse: i.adresse, cp: i.cp, ville: i.ville }, note: i.note || "",
-        articles: lines.map((l) => ({ id: l.p.id, nom: l.p.name, couleur: l.color || "", couleurNom: l.color && FILAMENTS[l.color] ? FILAMENTS[l.color].name : "", taille: l.size || "", qte: l.qty, prix: l.unit })),
-        livraison: { id: t.m.id, nom: t.m.label, frais: t.fee }, paiement: { id: pay.id, nom: pay.label }, total: t.total
-      };
-      let r, out;
-      try {
-        r = await fetch(SITE.orderEndpoint, { method: "POST", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify(body) });
-        out = await r.json();
-      } catch { return null; }
-      if (r.ok && out && out.ok) return out.ref || ref;
-      if (r.status === 400 || r.status === 429) throw new Error(out.erreur);
-      return null;
-    }
-
-    main.addEventListener("submit", async (e) => {
+    main.addEventListener("submit", (e) => {
       e.preventDefault();
-      if (!validate(e.target)) return;
-      if (e.target.id === "ship-form") { Object.assign(st.info, Object.fromEntries(new FormData(e.target))); st.step = 3; render(true); return; }
-      /* Validation finale : envoi au serveur, sinon e-mail de commande */
-      const t = totals(), i = st.info, pay = pays.find((m) => m.id === st.pay);
-      let ref = "GF-" + Date.now().toString(36).toUpperCase().slice(-6);
-      const btn = $('button[form="pay-form"]');
-      if (btn.disabled) return;
-      btn.disabled = true; const label = btn.innerHTML; btn.textContent = "Envoi de la commande…";
-      let sent = null;
-      try { sent = await sendOrder(ref, t, pay); }
-      catch (err) { btn.disabled = false; btn.innerHTML = label; toast(esc(err.message || "La commande n'a pas pu être envoyée.")); return; }
-      if (sent) {
-        st.done = `<section class="wrap section"><div class="success" role="status">${tick}
-          <h1 tabindex="-1">Commande ${esc(sent)} reçue</h1>
-          <p class="muted">Merci ${esc(i.prenom)} ! Votre commande m'est bien parvenue. Je la vérifie et je vous écris à <b>${esc(i.email)}</b> pour le paiement : ${esc(pay.label.toLowerCase())}. L'impression démarre dès le paiement reçu.</p>
-          <a class="btn btn-primary" href="boutique.html">Retour à la boutique</a></div></section>`;
-        st.step = 4; Cart.clear(); render(true); confetti();
-        return;
+      /* Étape Livraison : on valide aussi le point de retrait recopié, placé hors du formulaire */
+      if (!validate(e.target.id === "ship-form" ? $(".co-main", main) : e.target)) return;
+      if (e.target.id === "ship-form") {
+        keepInfo();
+        if (useMR() && !st.info.point) { const m = $("#mr-err"); if (m) { m.textContent = "Sélectionnez un Point Relais® pour continuer."; m.scrollIntoView({ block: "center", behavior: RM ? "auto" : "smooth" }); } return; }
+        st.step = 3; st.notice = ""; render(true); return;
       }
+      if (stripe) { payStripe(); return; }
+      /* Validation finale : on prépare l'e-mail de commande */
+      const t = totals(), i = st.info, ref = "GF-" + Date.now().toString(36).toUpperCase().slice(-6);
+      const pay = pays.find((m) => m.id === st.pay);
       const text = [`Commande ${ref}`, "", ...Cart.lines().map((l) => `- ${l.qty} × ${l.p.name}${optText(l) ? ` (${optText(l)})` : ""} : ${euro(l.total)}`), "",
         `Sous-total : ${euro(t.sub)}`, `Livraison (${t.m.label}) : ${t.free ? "offerte" : euro(t.fee)}`, `TOTAL : ${euro(t.total)}`, "",
-        `Paiement souhaité : ${pay.label}`, "", "Livraison :", `${i.prenom} ${i.nom}`, i.adresse, `${i.cp} ${i.ville}`, i.email, i.note ? `Précision : ${i.note}` : ""].join("\n");
+        `Paiement souhaité : ${pay.label}`, "", "Livraison :", `${i.prenom} ${i.nom}`, i.adresse, `${i.cp} ${i.ville}`, i.email,
+        t.m.point && i.point ? `Point de retrait : ${i.point}` : "", i.note ? `Précision : ${i.note}` : ""].join("\n");
       const link = mailto(`Commande ${ref} — ${SITE.name}`, text);
       st.done = `<section class="wrap section"><div class="success" role="status">${tick}
         <h1 tabindex="-1">Commande ${ref} prête à partir</h1>
@@ -677,15 +759,67 @@
       st.step = 4; Cart.clear(); render(true); confetti();
       location.href = link;
     });
+
+    /* Paiement Stripe : le serveur recalcule les prix et renvoie l'adresse de la page Stripe.
+       Seuls les identifiants des articles partent d'ici, jamais les prix. */
+    async function payStripe() {
+      const btn = $('button[form="pay-form"][type="submit"]'), err = $(".pay-err", main), label = btn.innerHTML;
+      btn.disabled = true; btn.setAttribute("aria-busy", "true"); btn.textContent = "Redirection vers le paiement…"; err.hidden = true;
+      keep.set({ info: st.info, ship: st.ship });
+      try {
+        const r = await fetch(SITE.payment.endpoint + "session/", {
+          method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ panier: Cart.read().map(({ id, color, size, qty }) => ({ id, color, size, qty })), livraison: st.ship,
+            client: { ...st.info, point: totals().m.point ? st.info.point || "" : "" } })
+        });
+        const d = await r.json().catch(() => ({}));
+        if (r.ok && d.url) { location.href = d.url; return; }
+        err.textContent = d.erreur || "Le paiement en ligne est momentanément indisponible. Réessayez dans quelques minutes.";
+      } catch {
+        err.textContent = "Connexion impossible. Vérifiez votre accès à Internet, puis réessayez.";
+      }
+      err.hidden = false; btn.disabled = false; btn.removeAttribute("aria-busy"); btn.innerHTML = label;
+    }
+
+    /* Retour depuis la page Stripe : ?paiement=ok&session_id=… ou ?paiement=annule */
+    const back = new URLSearchParams(location.search), outcome = back.get("paiement");
+    if (outcome) history.replaceState(null, "", location.pathname);
+    if (outcome === "ok") {
+      Cart.clear(); keep.clear();
+      st.done = `<section class="wrap section"><div class="success" role="status">${tick}
+        <h1 tabindex="-1">Merci pour votre commande !</h1>
+        <p class="muted pay-state">Votre paiement a bien été transmis. Vous recevez la confirmation par e-mail, et je lance l'impression.</p>
+        <a class="btn btn-primary" href="boutique.html">Retour à la boutique</a></div></section>`;
+      st.step = 4; render(true); confetti();
+      fetch(SITE.payment.endpoint + "etat/?session_id=" + encodeURIComponent(back.get("session_id") || ""))
+        .then((r) => (r.ok ? r.json() : null)).then((d) => {
+          const p = $(".pay-state", main); if (!d || !p) return;
+          if (d.statut === "payee") p.textContent = `Commande ${d.ref} : paiement confirmé. Vous recevez un reçu par e-mail ; je lance l'impression et je vous préviens à l'expédition.`;
+          else if (d.statut === "attente") p.textContent = `Commande ${d.ref} : votre banque confirme le paiement sous quelques jours. J'imprime votre commande dès sa confirmation.`;
+        }).catch(() => { /* le message par défaut reste affiché */ });
+      return;
+    }
+    if (outcome === "annule") {
+      const saved = keep.get();
+      if (saved && saved.info && Cart.count()) {
+        Object.assign(st.info, saved.info);
+        if (methods.some((m) => m.id === saved.ship)) st.ship = saved.ship;
+        st.step = 3;
+      }
+      st.notice = "Paiement annulé : rien n'a été débité. Votre panier est intact, vous pouvez réessayer.";
+    }
     render();
   }
 
   /* ================= PAGES LÉGALES =================
-     Les <span data-fill="..."> sont remplis avec les valeurs de data.js. */
+     Textes dans data.js (PAGES), modifiables depuis l'administration.
+     Mise en forme et {variables} : assets/js/rich.js */
   function legal() {
-    const values = { ...SITE.legal, name: SITE.name, email: SITE.email, url: SITE.url, freeFrom: euro(SITE.shipping.freeFrom), methods: SITE.shipping.methods.map((m) => `${m.label} (${euro(m.price)}, ${m.delay})`).join(" ; ") };
-    $$("[data-fill]").forEach((el) => { el.textContent = values[el.dataset.fill] ?? ""; if (SITE.demo && el.dataset.fill in SITE.legal && el.dataset.fill !== "updated" && el.dataset.fill !== "status") { el.classList.add("todo"); el.title = "Valeur d'exemple à remplacer dans data.js"; } });
-    $$("a[data-mail]").forEach((a) => { a.href = "mailto:" + SITE.email; a.textContent = SITE.email; });
+    const doc = PAGES[document.body.dataset.doc], R = window.SHOP_RICH;
+    if (!doc || !R) return;
+    main.innerHTML = `<section class="wrap page-head"><p class="kicker">${esc(doc.kicker)}</p><h1>${esc(doc.title)}</h1><p class="muted" style="margin-top:14px">Dernière mise à jour : ${esc(SITE.legal.updated)}</p></section>
+      <section class="wrap prose">${R.page(doc, SITE)}</section>`;
+    setMeta(doc.title, doc.description || ""); // titre d'onglet et description (utile quand le texte vient de l'administration en ligne)
   }
 
   /* ================= Aiguillage ================= */

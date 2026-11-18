@@ -1,0 +1,23 @@
+Bonjour {{ prenom }},
+
+Bonne nouvelle : votre commande {{ ref }} vient de partir{% if livraison.transporteur %} avec {{ livraison.transporteur }}{% endif %} !
+
+{% for l in lignes %}- {{ l.quantite }} × {{ l.nom }}{% if l.options %} ({{ l.options }}){% endif %}
+{% endfor %}
+{% if point_retrait %}Elle sera livrée à votre point de retrait :
+{{ point_retrait }}
+Vous serez prévenu à son arrivée.
+{% else %}Elle sera livrée à :
+{{ nom }}
+{{ adresse }}
+{{ code_postal }} {{ ville }}
+{% endif %}{% if livraison.delai %}Délai indicatif : {{ livraison.delai }}.
+{% endif %}
+Numéro de suivi : {{ numero_suivi }}
+{% if lien_suivi %}Suivre le colis : {{ lien_suivi }}
+{% endif %}
+Une question ? Répondez simplement à cet e-mail.
+
+À bientôt,
+{{ boutique }}
+{{ site_url }}

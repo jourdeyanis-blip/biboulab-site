@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="fr" data-theme="dark">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <title>E-mails de commande | Biboulab</title>
+  <link rel="stylesheet" href="/assets/css/style.css">
+  <link rel="icon" href="/assets/img/favicon.svg" type="image/svg+xml">
+  <style>
+    body { min-height: 100vh; }
+    .e-top { display: flex; align-items: center; flex-wrap: wrap; gap: 12px 16px; padding: 14px 24px; border-bottom: 1px solid var(--line); }
+    .e-top .sub { color: var(--faint); font-size: .875rem; }
+    .e-top .back { margin-left: auto; }
+    .e-wrap { max-width: 1240px; margin: 0 auto; padding: 28px 24px 64px; }
+    .e-tabs { display: flex; flex-wrap: wrap; gap: 8px; margin: 0 0 20px; }
+    .e-tabs a { padding: 8px 14px; border-radius: 999px; border: 1px solid var(--line); font-size: .9rem; }
+    .e-tabs a[aria-current="page"] { background: var(--surface-2); border-color: var(--text); }
+    .e-grid { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; align-items: start; }
+    @media (max-width: 900px) { .e-grid { grid-template-columns: 1fr; } }
+    .e-grid .panel { padding: 22px; }
+    .e-grid h2 { font-size: 1.05rem; margin: 0 0 14px; }
+    .e-code { width: 100%; font: 400 .875rem/1.55 ui-monospace, SFMono-Regular, Menlo, Consolas, monospace; }
+    textarea.e-code { min-height: 460px; resize: vertical; }
+    .e-acts { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; }
+    .e-mail { white-space: pre-wrap; overflow-wrap: anywhere; font: 400 .9rem/1.6 var(--font-b, inherit); margin: 0; padding: 16px; border-radius: 12px; background: var(--surface-2); }
+    .e-subject { font-weight: 600; margin: 0 0 10px; overflow-wrap: anywhere; }
+    .e-html { border-radius: 12px; overflow: hidden; }
+    .e-html table { max-width: 100%; }
+    .e-texte { margin-top: 14px; font-size: .875rem; }
+    .e-texte summary { cursor: pointer; margin-bottom: 10px; }
+    .e-msg { padding: 12px 16px; border-radius: 12px; border: 1px solid var(--line); margin: 0 0 20px; }
+    .e-msg.err { border-color: var(--err); color: var(--err); }
+    .e-vars { width: 100%; border-collapse: collapse; font-size: .875rem; }
+    .e-vars td { padding: 7px 8px; border-top: 1px solid var(--line); vertical-align: top; }
+    .e-vars code { white-space: nowrap; }
+    .e-help { font-size: .875rem; }
+    .e-help code { font-size: .85em; }
+  </style>
+</head>
+<body>
+  <header class="e-top">
+    <span class="logo"><span class="logo-a">Biboulab</span></span>
+    <span class="sub">Administration · E-mails de commande</span>
+    <a class="btn btn-ghost back" href="../commandes/">Commandes</a>
+    <a class="btn btn-ghost" href="../">← Catalogue</a>
+  </header>
+  <main class="e-wrap">
+    <h1 style="font-size:1.6rem;margin:0 0 6px">E-mails de commande</h1>
+    <p class="muted" style="margin:0 0 20px">Envoyés automatiquement dès qu'un paiement est confirmé par Stripe. Ils partent de l'adresse d'expédition du site ; les réponses arrivent sur {{ destinataire }}.</p>
+
+    <nav class="e-tabs" aria-label="Modèles">
+      {% for nom, libelle in modeles %}<a href="?modele={{ nom }}"{% if nom == actif %} aria-current="page"{% endif %}>{{ libelle }}</a>{% endfor %}
+    </nav>
+
+    {% if erreur %}<p class="e-msg err" role="alert">{{ erreur }}</p>{% elif message %}<p class="e-msg" role="status">{{ message }}</p>{% endif %}
+
+    <div class="e-grid">
+      <section class="panel" aria-labelledby="t-modele">
+        <h2 id="t-modele">{{ titre }} <span class="muted" style="font-weight:400;font-size:.85rem">· {% if non_enregistre %}modifications non enregistrées{% elif perso %}modèle personnalisé{% else %}modèle par défaut{% endif %}</span></h2>
+        <form method="post" action="?modele={{ actif }}">
+          {% csrf_token %}
+          <input type="hidden" name="modele" value="{{ actif }}">
+          <div class="fg"><label for="objet">Objet</label>
+            <input class="input e-code" id="objet" name="objet" value="{{ objet }}" maxlength="300" required spellcheck="true"></div>
+          <div class="fg" style="margin-top:14px"><label for="corps">Message <span class="muted" style="font-weight:400">(texte simple)</span></label>
+            <textarea class="textarea e-code" id="corps" name="corps" required spellcheck="true">{{ corps }}</textarea></div>
+          <div class="e-acts">
+            <button class="btn btn-ghost" type="submit" name="action" value="apercu">Voir l'aperçu</button>
+            <button class="btn btn-primary" type="submit" name="action" value="enregistrer">Enregistrer</button>
+          </div>
+        </form>
+        {% if perso %}
+        <form method="post" action="?modele={{ actif }}" style="margin-top:10px">
+          {% csrf_token %}
+          <input type="hidden" name="modele" value="{{ actif }}">
+          <button class="btn btn-ghost btn-sm" type="submit" name="action" value="defaut">Rétablir le modèle par défaut</button>
+        </form>
+        {% endif %}
+      </section>
+
+      <section class="panel" aria-labelledby="t-apercu">
+        <h2 id="t-apercu">Aperçu <span class="muted" style="font-weight:400;font-size:.85rem">· commande d'exemple, avec le bandeau</span></h2>
+        {% if apercu %}
+          <p class="e-subject">Objet : {{ apercu.0 }}</p>
+          <div class="e-html">{{ apercu_html }}</div>
+          <details class="e-texte">
+            <summary>Version texte <span class="muted">(pour les messageries qui n'affichent pas le HTML)</span></summary>
+            <pre class="e-mail">{{ apercu.1 }}</pre>
+          </details>
+        {% else %}
+          <p class="muted">Corrigez l'erreur pour voir l'aperçu.</p>
+        {% endif %}
+      </section>
+    </div>
+
+    <section class="panel e-help" style="margin-top:24px;padding:22px" aria-labelledby="t-vars">
+      <h2 id="t-vars" style="font-size:1.05rem;margin:0 0 8px">Variables</h2>
+      <p class="muted" style="margin:0 0 12px">Écrivez <code>{% templatetag openvariable %} nom {% templatetag closevariable %}</code> pour insérer une valeur. Conditions : <code>{% templatetag openblock %} if note {% templatetag closeblock %} … {% templatetag openblock %} endif {% templatetag closeblock %}</code>. Liste des articles : <code>{% templatetag openblock %} for l in lignes {% templatetag closeblock %} - {% templatetag openvariable %} l.quantite {% templatetag closevariable %} × {% templatetag openvariable %} l.nom {% templatetag closevariable %} : {% templatetag openvariable %} l.total {% templatetag closevariable %} {% templatetag openblock %} endfor {% templatetag closeblock %}</code>. Les montants sont déjà écrits en euros (ex. 8,90 €).</p>
+      <table class="e-vars">
+        {% for nom, aide in variables %}<tr><td><code>{% templatetag openvariable %} {{ nom }} {% templatetag closevariable %}</code></td><td>{{ aide }}</td></tr>{% endfor %}
+      </table>
+    </section>
+  </main>
+</body>
+</html>

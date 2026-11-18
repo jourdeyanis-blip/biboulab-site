@@ -40,20 +40,10 @@ jobs:
         run: |
           printf 'User-agent: *\nDisallow: /\n' > robots.txt
 
-      # Clé qui permet à la page de gestion (outils/admin.html) de récupérer les
-      # commandes passées sur le site. Secret GitHub à créer : CLE_COMMANDES
-      # (la valeur affichée par « Relier au site » dans l'onglet Commandes).
-      # Seule son empreinte SHA-256 est envoyée sur le serveur.
-      - name: Installer la clé de récupération des commandes
-        env:
-          CLE: ${{ secrets.CLE_COMMANDES }}
-        run: |
-          if [ -n "$CLE" ]; then
-            printf "<?php return '%s';\n" "$(printf '%s' "$CLE" | sha256sum | cut -d' ' -f1)" > api/cle.php
-          else
-            echo "::warning::Secret CLE_COMMANDES absent : la page de gestion ne pourra pas récupérer les commandes du site."
-          fi
-
+      # backend/ (Django) ne va jamais dans le dossier public : le serveur le met à jour lui-même
+      # toutes les 5 minutes (backend/deployer.sh lancé par une tâche cron, voir LISEZ-MOI.md).
+      # catalogue.js, contenu.js et sitemap.xml sont écrits par l'administration en ligne : on ne les envoie
+      # que s'ils n'existent pas encore sur le serveur, pour ne jamais écraser ce qui a été saisi en ligne.
       - name: Envoyer le site en FTPS
         env:
           FTP_SERVER: ${{ secrets.FTP_SERVER }}
@@ -65,9 +55,12 @@ jobs:
             set ftp:ssl-force true;
             set ftp:ssl-protect-data true;
             set net:max-retries 3;
-            rm -r -f /.git /.github /.claude /outils /LISEZ-MOI.md;
+            rm -r -f /.git /.github /.claude /outils /backend /LISEZ-MOI.md /envoyer-contact.php;
             mirror -R --verbose --parallel=2 \
               -x '^\.git(/|$)' -x '^\.github(/|$)' -x '^\.claude(/|$)' \
-              -x '^outils(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
+              -x '^outils(/|$)' -x '^backend(/|$)' -x '^LISEZ-MOI\.md$' -x '(^|/)\.DS_Store$' \
+              -x '^assets/js/catalogue\.js$' -x '^assets/js/contenu\.js$' -x '^sitemap\.xml$' \
               . /;
+            mirror -R --only-missing --no-recursion --verbose -I catalogue.js -I contenu.js assets/js /assets/js;
+            mirror -R --only-missing --no-recursion --verbose -I sitemap.xml . /;
             quit"

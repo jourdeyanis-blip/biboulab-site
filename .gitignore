@@ -1,8 +1,14 @@
 .DS_Store
 outils/sauvegardes/
 .claude/settings.local.json
-outils/commandes.json
-outils/commandes.json.tmp
-outils/site.json
-api/cle.php
-api/donnees/
+# Administration Django : base de données, sauvegardes, environnement Python
+backend/db.sqlite3
+backend/sauvegardes/
+backend/.venv/
+__pycache__/
+*.pyc
+backend/tmp/
+backend/.deploye
+backend/.deploiement.verrou/
+backend/deploiement.log
+backend/erreurs.log*

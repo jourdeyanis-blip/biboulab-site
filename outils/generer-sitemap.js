@@ -21,5 +21,5 @@ ${urls.map(([u, pr]) => `  <url><loc>${base}/${u.replace(/&/g, "&amp;")}</loc><l
 </urlset>
 `;
 fs.writeFileSync(path.join(root, "sitemap.xml"), xml);
-fs.writeFileSync(path.join(root, "robots.txt"), `User-agent: *\nAllow: /\nDisallow: /panier.html\nDisallow: /outils/\nDisallow: /api/\n\nSitemap: ${base}/sitemap.xml\n`);
+fs.writeFileSync(path.join(root, "robots.txt"), `User-agent: *\nAllow: /\nDisallow: /panier.html\nDisallow: /outils/\nDisallow: /admin/\n\nSitemap: ${base}/sitemap.xml\n`);
 console.log(`sitemap.xml : ${urls.length} adresses (${base})`);

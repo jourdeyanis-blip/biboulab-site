@@ -1,0 +1,6 @@
+# Dossier des photos : jamais d'exécution de code, uniquement des images.
+Options -ExecCGI -Indexes
+<FilesMatch "\.(php[0-9]?|phtml|phar|pl|py|cgi|sh|html?|js)$">
+  Require all denied
+</FilesMatch>
+RemoveHandler .php .phtml .phar
