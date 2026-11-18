@@ -19,7 +19,9 @@ from . import contenu as contenus
 from .catalogue import Invalide, enregistrer, enregistrer_photo, verifier
 from django.utils import timezone
 
-from .models import Commande, ModeleEmail
+from django.db import transaction
+
+from .models import Commande, ModeleEmail, Suivi
 from .securite import csp
 
 ERREUR = "Identifiant ou mot de passe incorrect."
@@ -265,6 +267,48 @@ def api_photo(request):
     except OSError:
         return JsonResponse({"erreur": "Écriture impossible sur le serveur."}, status=500)
     return JsonResponse({"ok": True, "chemin": chemin})
+
+
+# ---------- Tableau « Suivi commande » (tickets personnels, enregistrés automatiquement) ----------
+ETAPES_SUIVI = {"commande", "impression", "livrer", "livree"}
+
+
+def _tickets_valides(tickets) -> bool:
+    if not isinstance(tickets, list) or len(tickets) > 5000:
+        return False
+    vus = set()
+    for t in tickets:
+        if not isinstance(t, dict) or not isinstance(t.get("id"), str) or not t["id"] or t["id"] in vus:
+            return False
+        if t.get("status") not in ETAPES_SUIVI or not isinstance(t.get("items"), list):
+            return False
+        vus.add(t["id"])
+    return True
+
+
+@require_http_methods(["GET", "POST"])
+@admin_requis(api=True)
+def api_suivi(request):
+    if request.method == "GET":
+        suivi = Suivi.objects.first()
+        return JsonResponse({"tickets": suivi.tickets if suivi else [], "version": suivi.version if suivi else 0})
+    if len(request.body) > 4_000_000:
+        return JsonResponse({"erreur": "Tableau trop volumineux."}, status=413)
+    try:
+        data = json.loads(request.body)
+        tickets, version = data["tickets"], int(data["version"])
+    except (ValueError, KeyError, TypeError):
+        return JsonResponse({"erreur": "Données incomplètes."}, status=400)
+    if not _tickets_valides(tickets):
+        return JsonResponse({"erreur": "Tableau invalide."}, status=400)
+    with transaction.atomic():
+        suivi, _ = Suivi.objects.select_for_update().get_or_create(pk=1)
+        if version != suivi.version:
+            return JsonResponse({"erreur": "Le tableau a été modifié dans un autre onglet ou sur un autre appareil. Rechargez la page pour retrouver la dernière version.",
+                                 "version": suivi.version}, status=409)
+        suivi.tickets, suivi.version = tickets, suivi.version + 1
+        suivi.save()
+    return JsonResponse({"ok": True, "version": suivi.version})
 
 
 @require_POST
