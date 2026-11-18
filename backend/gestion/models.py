@@ -67,3 +67,15 @@ class ModeleEmail(models.Model):
 
     def __str__(self):
         return self.nom
+
+
+class Suivi(models.Model):
+    """Tableau personnel « Suivi commande » de l'administration (tickets façon Trello :
+    Commande → En cours d'impression → À livrer). Indépendant des commandes payées du site.
+    Une seule ligne : la liste des tickets telle que la page de gestion la manipule."""
+    tickets = models.JSONField(default=list)
+    version = models.PositiveIntegerField(default=0)   # un autre onglet ou appareil n'écrase pas les changements
+    modifie_le = models.DateTimeField(auto_now=True)
+
+    def __str__(self):
+        return f"Suivi des commandes ({len(self.tickets)} tickets)"

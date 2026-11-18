@@ -12,3 +12,5 @@ backend/.deploye
 backend/.deploiement.verrou/
 backend/deploiement.log
 backend/erreurs.log*
+outils/suivi.json
+outils/suivi.json.tmp

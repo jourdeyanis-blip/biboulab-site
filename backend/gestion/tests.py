@@ -156,6 +156,28 @@ class AdminTests(TestCase):
         r = self.c.post("/api/photo/?dossier=../js&nom=x.png", data=b"\x89PNG\r\n\x1a\n0000", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 400)
 
+    def test_tableau_de_suivi(self):
+        """Tableau « Suivi commande » : réservé à l'administrateur, protégé par CSRF,
+        et un onglet resté ouvert n'écrase pas une version plus récente."""
+        ticket = {"id": "t1", "status": "commande", "client": "Léa <b>", "items": [{"product": "vase", "name": "Vase", "qty": 2, "price": 12.5}]}
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).status_code, 401)
+        self.connecter()
+        jeton = self.jeton()
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json(), {"tickets": [], "version": 0})
+        envoyer = lambda corps: self.c.post("/api/suivi/", data=json.dumps(corps), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        r = self.c.post("/api/suivi/", data=json.dumps({"tickets": [ticket], "version": 0}), content_type="application/json", **HOTE)
+        self.assertEqual(r.status_code, 403)   # sans jeton CSRF
+        r = envoyer({"tickets": [ticket], "version": 0})
+        self.assertEqual(r.json(), {"ok": True, "version": 1})
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json(), {"tickets": [ticket], "version": 1})
+        r = envoyer({"tickets": [], "version": 0})   # version périmée : refusé, rien n'est perdu
+        self.assertEqual(r.status_code, 409)
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json()["tickets"], [ticket])
+        for mauvais in ({"tickets": [{**ticket, "status": "volee"}], "version": 1}, {"tickets": [ticket, ticket], "version": 1},
+                        {"tickets": "x", "version": 1}, {"tickets": []}):
+            self.assertEqual(envoyer(mauvais).status_code, 400, mauvais)
+        self.assertEqual(envoyer({"tickets": [{**ticket, "status": "impression"}], "version": 1}).json()["version"], 2)
+
     def test_adresses_api_sous_admin(self):
         """En ligne, l'application est montée sous /admin : l'API doit pointer vers /admin/api/."""
         self.connecter()

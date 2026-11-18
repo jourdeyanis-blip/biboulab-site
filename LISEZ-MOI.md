@@ -14,11 +14,12 @@ Puis ouvrir http://localhost:4173. (Un double-clic sur `index.html` fonctionne a
 
 ## Administrer le site (page d'administration)
 
-En ligne sur **/admin/** (voir « Administration en ligne » plus bas), ou en local avec `node outils/serveur-local.js` puis **http://localhost:4173/admin**. Trois onglets :
+En ligne sur **/admin/** (voir « Administration en ligne » plus bas), ou en local avec `node outils/serveur-local.js` puis **http://localhost:4173/admin**. Quatre onglets :
 
 - **Catalogue** : catégories et objets (détail ci-dessous).
 - **Pages** : textes de la page À propos (histoire, photos de l'atelier, frise du process) et des quatre pages légales (mentions légales, CGV, confidentialité, rétractation). Chaque page se découpe en sections : intertitre, texte, encadré ou non ; ajoutez, réordonnez ou supprimez-les. Un aperçu se met à jour à côté pendant la saisie. Titre et description pour Google se règlent aussi ici.
 - **Réglages** : identité et contact (nom, slogan, e-mail, adresse du site, logo), **informations légales** (exploitant, SIRET, adresse, hébergeur, médiateur, mention TVA), page d'accueil (bandeau, chiffres, bandeau défilant), livraison, moyens de paiement, boutiques externes, couleurs de filament et avis clients.
+- **Suivi commande** : votre tableau personnel façon Trello (détail ci-dessous). Le bouton **« Commandes »**, lui, reste la liste des vraies commandes payées sur le site.
 
 Dans les textes des pages : ligne vide = nouveau paragraphe, `- ` en début de ligne = puce, `**gras**`, `[lien](cgv.html)`, `### intertitre`. Les variables comme `{owner}`, `{siret}`, `{address}`, `{email}` sont remplacées par les informations légales des Réglages : changez votre SIRET une fois, toutes les pages suivent. Modifier une page légale met automatiquement à jour sa date « Dernière mise à jour ».
 
@@ -36,6 +37,16 @@ node outils/serveur-local.js
 - Pour publier : envoyez vos modifications sur la branche `main` du dépôt GitHub (le site est alors redéployé automatiquement sur O2switch), ou renvoyez chez votre hébergeur `assets/js/data.js`, les pages `.html` modifiées, `sitemap.xml` et les nouvelles images de `assets/img/`.
 
 Cette version locale enregistre dans `data.js` sur votre ordinateur. Pour gérer catalogue, pages et réglages directement sur le site en ligne, voir la section suivante.
+
+### Suivi commande
+
+Un tableau à trois colonnes, **Commande**, **En cours d'impression**, **À livrer**, où vous créez vous-même vos tickets pour savoir où en est chaque commande. Il est indépendant des commandes payées du site (bouton « Commandes ») : rien n'y arrive tout seul, et rien de ce que vous y faites n'est envoyé aux clients.
+
+- **Créer un ticket** : « + Ajouter une commande » en bas d'une colonne. La fiche s'ouvre : nom du client, e-mail, adresse, référence (par exemple le numéro de la commande du site), note.
+- **Objets** : la barre « Rechercher un objet du site » retrouve un produit du catalogue par son nom ou sa catégorie et l'ajoute avec sa photo et son nom (flèches puis Entrée, ou clic). Couleur, taille, quantité et prix se règlent ensuite ; le prix suit la taille choisie. Les photos des objets s'affichent en haut du ticket.
+- **Avancer** : glissez le ticket dans la colonne suivante, ou utilisez son bouton (« Lancer l'impression », « Imprimée », « Livrée »). Les tickets livrés quittent le tableau et restent consultables avec le bouton « Livrées ».
+- **Étiquettes** : « À encaisser » ou « Payée » (case « Paiement reçu » de la fiche), « Note », « Suivi ». La recherche en haut filtre par client, référence ou objet.
+- **Enregistrement automatique**, sans bouton : en ligne dans la base de l'administration Django, en local dans `outils/suivi.json` (sur votre ordinateur uniquement, jamais envoyé sur GitHub). Les deux tableaux sont séparés. Si le tableau a été modifié dans un autre onglet ou sur un autre appareil, un message demande de recharger la page plutôt que d'écraser les changements.
 
 ## Administration en ligne (Django)
 
@@ -209,7 +220,7 @@ Tant que le bloc « CONSTRUCTION » du fichier `.htaccess` est présent, les vis
 | `assets/js/rich.js` | Mise en forme des textes des pages légales (paragraphes, puces, gras, liens, `{variables}`) |
 | `assets/css/style.css` | Design et animations. Couleurs et polices en haut du fichier (section 1) |
 | `assets/js/icons.js` | Icônes du site (catégories, boutons). Une ligne par icône |
-| `outils/admin.html` | Page d'administration : catalogue, pages et réglages (voir ci-dessus) |
+| `outils/admin.html` | Page d'administration : catalogue, pages, réglages et suivi des commandes (voir ci-dessus) |
 | `assets/js/app.js` | Moteur commun : menu, pied de page, thème, panier, curseur, préloader, transitions, cookies |
 | `assets/js/pages.js` | Contenu de chaque page (accueil, boutique, fiche produit, panier, contact…) |
 | `index.html` | Accueil |

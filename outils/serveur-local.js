@@ -14,6 +14,7 @@ const root = path.join(__dirname, "..");
 const port = process.env.PORT || 4173;
 const dataFile = path.join(root, "assets/js/data.js");
 const backupDir = path.join(__dirname, "sauvegardes");
+const suiviFile = path.join(__dirname, "suivi.json"); // tableau « Suivi commande » (noms et adresses : jamais sur GitHub)
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8", ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".glb": "model/gltf-binary", ".woff2": "font/woff2", ".woff": "font/woff" };
 
 /* ---------- Écriture de data.js ---------- */
@@ -184,8 +185,31 @@ const trusted = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.s
   && /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/.test(req.headers.host || "")
   && req.headers["x-biboulab-admin"] === "1";
 
+/* ---------- Tableau « Suivi commande » ---------- */
+const ETAPES = ["commande", "impression", "livrer", "livree"];
+async function suivi(req, res) {
+  if (!trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
+  let cur = { tickets: [], version: 0 };
+  try { cur = JSON.parse(fs.readFileSync(suiviFile, "utf8")); }
+  catch (e) { if (e.code !== "ENOENT") return send(res, 500, { erreur: "outils/suivi.json est illisible." }); }
+  if (req.method === "GET") return send(res, 200, cur);
+  if (req.method !== "POST") return send(res, 405, { erreur: "Action inconnue." });
+  try {
+    const { tickets, version } = JSON.parse((await read(req, 4e6)).toString("utf8"));
+    const ids = new Set();
+    const ok = Array.isArray(tickets) && tickets.every((t) => t && typeof t.id === "string" && t.id && !ids.has(t.id) && ids.add(t.id) && ETAPES.includes(t.status) && Array.isArray(t.items));
+    if (!ok) return send(res, 400, { erreur: "Tableau invalide." });
+    if (version !== cur.version) return send(res, 409, { erreur: "Le tableau a été modifié dans un autre onglet. Rechargez la page pour retrouver la dernière version.", version: cur.version });
+    const next = { tickets, version: cur.version + 1 };
+    fs.writeFileSync(suiviFile + ".tmp", JSON.stringify(next, null, 2) + "\n");
+    fs.renameSync(suiviFile + ".tmp", suiviFile); // jamais de fichier à moitié écrit
+    send(res, 200, { ok: true, version: next.version });
+  } catch (e) { send(res, 400, { erreur: e.message || "Enregistrement impossible." }); }
+}
+
 async function api(req, res, url) {
   if (url.pathname === "/api/etat" && req.method === "GET") return send(res, 200, { ok: true });
+  if (url.pathname === "/api/suivi") return suivi(req, res);
   if (req.method !== "POST" || !trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
   try {
     if (url.pathname === "/api/sauver") {
@@ -213,6 +237,9 @@ http.createServer((req, res) => {
   if (rel.endsWith("/")) rel += "index.html";
   const file = path.join(root, path.normalize(rel));
   if (!file.startsWith(root)) { res.writeHead(403); return res.end(); }
+  /* Dans outils/, seule la page de gestion est servie (suivi.json contient des noms et adresses) */
+  const low = file.toLowerCase();
+  if (low.startsWith(__dirname.toLowerCase() + path.sep) && low !== path.join(__dirname, "admin.html").toLowerCase()) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("Page introuvable"); }
   fs.readFile(file, (err, data) => {
     if (err) { res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" }); return res.end("Page introuvable"); }
     res.writeHead(200, { "Content-Type": types[path.extname(file).toLowerCase()] || "application/octet-stream", "Cache-Control": "no-store" });
