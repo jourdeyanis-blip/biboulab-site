@@ -45,7 +45,9 @@ Un tableau à trois colonnes, **Commande**, **En cours d'impression**, **À livr
 - **Créer un ticket** : « + Ajouter une commande » en bas d'une colonne. La fiche s'ouvre : nom du client, e-mail, adresse, référence (par exemple le numéro de la commande du site), note.
 - **Objets** : la barre « Rechercher un objet du site » retrouve un produit du catalogue par son nom ou sa catégorie et l'ajoute avec sa photo et son nom (flèches puis Entrée, ou clic). Couleur, taille, quantité et prix se règlent ensuite ; le prix suit la taille choisie. Les photos des objets s'affichent en haut du ticket.
 - **Avancer** : glissez le ticket dans la colonne suivante, ou utilisez son bouton (« Lancer l'impression », « Imprimée », « Livrée »). Les tickets livrés quittent le tableau et restent consultables avec le bouton « Livrées ».
-- **Étiquettes** : « À encaisser » ou « Payée » (case « Paiement reçu » de la fiche), « Note », « Suivi ». La recherche en haut filtre par client, référence ou objet.
+- **Vos étiquettes** : dans la fiche, section « Étiquettes », tapez un nom (ex. Urgent, Cadeau, Personnalisé), choisissez une couleur et cliquez sur « Créer » (ou Entrée) : l'étiquette est posée sur le ticket et reste disponible pour tous les autres. Un clic sur une étiquette la pose ou la retire. « Renommer, recolorer ou supprimer » les modifie pour tout le tableau (une étiquette supprimée est retirée de tous les tickets, après confirmation).
+- **Étiquettes automatiques** : « À encaisser » ou « Payée » (case « Paiement reçu » de la fiche), « Note », « Suivi ».
+- **Retrouver un ticket** : la recherche en haut filtre par client, référence, objet ou nom d'étiquette ; le menu « Toutes les étiquettes » n'affiche que les tickets portant l'étiquette choisie.
 - **Enregistrement automatique**, sans bouton : en ligne dans la base de l'administration Django, en local dans `outils/suivi.json` (sur votre ordinateur uniquement, jamais envoyé sur GitHub). Les deux tableaux sont séparés. Si le tableau a été modifié dans un autre onglet ou sur un autre appareil, un message demande de recharger la page plutôt que d'écraser les changements.
 
 ## Administration en ligne (Django)

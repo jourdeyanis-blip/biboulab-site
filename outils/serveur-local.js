@@ -187,20 +187,24 @@ const trusted = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.s
 
 /* ---------- Tableau « Suivi commande » ---------- */
 const ETAPES = ["commande", "impression", "livrer", "livree"];
+const COULEURS = ["vert", "jaune", "orange", "rouge", "rose", "violet", "bleu", "cyan", "gris"];
 async function suivi(req, res) {
   if (!trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
-  let cur = { tickets: [], version: 0 };
+  let cur = { tickets: [], etiquettes: [], version: 0 };
   try { cur = JSON.parse(fs.readFileSync(suiviFile, "utf8")); }
   catch (e) { if (e.code !== "ENOENT") return send(res, 500, { erreur: "outils/suivi.json est illisible." }); }
   if (req.method === "GET") return send(res, 200, cur);
   if (req.method !== "POST") return send(res, 405, { erreur: "Action inconnue." });
   try {
-    const { tickets, version } = JSON.parse((await read(req, 4e6)).toString("utf8"));
-    const ids = new Set();
-    const ok = Array.isArray(tickets) && tickets.every((t) => t && typeof t.id === "string" && t.id && !ids.has(t.id) && ids.add(t.id) && ETAPES.includes(t.status) && Array.isArray(t.items));
-    if (!ok) return send(res, 400, { erreur: "Tableau invalide." });
+    const { tickets, etiquettes, version } = JSON.parse((await read(req, 4e6)).toString("utf8"));
+    const ids = new Set(), tags = new Set();
+    const ok = Array.isArray(tickets) && tickets.every((t) => t && typeof t.id === "string" && t.id && !ids.has(t.id) && ids.add(t.id) && ETAPES.includes(t.status) && Array.isArray(t.items)
+      && (t.labels === undefined || (Array.isArray(t.labels) && t.labels.every((x) => typeof x === "string"))));
+    const okTags = etiquettes === undefined || (Array.isArray(etiquettes) && etiquettes.length <= 200 && etiquettes.every((e) => e && typeof e.id === "string" && e.id && !tags.has(e.id)
+      && tags.add(e.id) && typeof e.name === "string" && e.name.length <= 40 && COULEURS.includes(e.color)));
+    if (!ok || !okTags) return send(res, 400, { erreur: "Tableau invalide." });
     if (version !== cur.version) return send(res, 409, { erreur: "Le tableau a été modifié dans un autre onglet. Rechargez la page pour retrouver la dernière version.", version: cur.version });
-    const next = { tickets, version: cur.version + 1 };
+    const next = { tickets, etiquettes: etiquettes === undefined ? cur.etiquettes || [] : etiquettes, version: cur.version + 1 };
     fs.writeFileSync(suiviFile + ".tmp", JSON.stringify(next, null, 2) + "\n");
     fs.renameSync(suiviFile + ".tmp", suiviFile); // jamais de fichier à moitié écrit
     send(res, 200, { ok: true, version: next.version });
