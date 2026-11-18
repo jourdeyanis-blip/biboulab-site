@@ -180,7 +180,6 @@
     .o-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
     .o-lab { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 4px; font-size: .75rem; font-weight: 500; background: var(--line); color: var(--muted); }
     .o-lab.ok { background: color-mix(in oklab, var(--ok) 18%, transparent); color: color-mix(in oklab, var(--ok) 72%, var(--text)); }
-    .o-lab.due { background: color-mix(in oklab, var(--orange) 18%, transparent); color: color-mix(in oklab, var(--orange) 72%, var(--text)); }
     .o-card h3 { font: 500 .9375rem/1.35 var(--font-b); letter-spacing: 0; }
     .o-open { text-align: left; }
     .o-open::after { content: ""; position: absolute; inset: 0; z-index: 1; } /* toute la carte ouvre la fiche */
@@ -1290,12 +1289,14 @@
     };
 
     function ticket(o) {
+      const labels = tagsOf(o).map(tagChip).join("") + (o.paid ? `<span class="o-lab ok">Payée</span>` : "")
+        + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
       const prods = [...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).slice(0, 3);
       const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
           ${prods.length ? `<div class="o-cover" style="--n:${prods.length}">${prods.map((p) => pThumb(p, "o-cv")).join("")}</div>` : ""}
           <div class="o-cb">
-            <div class="o-labels">${tagsOf(o).map(tagChip).join("")}<span class="o-lab ${o.paid ? "ok" : "due"}">${o.paid ? "Payée" : "À encaisser"}</span>${o.note.trim() ? `<span class="o-lab">Note</span>` : ""}${o.tracking ? `<span class="o-lab">Suivi</span>` : ""}</div>
+            ${labels ? `<div class="o-labels">${labels}</div>` : ""}
             <h3><button class="o-open" type="button" data-open="${esc(o.id)}">${esc(o.client) || "Client à renseigner"}</button></h3>
             <p class="o-sub">${o.ref ? `${esc(o.ref)} · ` : ""}${esc(shortDate(o.date))}${o.status === "livrer" && o.shipping ? ` · ${esc(o.shipping)}` : ""}</p>
             ${o.items.length ? `<ul class="o-items">${o.items.map((it) => `<li><span class="o-q">${+it.qty || 0} ×</span><span>${esc(it.name) || "Objet"}${optsOf(it) ? ` <small>${esc(optsOf(it))}</small>` : ""}</span></li>`).join("")}</ul>` : `<p class="o-sub">Aucun objet</p>`}
