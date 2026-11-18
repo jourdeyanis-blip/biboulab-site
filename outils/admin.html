@@ -197,6 +197,8 @@
     .o-next .ic { width: 14px; height: 14px; }
     .o-msg { grid-column: 1 / -1; max-width: 520px; margin: 48px auto; text-align: center; color: var(--muted); }
     .o-msg h2 { font: 500 1.25rem/1.3 var(--font-b); color: var(--text); margin-bottom: 8px; letter-spacing: 0; }
+    .o-msg-acts { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 16px; }
+    .o-msg-acts .btn { min-height: 40px; padding: 0 16px; font-size: .9375rem; }
     .o-msg code { font: .875em ui-monospace, SFMono-Regular, Menlo, monospace; background: var(--surface); border: 1px solid var(--line); border-radius: 4px; padding: 2px 6px; }
 
     /* Commandes livrées */
@@ -284,7 +286,8 @@
     .o-two { display: grid; grid-template-columns: 1fr 96px; gap: 8px; }
     .o-two .fg + .fg { margin-top: 0; }
 
-    .o-alert { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border: 1px solid var(--err); border-radius: 12px; color: var(--err); font-size: .9375rem; }
+    .o-board.o-solo { display: block; }   /* message seul : centré sur toute la largeur */
+    .o-alert { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border: 1px solid var(--err); border-radius: 12px; color: var(--err); font-size: .9375rem; }
     .o-alert .btn { min-height: 36px; padding: 0 14px; font-size: .875rem; }
     @media (max-width: 860px) {
       .o-view { display: block; }
@@ -344,6 +347,7 @@
       <div class="field"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg><label class="sr" for="o-q">Rechercher un ticket</label><input class="input" id="o-q" type="search" placeholder="Client, référence, objet…" autocomplete="off"></div>
       <button class="btn btn-ghost" type="button" id="o-done" aria-pressed="false">Livrées</button>
       <p class="o-sum" id="o-sum"></p>
+      <div class="o-alert" id="o-alert" role="alert" hidden></div>
     </div>
     <div class="o-board" id="board"></div>
   </section>
@@ -1220,12 +1224,12 @@
         .then(async (r) => {
           const out = await r.json().catch(() => ({}));
           if (r.status === 409) { O.conflict = out.erreur || "Le tableau a été modifié ailleurs : rechargez la page."; board(); }
-          if (!r.ok) throw new Error(out.erreur || "Enregistrement impossible");
+          if (!r.ok) throw new Error(out.erreur || `Enregistrement impossible (erreur ${r.status})`);
           O.version = out.version;
         });
       O.queue = done.then(
         () => { if (seq === O.seq) { O.pending = false; status("saved", `Tableau enregistré à ${hhmm()}`, "suivi"); } },
-        (err) => status("bad", `${err.message || "Enregistrement impossible"} : ces changements ne sont pas sauvegardés`, "suivi"));
+        (err) => status("bad", O.conflict ? "Tableau modifié ailleurs : rechargez la page" : `${(err.message || "Enregistrement impossible").replace(/\.$/, "")} : ces changements ne sont pas sauvegardés`, "suivi"));
       return done;
     }
     function persist() {
@@ -1260,11 +1264,14 @@
           </div></article>`;
     }
     function board() {
-      const box = $("#board");
+      const box = $("#board"), alerte = $("#o-alert"); // conflit : au-dessus des colonnes, dans la barre d'outils
+      alerte.hidden = !O.conflict;
+      alerte.innerHTML = O.conflict ? `${esc(O.conflict)} <button class="btn btn-ghost" type="button" data-reload>Recharger</button>` : "";
       if (!O.ready) {
-        box.className = "o-board";
+        box.className = "o-board o-solo";
         box.innerHTML = O.error === null ? `<div class="o-msg"><p>Chargement du tableau…</p></div>`
-          : `<div class="o-msg"><h2>Tableau indisponible</h2><p>${O.error ? esc(O.error) : "En local, lancez <code>node outils/serveur-local.js</code> dans le dossier du site, puis ouvrez <code>http://localhost:4173/admin#suivi</code>"}</p></div>`;
+          : `<div class="o-msg" role="alert"><h2>Tableau indisponible</h2><p>${O.error ? esc(O.error) : "En local, lancez <code>node outils/serveur-local.js</code> dans le dossier du site, puis ouvrez <code>http://localhost:4173/admin#suivi</code>"}</p>
+              ${O.error ? `<div class="o-msg-acts"><button class="btn btn-ghost" type="button" data-retry>Réessayer</button>${ONLINE ? `<a class="btn btn-ghost" href="journal/" target="_blank" rel="noopener">Ouvrir le journal</a>` : ""}</div>` : ""}</div>`;
         return;
       }
       if (O.done) {
@@ -1277,8 +1284,7 @@
         return;
       }
       box.className = "o-board";
-      const alerte = O.conflict ? `<div class="o-alert" role="alert">${esc(O.conflict)} <button class="btn btn-ghost" type="button" data-reload>Recharger</button></div>` : "";
-      box.innerHTML = alerte + STEPS.map((s) => {
+      box.innerHTML = STEPS.map((s) => {
         const cards = O.list.filter((o) => o.status === s.id && matches(o));
         return `<section class="o-col" data-col="${s.id}" aria-labelledby="col-${s.id}">
             <header class="o-ch"><h2 id="col-${s.id}">${s.label}</h2><span class="num">${cards.length}</span></header>
@@ -1306,7 +1312,7 @@
       if (b.dataset.next) { const o = byId(b.dataset.next); return moveTo(o, NEXT[o.status]); }
       if (b.dataset.back) return moveTo(byId(b.dataset.back), "livrer");
       if (b.dataset.add) return create(b.dataset.add);
-      if (b.dataset.reload !== undefined) { O.pending = false; location.reload(); }
+      if (b.dataset.retry !== undefined) return loadBoard();
     });
     /* Glisser-déposer des tickets entre colonnes (et dans une colonne pour les réordonner) */
     const clearDrops = () => $$(".drop, .drop-before, .drop-end", boardEl).forEach((x) => x.classList.remove("drop", "drop-before", "drop-end"));
@@ -1332,6 +1338,7 @@
       const o = byId(O.drag); O.drag = null; clearDrops();
       if (o) moveTo(o, t.col.dataset.col, t.before && t.before.dataset.id);
     });
+    $("#o-alert").addEventListener("click", (e) => { if (e.target.closest("[data-reload]")) { O.pending = false; location.reload(); } });
     $("#o-q").addEventListener("input", (e) => { O.q = e.target.value; board(); });
     $("#o-done").addEventListener("click", () => { O.done = !O.done; obar(); board(); });
 
@@ -1498,10 +1505,32 @@
 
 
     /* Chargement du tableau (en ligne : base Django ; en local : outils/suivi.json) */
-    call("suivi")
-      .then(async (r) => { const out = await r.json(); if (!r.ok) throw new Error(out.erreur || `Erreur ${r.status}`); O.list = Array.isArray(out.tickets) ? out.tickets : []; O.version = out.version || 0; O.ready = true; })
-      .catch((err) => { O.error = err instanceof TypeError || err instanceof SyntaxError ? "" : err.message; })
-      .finally(() => { obar(); if (st.mode === "suivi") board(); });
+    function loadBoard() {
+      O.error = null; O.ready = false; obar(); if (st.mode === "suivi") board();
+      call("suivi")
+        .then(async (r) => {
+          const out = await r.json().catch(() => null);
+          if (!out) throw Object.assign(new Error(`Erreur ${r.status}`), { status: r.status }); // page d'erreur du serveur au lieu de données
+          if (!r.ok) throw Object.assign(new Error(out.erreur || `Erreur ${r.status}`), { status: r.status, json: true });
+          O.list = Array.isArray(out.tickets) ? out.tickets : []; O.version = out.version || 0; O.ready = true;
+        })
+        .catch((err) => { O.error = loadError(err); })
+        .finally(() => { obar(); if (st.mode === "suivi") board(); });
+    }
+    /* Message clair selon la cause ("" = consigne pour lancer le serveur local) */
+    function loadError(err) {
+      if (!ONLINE) {
+        if (err instanceof TypeError) return "";
+        return err.status === 403 || err.status === 404
+          ? "Le serveur local ouvert ne connaît pas encore le tableau : arrêtez-le (Ctrl + C) puis relancez node outils/serveur-local.js."
+          : err.message;
+      }
+      if (err instanceof TypeError) return "Le serveur ne répond pas. Vérifiez la connexion internet, puis réessayez.";
+      if (err.json) return err.message; // ex. session expirée
+      if (err.status === 404) return "L'administration en ligne n'a pas encore terminé sa mise à jour : elle sert déjà la nouvelle page, mais pas encore le tableau (erreur 404). La mise à jour automatique repasse toutes les 5 minutes : réessayez dans un moment. Si le message reste, ouvrez le journal pour voir où elle s'est arrêtée.";
+      return `Le serveur a rencontré une erreur (${err.status || "inconnue"}). Ouvrez le journal pour voir laquelle, puis réessayez.`;
+    }
+    loadBoard();
 
     /* ---------- Démarrage (l'adresse #pages/cgv rouvre directement un panneau) ---------- */
     { const [m, pn] = location.hash.slice(1).split("/"); if (m === "pages" || m === "site" || m === "suivi") setMode(m, pn); else render(); }
