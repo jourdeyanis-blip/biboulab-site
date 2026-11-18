@@ -212,7 +212,7 @@ from django.core import mail
 from django.core.cache import cache
 
 from gestion import boutique
-from gestion.models import Commande, ModeleEmail
+from gestion.models import Commande, ModeleEmail, Suivi
 
 DEPOT = Path(__file__).resolve().parents[2]
 PANIER = [{"id": "boule-flocon", "color": "rouge", "size": "Ø 8 cm", "qty": 2, "price": 0.01},   # le prix envoyé est ignoré
@@ -639,6 +639,43 @@ class ExpeditionTests(TestCase):
 
     def expedier(self, ref, numero):
         return self.admin.post("/commandes/", {"ref": ref, "numero_suivi": numero}, **HOTE)
+
+    # --- Tableau « Suivi commande » : les commandes payées en ligne y arrivent seules ---
+    def test_commande_payee_ajoutee_au_tableau_avec_achat_en_ligne(self):
+        cde = self.payee()
+        r = self.admin.get("/api/suivi/", **HOTE).json()
+        self.assertEqual(r["ajoutees"], 1)
+        self.assertEqual(r["etiquettes"], [{"id": "achat-en-ligne", "name": "Achat en ligne", "color": "rose"}])
+        [t] = r["tickets"]
+        self.assertEqual((t["ref"], t["status"], t["paid"], t["labels"], t["source"]), (cde.ref, "commande", True, ["achat-en-ligne"], "site"))
+        self.assertEqual((t["client"], t["email"], t["note"]), ("Ada Lovelace", "ada@example.com", "Merci !"))
+        self.assertIn("75011 Paris", t["adresse"])
+        self.assertIn("Point de retrait : Tabac de la Gare", t["adresse"])
+        boule, renne = t["items"]
+        self.assertEqual((boule["product"], boule["color"], boule["size"], boule["qty"]), ("boule-flocon", "rouge", "Ø 8 cm", 2))
+        self.assertEqual(boule["price"], cde.lignes[0]["unitaire"] / 100)
+        self.assertEqual((renne["product"], renne["color"], renne["size"]), ("renne-articule", "or", None))
+        self.assertNotIn("options", boule)
+        self.assertEqual(t["shippingFee"], cde.livraison["prix"] / 100)
+        self.assertTrue(Commande.objects.get().dans_suivi)
+        r2 = self.admin.get("/api/suivi/", **HOTE).json()   # une seule fois
+        self.assertNotIn("ajoutees", r2)
+        self.assertEqual((len(r2["tickets"]), r2["version"]), (1, r["version"]))
+
+    def test_achat_en_ligne_respecte_le_tableau_existant(self):
+        cde = self.payee()
+        # étiquette renommée et recolorée, ticket déjà créé à la main avec la même référence
+        Suivi.objects.create(pk=1, tickets=[{"id": "t1", "ref": cde.ref, "status": "impression", "items": []}],
+                             etiquettes=[{"id": "achat-en-ligne", "name": "Site", "color": "vert"}], version=4)
+        r = self.admin.get("/api/suivi/", **HOTE).json()
+        self.assertEqual(r["etiquettes"], [{"id": "achat-en-ligne", "name": "Site", "color": "vert"}])
+        self.assertEqual(r["tickets"], [{"id": "t1", "ref": cde.ref, "status": "impression", "items": [], "labels": ["achat-en-ligne"]}])
+        self.assertEqual(r["version"], 5)
+        # commande expédiée sans être passée par le tableau, ou pas encore payée : pas de ticket
+        Commande.objects.filter(pk=cde.pk).update(dans_suivi=False, statut=Commande.EXPEDIEE)
+        self.assertNotIn("ajoutees", self.admin.get("/api/suivi/", **HOTE).json())
+        Commande.objects.filter(pk=cde.pk).update(statut=Commande.ATTENTE)
+        self.assertNotIn("ajoutees", self.admin.get("/api/suivi/", **HOTE).json())
 
     # --- Choix du point de retrait ---
     def test_point_de_retrait_obligatoire_pour_les_relais(self):

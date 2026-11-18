@@ -40,8 +40,9 @@ Cette version locale enregistre dans `data.js` sur votre ordinateur. Pour gérer
 
 ### Suivi commande
 
-Un tableau à trois colonnes, **Commande**, **En cours d'impression**, **À livrer**, où vous créez vous-même vos tickets pour savoir où en est chaque commande. Il est indépendant des commandes payées du site (bouton « Commandes ») : rien n'y arrive tout seul, et rien de ce que vous y faites n'est envoyé aux clients.
+Un tableau à trois colonnes, **Commande**, **En cours d'impression**, **À livrer**, pour savoir où en est chaque commande. Les commandes payées sur le site y arrivent seules ; vous y ajoutez vous-même les autres. Le bouton « Commandes » reste la référence des commandes du site (expédition, numéro de suivi, e-mail au client) : rien de ce que vous faites dans ce tableau n'est envoyé aux clients.
 
+- **Commandes payées sur le site** : elles arrivent toutes seules dans la colonne « Commande » à l'ouverture du tableau (administration en ligne), avec l'étiquette rose **« Achat en ligne »** : objets avec photo, couleur et taille, client, adresse et point de retrait, livraison, paiement reçu. Chaque commande n'est ajoutée qu'une fois : vous pouvez ensuite déplacer, modifier ou supprimer le ticket librement. L'étiquette peut être renommée ou recolorée ; si vous la supprimez, elle revient à la prochaine commande du site.
 - **Créer un ticket** : « + Ajouter une commande » en bas d'une colonne. La fiche s'ouvre : nom du client, e-mail, adresse, référence (par exemple le numéro de la commande du site), note.
 - **Objets** : la barre « Rechercher un objet du site » retrouve un produit du catalogue par son nom ou sa catégorie et l'ajoute avec sa photo et son nom (flèches puis Entrée, ou clic). Couleur, taille, quantité et prix se règlent ensuite ; le prix suit la taille choisie. Les photos des objets s'affichent en haut du ticket.
 - **Avancer** : glissez le ticket dans la colonne suivante, ou utilisez son bouton (« Lancer l'impression », « Imprimée », « Livrée »). Les tickets livrés quittent le tableau et restent consultables avec le bouton « Livrées ».

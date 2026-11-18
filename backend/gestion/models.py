@@ -36,6 +36,7 @@ class Commande(models.Model):
     payee_le = models.DateTimeField(null=True, blank=True)
     numero_suivi = models.CharField("numéro de suivi", max_length=40, blank=True)
     expediee_le = models.DateTimeField(null=True, blank=True)
+    dans_suivi = models.BooleanField("ajoutée au tableau de suivi", default=False)   # ticket créé une seule fois
 
     class Meta:
         ordering = ["-creee_le"]

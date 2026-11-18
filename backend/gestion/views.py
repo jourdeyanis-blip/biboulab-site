@@ -14,6 +14,7 @@ from django.urls import reverse
 from django.views.decorators.debug import sensitive_post_parameters
 from django.views.decorators.http import require_GET, require_http_methods, require_POST
 
+from . import boutique
 from . import emails as courriels
 from . import contenu as contenus
 from .catalogue import Invalide, enregistrer, enregistrer_photo, verifier
@@ -303,13 +304,80 @@ def _etiquettes_valides(etiquettes) -> bool:
     return True
 
 
+ACHAT_EN_LIGNE = {"id": "achat-en-ligne", "name": "Achat en ligne", "color": "rose"}
+
+
+def _ticket_de_commande(cde: Commande, etiquette: str, cat) -> dict:
+    """Ticket du tableau pour une commande payée sur le site : objets (avec couleur et taille
+    retrouvées dans le catalogue pour la photo et les menus), client, livraison, payée."""
+    produits = (cat or {}).get("produits", {})
+    couleurs = {nom: cle for cle, nom in (cat or {}).get("couleurs", {}).items()}   # « Rouge » → « rouge »
+    articles = []
+    for ligne in cde.lignes or []:
+        p = produits.get(ligne.get("id"))
+        morceaux = [x for x in str(ligne.get("options") or "").split(" · ") if x]   # « Rouge · Ø 8 cm »
+        couleur = taille = None
+        if p and p.get("colors") and morceaux and couleurs.get(morceaux[0]) in p["colors"]:
+            couleur = couleurs[morceaux.pop(0)]
+        if p and morceaux and morceaux[-1] in [t.get("label") for t in p.get("sizes") or []]:
+            taille = morceaux.pop()
+        article = {"product": p["id"] if p else None, "name": str(ligne.get("nom") or "Objet"), "color": couleur, "size": taille,
+                   "qty": int(ligne.get("quantite") or 1), "price": round((ligne.get("unitaire") or 0) / 100, 2)}
+        if morceaux:
+            article["options"] = " · ".join(morceaux)
+        articles.append(article)
+    livraison = cde.livraison or {}
+    adresse = [cde.adresse, f"{cde.code_postal} {cde.ville}".strip()] + ([f"Point de retrait : {cde.point_retrait}"] if cde.point_retrait else [])
+    jour = timezone.localdate(cde.payee_le or cde.creee_le).isoformat()
+    return {"id": f"site-{cde.ref}", "ref": cde.ref, "status": "commande", "date": jour, "moved": jour,
+            "client": cde.nom, "email": cde.email, "adresse": "\n".join(x for x in adresse if x), "items": articles,
+            "shipping": str(livraison.get("label") or ""), "shippingFee": round((livraison.get("prix") or 0) / 100, 2),
+            "payment": "Carte bancaire sur le site", "paid": True, "tracking": cde.numero_suivi or "", "note": cde.note or "",
+            "labels": [etiquette], "source": "site"}
+
+
+def _importer_commandes_du_site() -> int:
+    """Commandes payées sur le site pas encore dans le tableau : un ticket chacune dans « Commande »,
+    avec l'étiquette « Achat en ligne » (rose, recréée si elle a été supprimée). Une seule fois par commande."""
+    with transaction.atomic():
+        nouvelles = list(Commande.objects.select_for_update()
+                         .filter(statut=Commande.PAYEE, dans_suivi=False).order_by("payee_le", "creee_le"))
+        if not nouvelles:
+            return 0
+        suivi, _ = Suivi.objects.select_for_update().get_or_create(pk=1)
+        etiquettes, tickets = list(suivi.etiquettes or []), list(suivi.tickets or [])
+        etiquette = (next((e for e in etiquettes if e.get("id") == ACHAT_EN_LIGNE["id"]), None)
+                     or next((e for e in etiquettes if str(e.get("name", "")).strip().lower() == "achat en ligne"), None))
+        if not etiquette:
+            etiquette = dict(ACHAT_EN_LIGNE)
+            etiquettes.append(etiquette)
+        try:
+            cat = boutique.catalogue()
+        except boutique.CatalogueIndisponible:
+            cat = None   # le ticket est quand même créé, sans photo ni menus de couleur et de taille
+        for cde in nouvelles:
+            existant = next((t for t in tickets if t.get("ref") == cde.ref), None)   # ticket déjà créé à la main
+            if existant is None:
+                tickets.append(_ticket_de_commande(cde, etiquette["id"], cat))
+            elif etiquette["id"] not in existant.setdefault("labels", []):
+                existant["labels"].append(etiquette["id"])
+        suivi.tickets, suivi.etiquettes, suivi.version = tickets, etiquettes, suivi.version + 1
+        suivi.save()
+        Commande.objects.filter(pk__in=[c.pk for c in nouvelles]).update(dans_suivi=True)
+        return len(nouvelles)
+
+
 @require_http_methods(["GET", "POST"])
 @admin_requis(api=True)
 def api_suivi(request):
     if request.method == "GET":
+        ajoutees = _importer_commandes_du_site()   # à l'ouverture du tableau
         suivi = Suivi.objects.first()
-        return JsonResponse({"tickets": suivi.tickets if suivi else [], "etiquettes": suivi.etiquettes if suivi else [],
-                             "version": suivi.version if suivi else 0})
+        reponse = {"tickets": suivi.tickets if suivi else [], "etiquettes": suivi.etiquettes if suivi else [],
+                   "version": suivi.version if suivi else 0}
+        if ajoutees:
+            reponse["ajoutees"] = ajoutees
+        return JsonResponse(reponse)
     if len(request.body) > 4_000_000:
         return JsonResponse({"erreur": "Tableau trop volumineux."}, status=413)
     try:

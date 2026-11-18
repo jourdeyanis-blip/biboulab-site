@@ -263,6 +263,7 @@
     .o-sw input:focus-visible + i { outline: 2px solid var(--accent); outline-offset: 4px; }
     .o-linkbtn { margin-top: 12px; font-size: .8125rem; color: var(--muted); text-decoration: underline; text-underline-offset: 3px; }
     .o-linkbtn:hover { color: var(--text); }
+    .o-sitelink { color: var(--text); text-decoration: underline; text-underline-offset: 3px; }
     .o-tagedit { display: grid; gap: 8px; margin-top: 12px; }
     .o-tagrow { display: grid; grid-template-columns: minmax(0, 1fr) 40px; gap: 8px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 10px; }
     .o-tagrow .o-sw { grid-column: 1 / -1; margin-top: 0; }
@@ -1198,7 +1199,9 @@
        SUIVI COMMANDE — votre tableau personnel façon Trello :
        Commande → En cours d'impression → À livrer. Vous créez vous-même les tickets
        (« + Ajouter une commande »), on les glisse d'une colonne à l'autre, un clic ouvre
-       la fiche. Indépendant des commandes payées du site (bouton « Commandes »).
+       la fiche. Les commandes payées sur le site y arrivent seules à l'ouverture, avec
+       l'étiquette « Achat en ligne » (api/suivi/ côté Django) ; le bouton « Commandes »
+       reste la référence pour l'expédition.
        Enregistrement automatique : en ligne dans la base Django (api/suivi/),
        en local dans outils/suivi.json.
        ===================================================================== */
@@ -1415,6 +1418,7 @@
               <label class="sr" for="o-ref">Référence (facultatif, ex. numéro de la commande du site)</label><input class="o-title" id="o-ref" data-o="ref" value="${esc(o.ref)}" placeholder="Référence (facultatif)" autocomplete="off">
               <p class="o-where"><span id="o-who">${o.client ? `Commande de ${esc(o.client)}` : "Nouvelle commande"}</span> · <label for="o-status">dans la colonne</label>
                 <select class="select" id="o-status" data-o="status">${["commande", "impression", "livrer", "livree"].map((k) => `<option value="${k}"${k === o.status ? " selected" : ""}>${STEP_NAME[k]}</option>`).join("")}</select></p>
+              ${o.source === "site" ? `<p class="o-where">Commande payée sur le site${ONLINE ? ` · <a class="o-sitelink" href="commandes/" target="_blank" rel="noopener">Voir dans Commandes</a>` : ""}</p>` : ""}
             </div><button class="o-x" type="button" data-close aria-label="Fermer la fiche">${icon("plus")}</button></div>
           <div>
             <section class="o-ds"><h3>Objets commandés</h3>
@@ -1616,6 +1620,8 @@
           if (!r.ok) throw Object.assign(new Error(out.erreur || `Erreur ${r.status}`), { status: r.status, json: true });
           O.list = Array.isArray(out.tickets) ? out.tickets : []; O.tags = Array.isArray(out.etiquettes) ? out.etiquettes : [];
           O.version = out.version || 0; O.ready = true;
+          const n = out.ajoutees || 0; // commandes payées sur le site, ajoutées à l'ouverture (en ligne)
+          if (n) status("saved", `${n} commande${n > 1 ? "s" : ""} du site ajoutée${n > 1 ? "s" : ""}`, "suivi");
         })
         .catch((err) => { O.error = loadError(err); })
         .finally(() => { obar(); if (st.mode === "suivi") board(); });
