@@ -271,6 +271,7 @@ def api_photo(request):
 
 # ---------- Tableau « Suivi commande » (tickets personnels, enregistrés automatiquement) ----------
 ETAPES_SUIVI = {"commande", "impression", "livrer", "livree"}
+COULEURS_ETIQUETTES = {"vert", "jaune", "orange", "rouge", "rose", "violet", "bleu", "cyan", "gris"}
 
 
 def _tickets_valides(tickets) -> bool:
@@ -282,7 +283,23 @@ def _tickets_valides(tickets) -> bool:
             return False
         if t.get("status") not in ETAPES_SUIVI or not isinstance(t.get("items"), list):
             return False
+        etiquettes = t.get("labels", [])
+        if not isinstance(etiquettes, list) or not all(isinstance(e, str) for e in etiquettes):
+            return False
         vus.add(t["id"])
+    return True
+
+
+def _etiquettes_valides(etiquettes) -> bool:
+    if not isinstance(etiquettes, list) or len(etiquettes) > 200:
+        return False
+    vus = set()
+    for e in etiquettes:
+        if not isinstance(e, dict) or not isinstance(e.get("id"), str) or not e["id"] or e["id"] in vus:
+            return False
+        if not isinstance(e.get("name"), str) or len(e["name"]) > 40 or e.get("color") not in COULEURS_ETIQUETTES:
+            return False
+        vus.add(e["id"])
     return True
 
 
@@ -291,15 +308,17 @@ def _tickets_valides(tickets) -> bool:
 def api_suivi(request):
     if request.method == "GET":
         suivi = Suivi.objects.first()
-        return JsonResponse({"tickets": suivi.tickets if suivi else [], "version": suivi.version if suivi else 0})
+        return JsonResponse({"tickets": suivi.tickets if suivi else [], "etiquettes": suivi.etiquettes if suivi else [],
+                             "version": suivi.version if suivi else 0})
     if len(request.body) > 4_000_000:
         return JsonResponse({"erreur": "Tableau trop volumineux."}, status=413)
     try:
         data = json.loads(request.body)
         tickets, version = data["tickets"], int(data["version"])
-    except (ValueError, KeyError, TypeError):
+        etiquettes = data.get("etiquettes")           # absent (ancienne page encore ouverte) : on garde celles enregistrées
+    except (ValueError, KeyError, TypeError, AttributeError):
         return JsonResponse({"erreur": "Données incomplètes."}, status=400)
-    if not _tickets_valides(tickets):
+    if not _tickets_valides(tickets) or (etiquettes is not None and not _etiquettes_valides(etiquettes)):
         return JsonResponse({"erreur": "Tableau invalide."}, status=400)
     with transaction.atomic():
         suivi, _ = Suivi.objects.select_for_update().get_or_create(pk=1)
@@ -307,6 +326,8 @@ def api_suivi(request):
             return JsonResponse({"erreur": "Le tableau a été modifié dans un autre onglet ou sur un autre appareil. Rechargez la page pour retrouver la dernière version.",
                                  "version": suivi.version}, status=409)
         suivi.tickets, suivi.version = tickets, suivi.version + 1
+        if etiquettes is not None:
+            suivi.etiquettes = etiquettes
         suivi.save()
     return JsonResponse({"ok": True, "version": suivi.version})
 

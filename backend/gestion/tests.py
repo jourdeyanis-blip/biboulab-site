@@ -163,13 +163,13 @@ class AdminTests(TestCase):
         self.assertEqual(self.c.get("/api/suivi/", **HOTE).status_code, 401)
         self.connecter()
         jeton = self.jeton()
-        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json(), {"tickets": [], "version": 0})
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json(), {"tickets": [], "etiquettes": [], "version": 0})
         envoyer = lambda corps: self.c.post("/api/suivi/", data=json.dumps(corps), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         r = self.c.post("/api/suivi/", data=json.dumps({"tickets": [ticket], "version": 0}), content_type="application/json", **HOTE)
         self.assertEqual(r.status_code, 403)   # sans jeton CSRF
         r = envoyer({"tickets": [ticket], "version": 0})
         self.assertEqual(r.json(), {"ok": True, "version": 1})
-        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json(), {"tickets": [ticket], "version": 1})
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json(), {"tickets": [ticket], "etiquettes": [], "version": 1})
         r = envoyer({"tickets": [], "version": 0})   # version périmée : refusé, rien n'est perdu
         self.assertEqual(r.status_code, 409)
         self.assertEqual(self.c.get("/api/suivi/", **HOTE).json()["tickets"], [ticket])
@@ -177,6 +177,22 @@ class AdminTests(TestCase):
                         {"tickets": "x", "version": 1}, {"tickets": []}):
             self.assertEqual(envoyer(mauvais).status_code, 400, mauvais)
         self.assertEqual(envoyer({"tickets": [{**ticket, "status": "impression"}], "version": 1}).json()["version"], 2)
+
+    def test_etiquettes_du_tableau_de_suivi(self):
+        """Étiquettes créées par l'utilisateur : enregistrées avec le tableau, vérifiées, et conservées
+        quand une page plus ancienne (sans étiquettes) enregistre."""
+        self.connecter()
+        jeton = self.jeton()
+        envoyer = lambda corps: self.c.post("/api/suivi/", data=json.dumps(corps), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        etiquette = {"id": "e1", "name": "Urgent", "color": "rouge"}
+        ticket = {"id": "t1", "status": "commande", "items": [], "labels": ["e1"]}
+        self.assertEqual(envoyer({"tickets": [ticket], "etiquettes": [etiquette], "version": 0}).status_code, 200)
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json(), {"tickets": [ticket], "etiquettes": [etiquette], "version": 1})
+        self.assertEqual(envoyer({"tickets": [ticket], "version": 1}).status_code, 200)   # sans « etiquettes »
+        self.assertEqual(self.c.get("/api/suivi/", **HOTE).json()["etiquettes"], [etiquette])
+        for mauvaises in ([{**etiquette, "color": "#123456"}], [etiquette, etiquette], [{**etiquette, "name": "x" * 41}], {"e1": etiquette}):
+            self.assertEqual(envoyer({"tickets": [ticket], "etiquettes": mauvaises, "version": 2}).status_code, 400, mauvaises)
+        self.assertEqual(envoyer({"tickets": [{**ticket, "labels": "e1"}], "version": 2}).status_code, 400)
 
     def test_adresses_api_sous_admin(self):
         """En ligne, l'application est montée sous /admin : l'API doit pointer vers /admin/api/."""
