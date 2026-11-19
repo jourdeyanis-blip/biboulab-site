@@ -272,6 +272,7 @@
     .o-mailto:hover { color: var(--text); }
     .o-check { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: .875rem; cursor: pointer; }
     .o-check input { width: 18px; height: 18px; accent-color: var(--ok); }
+    #o-shippingFee:disabled { opacity: .5; cursor: not-allowed; }
 
     /* Recherche d'un objet du site */
     .o-find { position: relative; margin-bottom: 12px; }
@@ -1227,6 +1228,10 @@
     const round = (n) => Math.round((+n || 0) * 100) / 100;
     const lineTotal = (it) => round((+it.qty || 0) * (+it.price || 0));
     const subTotal = (o) => round(o.items.reduce((s, it) => s + lineTotal(it), 0));
+    const feeOf = (o) => { // tarif du mode de livraison, offert au-delà du seuil
+      const m = st.site.shipping.methods.find((x) => x.label === o.shipping);
+      return !m || subTotal(o) >= st.site.shipping.freeFrom ? 0 : m.price;
+    };
     const orderTotal = (o) => round(subTotal(o) + (+o.shippingFee || 0));
     const filName = (k) => (st.fils.find((f) => f.key === k) || FILAMENTS[k] || { name: k }).name;
     const optsOf = (it) => [it.color ? filName(it.color) : "", it.size || "", it.options || ""].filter(Boolean).join(" · ");
@@ -1294,7 +1299,7 @@
 
     function ticket(o) {
       const labels = tagsOf(o).map(tagChip).join("") + (o.paid ? `<span class="o-lab ok">Payée</span>` : "")
-        + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
+        + (o.freeShipping ? `<span class="o-lab">Livraison offerte</span>` : "") + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
       const prods = [...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).slice(0, 3);
       const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
@@ -1445,8 +1450,9 @@
             </section>
             <section><h3>Livraison</h3>
               <div class="o-two"><div class="fg"><label for="o-shipping">Mode</label><select class="select" id="o-shipping" data-o="shipping">${options([...st.site.shipping.methods.map((m) => m.label), "Remise en main propre"], o.shipping)}</select></div>
-                <div class="fg"><label for="o-shippingFee">Frais (€)</label><input class="input" id="o-shippingFee" data-o="shippingFee" type="number" min="0" step="0.1" inputmode="decimal" value="${esc(o.shippingFee)}"></div></div>
-              <p class="hint">Offerte dès ${euro(st.site.shipping.freeFrom)} d'achats</p>
+                <div class="fg"><label for="o-shippingFee">Frais (€)</label><input class="input" id="o-shippingFee" data-o="shippingFee" type="number" min="0" step="0.1" inputmode="decimal" value="${esc(o.shippingFee)}"${o.freeShipping ? " disabled" : ""}></div></div>
+              <label class="o-check" style="margin:0 0 8px"><input type="checkbox" data-o="freeShipping"${o.freeShipping ? " checked" : ""}> Livraison offerte</label>
+              <p class="hint">Offerte automatiquement dès ${euro(st.site.shipping.freeFrom)} d'achats</p>
               ${F2("tracking", "Numéro de suivi", 'placeholder="À remplir à l\'envoi"')}
             </section>
             <section>${F2("date", "Date de la commande", 'type="date"')}
@@ -1558,12 +1564,15 @@
       if (t.dataset.o) {
         const k = t.dataset.o;
         if (k === "paid") o.paid = t.checked;
+        else if (k === "freeShipping") { // offerte : frais à 0 et bloqués ; décochée : on reprend le tarif du mode choisi
+          o.freeShipping = t.checked; o.shippingFee = t.checked ? 0 : feeOf(o);
+          const fee = $("#o-shippingFee", dlg); fee.value = o.shippingFee; fee.disabled = t.checked;
+        }
         else if (k === "shippingFee") o.shippingFee = t.value === "" ? 0 : round(t.value.replace(",", "."));
         else o[k] = t.value;
         if (k === "status") o.moved = today();
         if (k === "shipping") { // frais du mode choisi, ou offerts au-delà du seuil
-          const m = st.site.shipping.methods.find((x) => x.label === t.value);
-          o.shippingFee = !m || subTotal(o) >= st.site.shipping.freeFrom ? 0 : m.price; $("#o-shippingFee", dlg).value = o.shippingFee;
+          o.shippingFee = o.freeShipping ? 0 : feeOf(o); $("#o-shippingFee", dlg).value = o.shippingFee;
         }
         if (k === "client") $("#o-who", dlg).textContent = o.client ? `Commande de ${o.client}` : "Nouvelle commande";
         if (k === "email" || k === "ref") mailto(o);
