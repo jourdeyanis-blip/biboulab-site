@@ -285,6 +285,9 @@
     .o-opt span { min-width: 0; }
     .o-opt .num { color: var(--muted); font-size: .8125rem; font-variant-numeric: tabular-nums; }
     .o-nores { margin: 0; padding: 12px; color: var(--faint); font-size: .875rem; }
+    .o-opt.o-custom { grid-template-columns: 40px 1fr; }
+    .o-opt.o-custom + .o-opt, .o-opt + .o-opt.o-custom { margin-top: 4px; }
+    .o-opt.o-custom .o-art { border: 1px dashed var(--line-2); }
 
     /* Lignes de la commande */
     .o-lines { display: grid; gap: 8px; }
@@ -292,6 +295,7 @@
     .o-lname { min-width: 0; }
     .o-lname b { display: block; font-weight: 500; font-size: .9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .o-lname a, .o-lname small { font-size: .75rem; color: var(--faint); }
+    .o-lname .input { height: 36px; min-height: 36px; padding: 0 10px; margin-bottom: 2px; font-weight: 500; font-size: .9375rem; }
     .o-lname a { text-decoration: underline; text-underline-offset: 2px; } .o-lname a:hover { color: var(--text); }
     .o-ltot { font-weight: 500; font-size: .9375rem; font-variant-numeric: tabular-nums; }
     .o-line .rm { width: 40px; height: 40px; }
@@ -1387,12 +1391,13 @@
     const dlg = $("#o-dlg");
     const options = (list, v) => [...new Set([...list, ...(v ? [v] : [])])].map((x) => `<option${x === v ? " selected" : ""}>${esc(x)}</option>`).join("");
     function lines(o) {
-      if (!o.items.length) return `<p class="hint" style="margin:0">Aucun objet pour l'instant. Cherchez-le ci-dessus par son nom</p>`;
+      if (!o.items.length) return `<p class="hint" style="margin:0">Aucun objet pour l'instant. Cherchez-le ci-dessus par son nom, ou tapez le nom d'un objet qui n'est pas sur le site</p>`;
       return o.items.map((it, i) => {
         const p = prodOf(it.product), sizes = p ? p.sizes : [], colors = p ? [...new Set([...p.colors, ...(it.color ? [it.color] : [])])] : [];
         return `<div class="o-line">
             ${pThumb(p, "o-lth")}
-            <div class="o-lname"><b>${esc(it.name) || "Objet"}</b>${p ? `<a href="../produit.html?id=${esc(p.id)}" target="_blank" rel="noopener">Voir sur le site</a>` : `<small>Hors catalogue</small>`}</div>
+            <div class="o-lname">${p ? `<b>${esc(it.name) || "Objet"}</b><a href="../produit.html?id=${esc(p.id)}" target="_blank" rel="noopener">Voir sur le site</a>`
+              : `<input class="input" data-it="${i}" data-f="name" value="${esc(it.name)}" placeholder="Nom de l'objet" maxlength="120" aria-label="Nom de l'objet hors catalogue"><small>Hors catalogue</small>`}</div>
             <b class="o-ltot" data-ltot="${i}">${euro(lineTotal(it))}</b>
             <button class="rm" type="button" data-rm-line="${i}" aria-label="Retirer ${esc(it.name)}">${icon("trash")}</button>
             <div class="o-lctl">
@@ -1419,7 +1424,7 @@
           <div>
             <section class="o-ds"><h3>Objets commandés</h3>
               <div class="o-find"><div class="field">${icon("search")}<label class="sr" for="o-find">Rechercher un objet du site</label>
-                <input class="input" id="o-find" type="search" role="combobox" aria-expanded="false" aria-controls="o-res" aria-autocomplete="list" placeholder="Rechercher un objet du site pour l'ajouter" autocomplete="off"></div>
+                <input class="input" id="o-find" type="search" role="combobox" aria-expanded="false" aria-controls="o-res" aria-autocomplete="list" placeholder="Rechercher un objet du site, ou taper un nom libre" autocomplete="off"></div>
                 <div class="o-res" id="o-res" role="listbox" aria-label="Objets du site" hidden></div></div>
               <div class="o-lines" id="o-lines">${lines(o)}</div>
               <dl class="o-tot"><div><dt>Objets</dt><dd id="o-subt"></dd></div><div><dt>Livraison</dt><dd id="o-feet"></dd></div><div class="t"><dt>Total</dt><dd id="o-total"></dd></div></dl>
@@ -1511,10 +1516,12 @@
     }
     function showResults() {
       const inp = $("#o-find", dlg), box = $("#o-res", dlg); if (!inp) return;
-      O.res = results(inp.value); O.act = 0;
-      box.innerHTML = O.res.length
-        ? O.res.map((p, i) => `<div class="o-opt" role="option" id="o-opt-${i}" data-pick="${i}" aria-selected="${i === O.act}">${pThumb(p)}<span><b>${esc(p.name)}</b><small>${esc(pathName(catOf(p.category)))}</small></span><span class="num">${euro(p.price)}</span></div>`).join("")
-        : `<p class="o-nores">Aucun objet du site ne correspond</p>`;
+      const free = inp.value.trim().replace(/\s+/g, " ").slice(0, 120); // nom libre : objet qui n'est pas (ou pas encore) sur le site
+      O.res = [...results(inp.value), ...(free ? [{ custom: true, name: free }] : [])]; O.act = 0;
+      const opt = (r, i) => r.custom
+        ? `<div class="o-opt o-custom" role="option" id="o-opt-${i}" data-pick="${i}" aria-selected="${i === O.act}">${pThumb(null)}<span><b>Ajouter « ${esc(r.name)} »</b><small>Objet hors catalogue, prix à saisir</small></span></div>`
+        : `<div class="o-opt" role="option" id="o-opt-${i}" data-pick="${i}" aria-selected="${i === O.act}">${pThumb(r)}<span><b>${esc(r.name)}</b><small>${esc(pathName(catOf(r.category)))}</small></span><span class="num">${euro(r.price)}</span></div>`;
+      box.innerHTML = O.res.length ? O.res.map(opt).join("") : `<p class="o-nores">Tapez le nom d'un objet du site, ou d'un objet hors catalogue</p>`;
       box.hidden = false; inp.setAttribute("aria-expanded", "true");
       if (O.res.length) inp.setAttribute("aria-activedescendant", "o-opt-0"); else inp.removeAttribute("aria-activedescendant");
     }
@@ -1525,11 +1532,17 @@
       const el = $(`#o-opt-${O.act}`, dlg); $("#o-find", dlg).setAttribute("aria-activedescendant", el.id); el.scrollIntoView({ block: "nearest" });
     }
     function addLine(p) {
+      if (p.custom) return addCustom(p.name);
       const o = O.open, size = p.sizes[0];
       const it = { product: p.id, name: p.name, color: p.colors[0] || null, size: size ? size.label : null, qty: 1, price: round(p.price + (size ? +size.extra || 0 : 0)) };
       const same = o.items.find((x) => x.product === it.product && x.color === it.color && x.size === it.size);
       if (same) same.qty = (+same.qty || 0) + 1; else o.items.push(it);
       const inp = $("#o-find", dlg); inp.value = ""; hideResults(); refreshLines(); changed(); inp.focus();
+    }
+    function addCustom(name) { // objet hors catalogue : nom libre, prix à saisir (curseur placé dans le prix)
+      const o = O.open; o.items.push({ product: null, name, color: null, size: null, options: "", qty: 1, price: 0 });
+      $("#o-find", dlg).value = ""; hideResults(); refreshLines(); changed();
+      const pr = $(`[data-it="${o.items.length - 1}"][data-f="price"]`, dlg); pr.focus(); pr.select();
     }
 
     dlg.addEventListener("input", (e) => {
@@ -1561,6 +1574,7 @@
         else if (f === "price") it.price = t.value === "" ? 0 : round(t.value.replace(",", "."));
         else if (f === "color") it.color = t.value || null;
         else if (f === "options") it.options = t.value;
+        else if (f === "name") it.name = t.value.slice(0, 120);
         else if (f === "size") { // le prix suit la taille choisie
           it.size = t.value; const z = p && p.sizes.find((x) => x.label === t.value);
           if (z) { it.price = round(p.price + (+z.extra || 0)); $(`[data-it="${i}"][data-f="price"]`, dlg).value = it.price; }
