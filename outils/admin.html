@@ -316,6 +316,29 @@
     .o-two { display: grid; grid-template-columns: 1fr 96px; gap: 8px; }
     .o-two .fg + .fg { margin-top: 0; }
 
+    /* Bilan : onglet coulissant à droite du tableau */
+    .o-wrap { position: relative; min-height: 0; display: grid; overflow: hidden; }
+    .o-wrap .o-board { transition: padding-right .32s var(--ease); }
+    .o-wrap.o-stats-on .o-board { padding-right: 336px; }
+    .o-stats { position: absolute; top: 16px; right: 0; bottom: 24px; width: 300px; display: flex; transform: translateX(100%); transition: transform .32s var(--ease); z-index: 3; }
+    .o-stats-on .o-stats { transform: none; }
+    .o-tab { position: absolute; top: 0; right: 100%; width: 36px; padding: 14px 0; display: grid; justify-items: center; gap: 10px; background: var(--col); color: var(--muted); border: 1px solid var(--line); border-right: 0; border-radius: 12px 0 0 12px; font-size: .8125rem; transition: color .18s var(--ease), background-color .18s var(--ease); }
+    .o-tab:hover { color: var(--text); }
+    .o-tab span { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .02em; }
+    .o-tab .ic { width: 16px; height: 16px; transform: rotate(90deg); transition: transform .32s var(--ease); }
+    .o-stats-on .o-tab .ic { transform: rotate(-90deg); }
+    .o-sp { flex: 1; min-width: 0; overflow: auto; padding: 18px 20px; background: var(--col); border: 1px solid var(--line); border-right: 0; border-radius: 0 0 0 14px; visibility: hidden; transition: visibility 0s .32s; }
+    .o-stats-on .o-sp { visibility: visible; transition: none; }
+    .o-sp h2 { font: 500 .9375rem/1.3 var(--font-b); letter-spacing: 0; margin: 0 0 4px; }
+    .o-sp > p { margin: 0 0 16px; color: var(--faint); font-size: .75rem; }
+    .o-sp dl { margin: 0; display: grid; gap: 8px; }
+    .o-sp dl > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+    .o-sp dt { flex: 1; font-size: .875rem; color: var(--muted); }
+    .o-sp dd { margin: 0; font-size: 1.25rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .o-sp .o-sub2 { flex-basis: 100%; margin: 0; color: var(--faint); font-size: .75rem; }
+    .o-sp .o-grand { margin-top: 8px; background: var(--text); border-color: var(--text); }
+    .o-sp .o-grand dt, .o-sp .o-grand dd, .o-sp .o-grand .o-sub2 { color: var(--bg); }
+    .o-sp .o-grand .o-sub2 { opacity: .7; }
     .o-board.o-solo { display: block; }   /* message seul : centré sur toute la largeur */
     .o-alert { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border: 1px solid var(--err); border-radius: 12px; color: var(--err); font-size: .9375rem; }
     .o-alert .btn { min-height: 36px; padding: 0 14px; font-size: .875rem; }
@@ -323,6 +346,9 @@
       .o-view { display: block; }
       .o-bar { padding: 12px 16px; } .o-bar .field { flex: 1 1 100%; } .o-sum { margin-left: 0; }
       .o-board { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: 1fr; padding: 16px; overflow: visible; }
+      .o-wrap { display: block; overflow: visible; } .o-wrap.o-stats-on .o-board { padding-right: 16px; }
+      .o-stats { position: fixed; top: 128px; bottom: auto; max-height: calc(100% - 144px); width: min(300px, 100% - 52px); }
+      .o-sp { border-radius: 0 0 0 14px; }
       .o-col, .o-list { max-height: none; overflow: visible; }
       .o-row { grid-template-columns: 1fr auto; }
       .o-in-wrap { grid-template-columns: 1fr; padding: 16px; }
@@ -380,7 +406,13 @@
       <p class="o-sum" id="o-sum"></p>
       <div class="o-alert" id="o-alert" role="alert" hidden></div>
     </div>
-    <div class="o-board" id="board"></div>
+    <div class="o-wrap" id="o-wrap">
+      <div class="o-board" id="board"></div>
+      <aside class="o-stats" aria-label="Bilan des commandes">
+        <button class="o-tab" type="button" id="o-tab" aria-expanded="false" aria-controls="o-sp"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span>Bilan</span></button>
+        <div class="o-sp" id="o-sp"></div>
+      </aside>
+    </div>
   </section>
   <dialog class="o-dlg" id="o-dlg"></dialog>
 
@@ -1288,11 +1320,32 @@
       $("#o-done").textContent = O.done ? "Retour au tableau" : `Livrées · ${done}`;
       $("#o-done").setAttribute("aria-pressed", O.done);
       const b = $("#o-badge"); b.textContent = active.length; b.hidden = !active.length;
+      stats();
       ["#o-q", "#o-done", "#o-tagf"].forEach((s) => { $(s).disabled = !O.ready; });
       if (O.tagF && !tagOf(O.tagF)) O.tagF = "";
       const f = $("#o-tagf"); f.hidden = !O.tags.length;
       f.innerHTML = `<option value="">Toutes les étiquettes</option>${O.tags.map((t) => `<option value="${esc(t.id)}"${t.id === O.tagF ? " selected" : ""}>${esc(t.name) || "Sans nom"}</option>`).join("")}`;
     }
+    /* Bilan (onglet coulissant à droite) : toutes les commandes, sans tenir compte de la recherche ni du filtre */
+    const plural = (n, w) => `${n} ${w}${n > 1 ? "s" : ""}`;
+    function stats() {
+      const by = (...k) => O.list.filter((o) => k.includes(o.status)), sum = (l) => round(l.reduce((s, o) => s + orderTotal(o), 0));
+      const wait = by("commande"), prt = by("impression"), ship = by("livrer"), done = by("livree");
+      $("#o-sp").innerHTML = !O.ready ? `<h2>Bilan</h2><p>Chargement…</p>` : `<h2>Bilan des commandes</h2><p>Tout le tableau, sans tenir compte de la recherche</p>
+        <dl><div><dt>Commandes en attente</dt><dd>${wait.length}</dd></div>
+          <div><dt>Commandes en cours</dt><dd>${prt.length + ship.length}</dd><dd class="o-sub2">${prt.length} en impression · ${ship.length} à livrer</dd></div>
+          <div><dt>Commandes livrées</dt><dd>${done.length}</dd></div>
+          <div class="o-grand"><dt>Total</dt><dd>${euro(sum(O.list))}</dd><dd class="o-sub2">${plural(O.list.length, "commande")} au total, livraison comprise</dd></div></dl>`;
+    }
+    function setStats(on) { // ouvert / fermé, retenu sur cet ordinateur
+      $("#o-wrap").classList.toggle("o-stats-on", on); $("#o-tab").setAttribute("aria-expanded", on);
+      $("#o-tab").setAttribute("aria-label", on ? "Fermer le bilan" : "Ouvrir le bilan");
+      try { localStorage.setItem("suivi-bilan", on ? "1" : "0"); } catch (e) {}
+    }
+    $("#o-tab").addEventListener("click", () => setStats(!$("#o-wrap").classList.contains("o-stats-on")));
+    { const wide = !matchMedia("(max-width: 860px)").matches; let v = null; // ouvert par défaut sur ordinateur, fermé sur téléphone
+      try { v = localStorage.getItem("suivi-bilan"); } catch (e) {}
+      setStats(v === null ? wide : v === "1"); }
     const hay = (o) => slugify([o.ref, o.client, o.email, o.adresse, o.note, o.tracking, o.payment, o.shipping, ...o.items.map((it) => it.name + " " + optsOf(it)), ...tagsOf(o).map((t) => t.name)].join(" "));
     const matches = (o) => {
       if (O.tagF && !(o.labels || []).includes(O.tagF)) return false;
