@@ -162,6 +162,8 @@
     .o-ch { display: flex; align-items: center; gap: 8px; padding: 12px 14px 8px; }
     .o-ch h2 { font: 500 .9375rem/1.3 var(--font-b); letter-spacing: 0; }
     .o-ch .num { color: var(--faint); font-size: .8125rem; font-variant-numeric: tabular-nums; }
+    .o-amt { margin-left: auto; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-2); font-size: .8125rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
+    .o-done h2 .o-amt { margin-left: 10px; vertical-align: middle; font-family: var(--font-b); letter-spacing: 0; }
     .o-list { flex: 1; min-height: 48px; overflow-y: auto; padding: 4px 8px; display: grid; gap: 8px; align-content: start; }
     .o-list.drop-end::after { content: ""; height: 2px; border-radius: 1px; background: var(--accent); }
     .o-empty { margin: 0; padding: 14px 8px; border: 1px dashed var(--line-2); border-radius: 10px; color: var(--faint); font-size: .8125rem; text-align: center; }
@@ -272,6 +274,7 @@
     .o-mailto:hover { color: var(--text); }
     .o-check { display: flex; align-items: center; gap: 10px; margin-top: 12px; font-size: .875rem; cursor: pointer; }
     .o-check input { width: 18px; height: 18px; accent-color: var(--ok); }
+    #o-shippingFee:disabled { opacity: .5; cursor: not-allowed; }
 
     /* Recherche d'un objet du site */
     .o-find { position: relative; margin-bottom: 12px; }
@@ -313,6 +316,29 @@
     .o-two { display: grid; grid-template-columns: 1fr 96px; gap: 8px; }
     .o-two .fg + .fg { margin-top: 0; }
 
+    /* Bilan : onglet coulissant à droite du tableau */
+    .o-wrap { position: relative; min-height: 0; display: grid; overflow: hidden; }
+    .o-wrap .o-board { transition: padding-right .32s var(--ease); }
+    .o-wrap.o-stats-on .o-board { padding-right: 336px; }
+    .o-stats { position: absolute; top: 16px; right: 0; bottom: 24px; width: 300px; display: flex; transform: translateX(100%); transition: transform .32s var(--ease); z-index: 3; }
+    .o-stats-on .o-stats { transform: none; }
+    .o-tab { position: absolute; top: 0; right: 100%; width: 36px; padding: 14px 0; display: grid; justify-items: center; gap: 10px; background: var(--col); color: var(--muted); border: 1px solid var(--line); border-right: 0; border-radius: 12px 0 0 12px; font-size: .8125rem; transition: color .18s var(--ease), background-color .18s var(--ease); }
+    .o-tab:hover { color: var(--text); }
+    .o-tab span { writing-mode: vertical-rl; transform: rotate(180deg); letter-spacing: .02em; }
+    .o-tab .ic { width: 16px; height: 16px; transform: rotate(90deg); transition: transform .32s var(--ease); }
+    .o-stats-on .o-tab .ic { transform: rotate(-90deg); }
+    .o-sp { flex: 1; min-width: 0; overflow: auto; padding: 18px 20px; background: var(--col); border: 1px solid var(--line); border-right: 0; border-radius: 0 0 0 14px; visibility: hidden; transition: visibility 0s .32s; }
+    .o-stats-on .o-sp { visibility: visible; transition: none; }
+    .o-sp h2 { font: 500 .9375rem/1.3 var(--font-b); letter-spacing: 0; margin: 0 0 4px; }
+    .o-sp > p { margin: 0 0 16px; color: var(--faint); font-size: .75rem; }
+    .o-sp dl { margin: 0; display: grid; gap: 8px; }
+    .o-sp dl > div { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 12px; padding: 12px 14px; border-radius: 12px; background: var(--card); border: 1px solid var(--line); }
+    .o-sp dt { flex: 1; font-size: .875rem; color: var(--muted); }
+    .o-sp dd { margin: 0; font-size: 1.25rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .o-sp .o-sub2 { flex-basis: 100%; margin: 0; color: var(--faint); font-size: .75rem; }
+    .o-sp .o-grand { margin-top: 8px; background: var(--text); border-color: var(--text); }
+    .o-sp .o-grand dt, .o-sp .o-grand dd, .o-sp .o-grand .o-sub2 { color: var(--bg); }
+    .o-sp .o-grand .o-sub2 { opacity: .7; }
     .o-board.o-solo { display: block; }   /* message seul : centré sur toute la largeur */
     .o-alert { flex: 1 1 100%; display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; padding: 12px 16px; border: 1px solid var(--err); border-radius: 12px; color: var(--err); font-size: .9375rem; }
     .o-alert .btn { min-height: 36px; padding: 0 14px; font-size: .875rem; }
@@ -320,6 +346,9 @@
       .o-view { display: block; }
       .o-bar { padding: 12px 16px; } .o-bar .field { flex: 1 1 100%; } .o-sum { margin-left: 0; }
       .o-board { grid-auto-flow: row; grid-auto-columns: auto; grid-template-columns: 1fr; padding: 16px; overflow: visible; }
+      .o-wrap { display: block; overflow: visible; } .o-wrap.o-stats-on .o-board { padding-right: 16px; }
+      .o-stats { position: fixed; top: 128px; bottom: auto; max-height: calc(100% - 144px); width: min(300px, 100% - 52px); }
+      .o-sp { border-radius: 0 0 0 14px; }
       .o-col, .o-list { max-height: none; overflow: visible; }
       .o-row { grid-template-columns: 1fr auto; }
       .o-in-wrap { grid-template-columns: 1fr; padding: 16px; }
@@ -377,7 +406,13 @@
       <p class="o-sum" id="o-sum"></p>
       <div class="o-alert" id="o-alert" role="alert" hidden></div>
     </div>
-    <div class="o-board" id="board"></div>
+    <div class="o-wrap" id="o-wrap">
+      <div class="o-board" id="board"></div>
+      <aside class="o-stats" aria-label="Bilan des commandes">
+        <button class="o-tab" type="button" id="o-tab" aria-expanded="false" aria-controls="o-sp"><svg class="ic" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><path d="M6 9l6 6 6-6"/></svg><span>Bilan</span></button>
+        <div class="o-sp" id="o-sp"></div>
+      </aside>
+    </div>
   </section>
   <dialog class="o-dlg" id="o-dlg"></dialog>
 
@@ -1227,6 +1262,10 @@
     const round = (n) => Math.round((+n || 0) * 100) / 100;
     const lineTotal = (it) => round((+it.qty || 0) * (+it.price || 0));
     const subTotal = (o) => round(o.items.reduce((s, it) => s + lineTotal(it), 0));
+    const feeOf = (o) => { // tarif du mode de livraison, offert au-delà du seuil
+      const m = st.site.shipping.methods.find((x) => x.label === o.shipping);
+      return !m || subTotal(o) >= st.site.shipping.freeFrom ? 0 : m.price;
+    };
     const orderTotal = (o) => round(subTotal(o) + (+o.shippingFee || 0));
     const filName = (k) => (st.fils.find((f) => f.key === k) || FILAMENTS[k] || { name: k }).name;
     const optsOf = (it) => [it.color ? filName(it.color) : "", it.size || "", it.options || ""].filter(Boolean).join(" · ");
@@ -1281,11 +1320,32 @@
       $("#o-done").textContent = O.done ? "Retour au tableau" : `Livrées · ${done}`;
       $("#o-done").setAttribute("aria-pressed", O.done);
       const b = $("#o-badge"); b.textContent = active.length; b.hidden = !active.length;
+      stats();
       ["#o-q", "#o-done", "#o-tagf"].forEach((s) => { $(s).disabled = !O.ready; });
       if (O.tagF && !tagOf(O.tagF)) O.tagF = "";
       const f = $("#o-tagf"); f.hidden = !O.tags.length;
       f.innerHTML = `<option value="">Toutes les étiquettes</option>${O.tags.map((t) => `<option value="${esc(t.id)}"${t.id === O.tagF ? " selected" : ""}>${esc(t.name) || "Sans nom"}</option>`).join("")}`;
     }
+    /* Bilan (onglet coulissant à droite) : toutes les commandes, sans tenir compte de la recherche ni du filtre */
+    const plural = (n, w) => `${n} ${w}${n > 1 ? "s" : ""}`;
+    function stats() {
+      const by = (...k) => O.list.filter((o) => k.includes(o.status)), sum = (l) => round(l.reduce((s, o) => s + orderTotal(o), 0));
+      const wait = by("commande"), prt = by("impression"), ship = by("livrer"), done = by("livree");
+      $("#o-sp").innerHTML = !O.ready ? `<h2>Bilan</h2><p>Chargement…</p>` : `<h2>Bilan des commandes</h2><p>Tout le tableau, sans tenir compte de la recherche</p>
+        <dl><div><dt>Commandes en attente</dt><dd>${wait.length}</dd></div>
+          <div><dt>Commandes en cours</dt><dd>${prt.length + ship.length}</dd><dd class="o-sub2">${prt.length} en impression · ${ship.length} à livrer</dd></div>
+          <div><dt>Commandes livrées</dt><dd>${done.length}</dd></div>
+          <div class="o-grand"><dt>Total</dt><dd>${euro(sum(O.list))}</dd><dd class="o-sub2">${plural(O.list.length, "commande")} au total, livraison comprise</dd></div></dl>`;
+    }
+    function setStats(on) { // ouvert / fermé, retenu sur cet ordinateur
+      $("#o-wrap").classList.toggle("o-stats-on", on); $("#o-tab").setAttribute("aria-expanded", on);
+      $("#o-tab").setAttribute("aria-label", on ? "Fermer le bilan" : "Ouvrir le bilan");
+      try { localStorage.setItem("suivi-bilan", on ? "1" : "0"); } catch (e) {}
+    }
+    $("#o-tab").addEventListener("click", () => setStats(!$("#o-wrap").classList.contains("o-stats-on")));
+    { const wide = !matchMedia("(max-width: 860px)").matches; let v = null; // ouvert par défaut sur ordinateur, fermé sur téléphone
+      try { v = localStorage.getItem("suivi-bilan"); } catch (e) {}
+      setStats(v === null ? wide : v === "1"); }
     const hay = (o) => slugify([o.ref, o.client, o.email, o.adresse, o.note, o.tracking, o.payment, o.shipping, ...o.items.map((it) => it.name + " " + optsOf(it)), ...tagsOf(o).map((t) => t.name)].join(" "));
     const matches = (o) => {
       if (O.tagF && !(o.labels || []).includes(O.tagF)) return false;
@@ -1294,7 +1354,7 @@
 
     function ticket(o) {
       const labels = tagsOf(o).map(tagChip).join("") + (o.paid ? `<span class="o-lab ok">Payée</span>` : "")
-        + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
+        + (o.freeShipping ? `<span class="o-lab">Livraison offerte</span>` : "") + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
       const prods = [...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).slice(0, 3);
       const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
@@ -1321,7 +1381,7 @@
       if (O.done) {
         const rows = O.list.filter((o) => o.status === "livree" && matches(o)).sort((a, b) => (b.moved || "").localeCompare(a.moved || ""));
         box.className = "o-board o-done";
-        box.innerHTML = `<h2>Commandes livrées</h2>${rows.map((o) => `<div class="o-row">
+        box.innerHTML = `<h2>Commandes livrées${amount(rows)}</h2>${rows.map((o) => `<div class="o-row">
             <button class="o-open" type="button" data-open="${esc(o.id)}"><b>${esc(o.client) || "Client"}</b> <span>· ${esc(o.ref)} · ${((n) => `${n} objet${n > 1 ? "s" : ""}`)(o.items.reduce((s, it) => s + (+it.qty || 0), 0))}</span></button>
             <span class="num">livrée le ${esc(shortDate(o.moved))}</span><b>${euro(orderTotal(o))}</b>
             <button class="o-next" type="button" data-back="${esc(o.id)}">Remettre à livrer</button></div>`).join("") || `<p class="o-empty">${O.q || O.tagF ? "Aucun résultat" : "Aucune commande livrée pour l'instant"}</p>`}`;
@@ -1331,11 +1391,15 @@
       box.innerHTML = STEPS.map((s) => {
         const cards = O.list.filter((o) => o.status === s.id && matches(o));
         return `<section class="o-col" data-col="${s.id}" aria-labelledby="col-${s.id}">
-            <header class="o-ch"><h2 id="col-${s.id}">${s.label}</h2><span class="num">${cards.length}</span></header>
+            <header class="o-ch"><h2 id="col-${s.id}">${s.label}</h2><span class="num">${cards.length}</span>${amount(cards)}</header>
             <div class="o-list">${cards.map(ticket).join("") || `<p class="o-empty">${O.q || O.tagF ? "Aucun résultat" : "Glissez une commande ici"}</p>`}</div>
             <button class="o-add" type="button" data-add="${s.id}">${icon("plus")} Ajouter une commande</button>
           </section>`;
       }).join("");
+    }
+    function amount(list) { // bulle : montant total des commandes affichées (livraison comprise)
+      const t = round(list.reduce((s, o) => s + orderTotal(o), 0));
+      return `<span class="o-amt" title="Montant total des commandes affichées, livraison comprise">${euro(t)}</span>`;
     }
     function moveTo(o, step, beforeId) {
       O.list.splice(O.list.indexOf(o), 1);
@@ -1445,8 +1509,9 @@
             </section>
             <section><h3>Livraison</h3>
               <div class="o-two"><div class="fg"><label for="o-shipping">Mode</label><select class="select" id="o-shipping" data-o="shipping">${options([...st.site.shipping.methods.map((m) => m.label), "Remise en main propre"], o.shipping)}</select></div>
-                <div class="fg"><label for="o-shippingFee">Frais (€)</label><input class="input" id="o-shippingFee" data-o="shippingFee" type="number" min="0" step="0.1" inputmode="decimal" value="${esc(o.shippingFee)}"></div></div>
-              <p class="hint">Offerte dès ${euro(st.site.shipping.freeFrom)} d'achats</p>
+                <div class="fg"><label for="o-shippingFee">Frais (€)</label><input class="input" id="o-shippingFee" data-o="shippingFee" type="number" min="0" step="0.1" inputmode="decimal" value="${esc(o.shippingFee)}"${o.freeShipping ? " disabled" : ""}></div></div>
+              <label class="o-check" style="margin:0 0 8px"><input type="checkbox" data-o="freeShipping"${o.freeShipping ? " checked" : ""}> Livraison offerte</label>
+              <p class="hint">Offerte automatiquement dès ${euro(st.site.shipping.freeFrom)} d'achats</p>
               ${F2("tracking", "Numéro de suivi", 'placeholder="À remplir à l\'envoi"')}
             </section>
             <section>${F2("date", "Date de la commande", 'type="date"')}
@@ -1558,12 +1623,15 @@
       if (t.dataset.o) {
         const k = t.dataset.o;
         if (k === "paid") o.paid = t.checked;
+        else if (k === "freeShipping") { // offerte : frais à 0 et bloqués ; décochée : on reprend le tarif du mode choisi
+          o.freeShipping = t.checked; o.shippingFee = t.checked ? 0 : feeOf(o);
+          const fee = $("#o-shippingFee", dlg); fee.value = o.shippingFee; fee.disabled = t.checked;
+        }
         else if (k === "shippingFee") o.shippingFee = t.value === "" ? 0 : round(t.value.replace(",", "."));
         else o[k] = t.value;
         if (k === "status") o.moved = today();
         if (k === "shipping") { // frais du mode choisi, ou offerts au-delà du seuil
-          const m = st.site.shipping.methods.find((x) => x.label === t.value);
-          o.shippingFee = !m || subTotal(o) >= st.site.shipping.freeFrom ? 0 : m.price; $("#o-shippingFee", dlg).value = o.shippingFee;
+          o.shippingFee = o.freeShipping ? 0 : feeOf(o); $("#o-shippingFee", dlg).value = o.shippingFee;
         }
         if (k === "client") $("#o-who", dlg).textContent = o.client ? `Commande de ${o.client}` : "Nouvelle commande";
         if (k === "email" || k === "ref") mailto(o);
