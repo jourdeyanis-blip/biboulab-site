@@ -336,6 +336,23 @@
     .o-sp dt { flex: 1; font-size: .875rem; color: var(--muted); }
     .o-sp dd { margin: 0; font-size: 1.25rem; font-weight: 500; font-variant-numeric: tabular-nums; }
     .o-sp .o-sub2 { flex-basis: 100%; margin: 0; color: var(--faint); font-size: .75rem; }
+    /* Historique des commandes livrées, déplié au clic sur « Commandes livrées » */
+    .o-sp .o-hrow { position: relative; transition: border-color .18s var(--ease); }
+    .o-sp .o-hrow:hover { border-color: var(--line-2); }
+    .o-hbtn { display: inline-flex; align-items: center; gap: 6px; color: inherit; font: inherit; text-align: left; }
+    .o-hbtn::after { content: ""; position: absolute; inset: 0; border-radius: 12px; }
+    .o-hbtn .ic { width: 14px; height: 14px; transition: transform .2s var(--ease); }
+    .o-hbtn[aria-expanded="true"] .ic { transform: rotate(180deg); }
+    .o-sp .o-hist { position: relative; z-index: 1; flex-basis: 100%; margin: 10px 0 0; cursor: default; font-size: .8125rem; font-weight: 400; }
+    .o-hist h3 { display: flex; justify-content: space-between; gap: 8px; margin: 12px 0 4px; font: 500 .75rem/1.3 var(--font-b); letter-spacing: 0; color: var(--faint); }
+    .o-hist h3:first-child { margin-top: 0; }
+    .o-hist ul { margin: 0; padding: 0; list-style: none; display: grid; gap: 2px; }
+    .o-hist li button { display: grid; grid-template-columns: 1fr auto; gap: 0 8px; padding: 6px 8px; margin: 0 -8px; width: calc(100% + 16px); border-radius: 8px; text-align: left; color: var(--text); transition: background-color .18s var(--ease); }
+    .o-hist li button:hover { background: var(--col); }
+    .o-hist li b { font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .o-hist li small { grid-column: 1; color: var(--faint); font-size: .75rem; }
+    .o-hist li .num { grid-row: 1 / 3; grid-column: 2; align-self: center; font-variant-numeric: tabular-nums; }
+    .o-hist .o-nores { padding: 0; }
     .o-sp .o-grand { margin-top: 8px; background: var(--text); border-color: var(--text); }
     .o-sp .o-grand dt, .o-sp .o-grand dd, .o-sp .o-grand .o-sub2 { color: var(--bg); }
     .o-sp .o-grand .o-sub2 { opacity: .7; }
@@ -1334,9 +1351,28 @@
       $("#o-sp").innerHTML = !O.ready ? `<h2>Bilan</h2><p>Chargement…</p>` : `<h2>Bilan des commandes</h2><p>Tout le tableau, sans tenir compte de la recherche</p>
         <dl><div><dt>Commandes en attente</dt><dd>${wait.length}</dd></div>
           <div><dt>Commandes en cours</dt><dd>${prt.length + ship.length}</dd><dd class="o-sub2">${prt.length} en impression · ${ship.length} à livrer</dd></div>
-          <div><dt>Commandes livrées</dt><dd>${done.length}</dd></div>
+          <div class="o-hrow"><dt><button class="o-hbtn" type="button" data-hist aria-expanded="${!!O.hist}" aria-controls="o-hist">Commandes livrées ${icon("chevron")}</button></dt><dd>${done.length}</dd>
+            ${O.hist ? `<dd class="o-hist" id="o-hist">${deliveredList(done)}</dd>` : ""}</div>
           <div class="o-grand"><dt>Total</dt><dd>${euro(sum(O.list))}</dd><dd class="o-sub2">${plural(O.list.length, "commande")} au total, livraison comprise</dd></div></dl>`;
     }
+    function deliveredList(done) { // commandes livrées, les plus récentes d'abord, regroupées par mois
+      if (!done.length) return `<p class="o-nores">Aucune commande livrée pour l'instant</p>`;
+      const months = new Map();
+      [...done].sort((a, b) => (b.moved || "").localeCompare(a.moved || "")).forEach((o) => {
+        const k = (o.moved || o.date || "").slice(0, 7); if (!months.has(k)) months.set(k, []); months.get(k).push(o);
+      });
+      return [...months].map(([k, list]) => {
+        const name = k ? new Date(k + "-15T12:00").toLocaleDateString("fr-FR", { month: "long", year: "numeric" }) : "Sans date";
+        return `<h3><span>${esc(name.charAt(0).toUpperCase() + name.slice(1))} · ${list.length}</span><span>${euro(round(list.reduce((s, o) => s + orderTotal(o), 0)))}</span></h3>
+          <ul>${list.map((o) => `<li><button type="button" data-open="${esc(o.id)}"><b>${esc(o.client) || "Client"}</b><span class="num">${euro(orderTotal(o))}</span>
+            <small>livrée le ${esc(shortDate(o.moved))}${o.ref ? ` · ${esc(o.ref)}` : ""}</small></button></li>`).join("")}</ul>`;
+      }).join("");
+    }
+    $("#o-sp").addEventListener("click", (e) => {
+      const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.open) return openOrder(byId(b.dataset.open));
+      if (b.dataset.hist !== undefined) { O.hist = !O.hist; stats(); $("[data-hist]", $("#o-sp")).focus(); }
+    });
     function setStats(on) { // ouvert / fermé, retenu sur cet ordinateur
       $("#o-wrap").classList.toggle("o-stats-on", on); $("#o-tab").setAttribute("aria-expanded", on);
       $("#o-tab").setAttribute("aria-label", on ? "Fermer le bilan" : "Ouvrir le bilan");
