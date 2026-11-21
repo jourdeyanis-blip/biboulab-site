@@ -281,6 +281,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .hero-art { width: min(100%, 400px); justify-self: center; }
 @media (min-width: 960px) { .hero-art { width: 100%; max-width: 560px; justify-self: end; } }
 .hp { width: 100%; height: auto; }
+.split-media .hp { padding: 15% 4%; } /* section « L'atelier » : le cadre dépasse de 12 % en haut et en bas (effet de parallaxe) */
 .hp { --hp-c1: #4E5363; --hp-c2: #393D4A; --hp-c3: #282B35; --hp-bed: #BFC3CE; --hp-bed2: #8F95A4; --hp-rod: #A9AFBD; }
 [data-theme="light"] .hp { --hp-c1: #6A7082; --hp-c2: #525868; --hp-c3: #3B3F4B; --hp-bed: #DCDFE6; --hp-bed2: #B4B9C5; --hp-rod: #8F95A5; }
 .hp .c1 { fill: var(--hp-c1); } .hp .c2 { fill: var(--hp-c2); } .hp .c3 { fill: var(--hp-c3); }

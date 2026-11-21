@@ -132,7 +132,7 @@
       </div></section>
 
       <section class="section" style="padding-top:0" aria-labelledby="at-t"><div class="wrap split">
-        <div class="split-media" data-reveal="left">${ABOUT.photos[0].src ? `<img data-parallax=".1" src="${esc(ABOUT.photos[0].src)}" alt="${esc(ABOUT.photos[0].alt)}" loading="lazy">` : `<div data-parallax=".1">${printer("h")}</div>`}</div>
+        <div class="split-media" data-reveal="left">${ABOUT.photos[0].src ? `<img data-parallax=".1" src="${esc(ABOUT.photos[0].src)}" alt="${esc(ABOUT.photos[0].alt)}" loading="lazy">` : `<div data-parallax=".1">${heroPrinterSvg("hpa")}</div>`}</div>
         <div data-reveal="right">
           <p class="kicker">L'atelier</p>
           <h2 id="at-t">Imprimé couche par couche, <span class="grad-text">fini à la main</span></h2>
@@ -156,7 +156,7 @@
 
       ${extBlock()}`;
 
-    heroPrinter($(".hp"));
+    $$(".hp").forEach((svg, i) => heroPrinter(svg, i * 6.5)); // l'imprimante de l'atelier démarre décalée
     jsonLd({ "@context": "https://schema.org", "@type": "Store", name: SITE.name, url: SITE.url, slogan: SITE.slogan, email: SITE.email, sameAs: SITE.stores.map((s) => s.url) });
   }
 
@@ -169,23 +169,23 @@
       <span class="glare" aria-hidden="true"></span></a></div>`;
   }
 
-  /* Accueil, à droite : imprimante 3D qui imprime un objet couche par couche.
+  /* Accueil (à droite du titre et dans « L'atelier ») : imprimante 3D qui imprime un objet couche par couche.
      La buse fait le tour de chaque couche, le plateau avance et recule (comme une vraie
      imprimante à plateau mobile), le portique monte d'une couche à chaque tour.
      Trois objets se succèdent. Mis en pause hors écran ; objet terminé si « mouvement réduit ». */
   const HP = { N: 28, LH: 5.2, CX: 240, BASE: 376, E: 0.2 };
   HP.H = HP.N * HP.LH;
-  function heroPrinterSvg() {
+  function heroPrinterSvg(uid = "hp") {
     const { N, LH, CX, BASE, H } = HP;
-    const shades = Array.from({ length: N }, () => `<rect fill="url(#hpShade)"/>`).join("");
+    const shades = Array.from({ length: N }, () => `<rect fill="url(#${uid}Shade)"/>`).join("");
     const lines = Array.from({ length: N - 1 }, () => `<path/>`).join("");
     const vents = [0, 1, 2, 3, 4, 5].map((j) => `M24 ${-92 + j * 6}h40`).join("");
     return `<svg class="hp" viewBox="0 0 480 480" role="img" aria-label="Animation : une imprimante 3D imprime un objet couche par couche">
       <defs>
-        <linearGradient id="hpObj" gradientUnits="userSpaceOnUse" x1="0" y1="${BASE}" x2="0" y2="${BASE - H}"><stop class="s1"/><stop class="s2" offset=".55"/><stop class="s3" offset="1"/></linearGradient>
-        <linearGradient id="hpShade"><stop stop-color="#000" stop-opacity=".45"/><stop offset=".3" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></linearGradient>
-        <clipPath id="hpClip"><path class="hp-sil"/></clipPath>
-        <filter id="hpBlur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>
+        <linearGradient id="${uid}Obj" gradientUnits="userSpaceOnUse" x1="0" y1="${BASE}" x2="0" y2="${BASE - H}"><stop class="s1"/><stop class="s2" offset=".55"/><stop class="s3" offset="1"/></linearGradient>
+        <linearGradient id="${uid}Shade"><stop stop-color="#000" stop-opacity=".45"/><stop offset=".3" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></linearGradient>
+        <clipPath id="${uid}Clip"><path class="hp-sil"/></clipPath>
+        <filter id="${uid}Blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>
       </defs>
       <ellipse class="hp-ground" cx="240" cy="464" rx="236" ry="9"/>
       <path class="c1" d="M48 396h384l22 16H26z"/>
@@ -207,13 +207,13 @@
         <path class="hp-sheen" d="M150 350h44l-48 40h-52zM300 350h20l-40 40h-24z"/>
         <g class="hp-obj">
           <ellipse class="hp-shadow" cx="${CX}" cy="${BASE + 2}"/>
-          <g clip-path="url(#hpClip)">
-            <rect fill="url(#hpObj)" x="${CX - 90}" y="${BASE - H - 20}" width="180" height="${H + 50}"/>
+          <g clip-path="url(#${uid}Clip)">
+            <rect fill="url(#${uid}Obj)" x="${CX - 90}" y="${BASE - H - 20}" width="180" height="${H + 50}"/>
             <g class="hp-shades">${shades}</g>
             <g class="hp-lines" fill="none" stroke="#000" stroke-opacity=".2" stroke-width=".8">${lines}</g>
           </g>
           <ellipse class="hp-rim"/><ellipse class="hp-in"/>
-          <path class="hp-bead" fill="none" stroke="url(#hpObj)" stroke-width="${LH * 1.05}" stroke-linecap="round"/>
+          <path class="hp-bead" fill="none" stroke="url(#${uid}Obj)" stroke-width="${LH * 1.05}" stroke-linecap="round"/>
         </g>
       </g>
       <g class="hp-gantry">
@@ -235,12 +235,12 @@
         <rect class="hp-heat" x="-11" y="-24" width="22" height="12" rx="1.5"/>
         <path class="hp-rod-f" d="M-6-12h12l-4 10h-4z"/>
       </g>
-      <circle class="hp-glow" r="6" filter="url(#hpBlur)"/>
+      <circle class="hp-glow" r="6" filter="url(#${uid}Blur)"/>
       <path class="hp-fil" fill="none" stroke-width="3" stroke-linecap="round"/>
     </svg>`;
   }
 
-  function heroPrinter(svg) {
+  function heroPrinter(svg, shift = 0) {
     const { N, LH, CX, BASE, E, H } = HP, PI = Math.PI;
     const PROFILES = [
       (u) => 28 + 22 * Math.sin(PI * (u * 1.25 + 0.08)) + 26 * u ** 6, // vase
@@ -297,7 +297,7 @@
     }
 
     function draw(now) {
-      const T = now / 1000, t = RM ? T_IN + T_PRINT + T_OUT + 0.5 : T % CYCLE;
+      const T = now / 1000 + shift, t = RM ? T_IN + T_PRINT + T_OUT + 0.5 : T % CYCLE;
       const p = RM ? 0 : Math.floor(T / CYCLE) % PROFILES.length;
       if (p !== prof) { prof = p; build(p); }
       let k, nx, ny, dy = 0, u, beadD = "M0 0", heat = 0, op = 1;
