@@ -169,22 +169,64 @@
       <span class="glare" aria-hidden="true"></span></a></div>`;
   }
 
-  /* Accueil (à droite du titre et dans « L'atelier ») : imprimante 3D qui imprime un objet couche par couche.
-     La buse fait le tour de chaque couche, le plateau avance et recule (comme une vraie
-     imprimante à plateau mobile), le portique monte d'une couche à chaque tour.
-     Trois objets se succèdent. Mis en pause hors écran ; objet terminé si « mouvement réduit ». */
-  const HP = { N: 28, LH: 5.2, CX: 240, BASE: 376, E: 0.2 };
+  /* Accueil (à droite du titre et dans « L'atelier ») : imprimante 3D qui imprime un pingouin couche par couche.
+     La buse balaie chaque couche, le plateau avance et recule (comme une vraie imprimante
+     à plateau mobile), le portique monte d'une couche à chaque passage, et la bobine prend
+     la couleur du filament en cours. Mis en pause hors écran ; pingouin terminé si « mouvement réduit ». */
+  const HP = { N: 37, LH: 4, CX: 240, BASE: 376, E: 0.12 };
   HP.H = HP.N * HP.LH;
+  /* Le pingouin, dessiné posé sur le plateau (bas = BASE = 376, haut du pompon = 228).
+     t : type (e = ellipse, r = rectangle, p = tracé), k : couleur, w : prise en compte dans la largeur imprimée */
+  const PENGUIN = [
+    { t: "e", k: "pk", cx: 196, cy: 334, rx: 10, ry: 27, rot: 18, w: [13, 27] },  // aile gauche
+    { t: "e", k: "pk", cx: 284, cy: 334, rx: 10, ry: 27, rot: -18, w: [13, 27] }, // aile droite
+    { t: "e", k: "pk", cx: 240, cy: 335, rx: 46, ry: 41 },                        // corps
+    { t: "e", k: "pw", cx: 240, cy: 341, rx: 33, ry: 31 },                        // ventre
+    { t: "e", k: "py", cx: 222, cy: 373, rx: 13, ry: 5 },                         // pattes
+    { t: "e", k: "py", cx: 258, cy: 373, rx: 13, ry: 5 },
+    { t: "e", k: "pk", cx: 240, cy: 282, rx: 33, ry: 33 },                        // tête
+    { t: "e", k: "pw", cx: 228, cy: 289, rx: 15, ry: 18 },                        // visage (deux lobes)
+    { t: "e", k: "pw", cx: 252, cy: 289, rx: 15, ry: 18 },
+    { t: "p", k: "py", d: "M229 296Q240 291 251 296Q246 306 240 306Q234 306 229 296Z" },       // bec
+    { t: "r", k: "pr", x: 199, y: 310, w: 82, h: 13, rx: 6.5 },                   // écharpe
+    { t: "r", k: "pr2", x: 252, y: 318, w: 12, h: 30, rx: 3 },                    // pan de l'écharpe
+    { t: "p", k: "pr", d: "M209 257C211 230 269 230 271 257Z", w: "dome" },       // bonnet
+    { t: "r", k: "pr", x: 205, y: 252, w: 70, h: 15, rx: 7 },                     // revers du bonnet
+    { t: "e", k: "pr", cx: 240, cy: 237, rx: 9, ry: 9 },                          // pompon
+  ];
+  const penguinShape = (s, cls = true) => {
+    const c = cls ? ` class="${s.k}"` : "";
+    if (s.t === "e") return `<ellipse${c} cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}"${s.rot ? ` transform="rotate(${s.rot} ${s.cx} ${s.cy})"` : ""}/>`;
+    if (s.t === "r") return `<rect${c} x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="${s.rx}"/>`;
+    return `<path${c} d="${s.d}"/>`;
+  };
+  /* Largeur à imprimer à la hauteur y : [gauche, droite] */
+  const penguinSpan = (y) => {
+    let l = Infinity, r = -Infinity;
+    const add = (a, b) => { l = Math.min(l, a); r = Math.max(r, b); };
+    for (const s of PENGUIN) {
+      if (s.w === "dome") { if (y <= 257 && y >= 237) { const h = 31 * Math.sqrt(1 - ((257 - y) / 20) ** 2); add(240 - h, 240 + h); } continue; }
+      if (s.t === "e") { const [rx, ry] = s.w || [s.rx, s.ry], v = (y - s.cy) / ry; if (Math.abs(v) < 1) { const h = rx * Math.sqrt(1 - v * v); add(s.cx - h, s.cx + h); } }
+      else if (s.t === "r" && y >= s.y && y <= s.y + s.h) add(s.x, s.x + s.w);
+    }
+    return l < r ? [l, Math.max(r, l + 6)] : [237, 243];
+  };
+  /* Couleur du filament selon la hauteur (comme un changeur de bobines) */
+  const penguinColor = (y) => (y > 368 ? "#F5B82E" : y > 323 ? "#F2F2F5" : y > 310 ? "#D7352F" : y > 268 ? "#2A2E39" : "#D7352F");
+
   function heroPrinterSvg(uid = "hp") {
-    const { N, LH, CX, BASE, H } = HP;
+    const { N, LH, BASE } = HP;
+    const art = PENGUIN.map((s) => penguinShape(s)).join("");
+    const clip = PENGUIN.filter((s) => s.k !== "pw").map((s) => penguinShape(s, false)).join("");
     const shades = Array.from({ length: N }, () => `<rect fill="url(#${uid}Shade)"/>`).join("");
-    const lines = Array.from({ length: N - 1 }, () => `<path/>`).join("");
     const vents = [0, 1, 2, 3, 4, 5].map((j) => `M24 ${-92 + j * 6}h40`).join("");
-    return `<svg class="hp" viewBox="0 0 480 480" role="img" aria-label="Animation : une imprimante 3D imprime un objet couche par couche">
+    const ribs = [212, 219, 226, 233, 240, 247, 254, 261, 268].map((x) => `M${x} 254v11`).join("");
+    return `<svg class="hp" viewBox="0 0 480 480" role="img" aria-label="Animation : une imprimante 3D imprime un pingouin couche par couche">
       <defs>
-        <linearGradient id="${uid}Obj" gradientUnits="userSpaceOnUse" x1="0" y1="${BASE}" x2="0" y2="${BASE - H}"><stop class="s1"/><stop class="s2" offset=".55"/><stop class="s3" offset="1"/></linearGradient>
-        <linearGradient id="${uid}Shade"><stop stop-color="#000" stop-opacity=".45"/><stop offset=".3" stop-color="#fff" stop-opacity=".22"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".5"/></linearGradient>
-        <clipPath id="${uid}Clip"><path class="hp-sil"/></clipPath>
+        <linearGradient id="${uid}Shade"><stop stop-color="#000" stop-opacity=".4"/><stop offset=".3" stop-color="#fff" stop-opacity=".2"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient>
+        <pattern id="${uid}Lines" patternUnits="userSpaceOnUse" x="0" y="${BASE}" width="480" height="${LH}"><rect width="480" height=".8" fill="#000" fill-opacity=".2"/></pattern>
+        <clipPath id="${uid}Shape">${clip}</clipPath>
+        <clipPath id="${uid}Rev"><rect class="hp-done" x="0" width="480"/><rect class="hp-cur"/></clipPath>
         <filter id="${uid}Blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>
       </defs>
       <ellipse class="hp-ground" cx="240" cy="464" rx="236" ry="9"/>
@@ -206,14 +248,20 @@
         <path class="hp-plate2" d="M76 390h328v7H76z"/>
         <path class="hp-sheen" d="M150 350h44l-48 40h-52zM300 350h20l-40 40h-24z"/>
         <g class="hp-obj">
-          <ellipse class="hp-shadow" cx="${CX}" cy="${BASE + 2}"/>
-          <g clip-path="url(#${uid}Clip)">
-            <rect fill="url(#${uid}Obj)" x="${CX - 90}" y="${BASE - H - 20}" width="180" height="${H + 50}"/>
-            <g class="hp-shades">${shades}</g>
-            <g class="hp-lines" fill="none" stroke="#000" stroke-opacity=".2" stroke-width=".8">${lines}</g>
+          <ellipse class="hp-shadow" cx="240" cy="377" rx="58" ry="7"/>
+          <g clip-path="url(#${uid}Rev)">
+            <g class="hp-art">${art}
+              <circle class="pe" cx="229" cy="287" r="3.6"/><circle class="pe" cx="251" cy="287" r="3.6"/>
+              <circle class="pw" cx="230.2" cy="285.8" r="1.1"/><circle class="pw" cx="252.2" cy="285.8" r="1.1"/>
+              <path class="pr2s" d="M254 346v7M257.3 346v7M260.6 346v7M263 346v6M209 316h70${ribs}"/>
+              <circle cx="240" cy="237" r="6" fill="none" stroke="#9E211D" stroke-width="2" stroke-dasharray="1.5 2.2"/>
+            </g>
+            <g clip-path="url(#${uid}Shape)">
+              <g class="hp-shades">${shades}</g>
+              <rect fill="url(#${uid}Lines)" x="150" y="220" width="180" height="170"/>
+              <rect class="hp-fresh" height="1.4"/>
+            </g>
           </g>
-          <ellipse class="hp-rim"/><ellipse class="hp-in"/>
-          <path class="hp-bead" fill="none" stroke="url(#${uid}Obj)" stroke-width="${LH * 1.05}" stroke-linecap="round"/>
         </g>
       </g>
       <g class="hp-gantry">
@@ -241,83 +289,53 @@
   }
 
   function heroPrinter(svg, shift = 0) {
-    const { N, LH, CX, BASE, E, H } = HP, PI = Math.PI;
-    const PROFILES = [
-      (u) => 28 + 22 * Math.sin(PI * (u * 1.25 + 0.08)) + 26 * u ** 6, // vase
-      (u) => 46 - 10 * u + (u > 0.86 ? 5 : 0),                          // pot à rebord
-      (u) => 24 + 30 * u ** 1.5,                                         // coupe évasée
-    ];
-    const T_IN = 0.9, L = 0.42, T_PRINT = N * L, T_OUT = 0.9, HOLD = 2.4, FADE = 0.8;
-    const CYCLE = T_IN + T_PRINT + T_OUT + HOLD + FADE, PARK = [150, BASE - H - 6];
+    const { N, LH, BASE, E, H } = HP, PI = Math.PI;
+    const T_IN = 0.9, L = 0.32, T_PRINT = N * L, T_OUT = 0.9, HOLD = 2.6, FADE = 0.8;
+    const CYCLE = T_IN + T_PRINT + T_OUT + HOLD + FADE, PARK = [150, BASE - H];
     const q = (s) => svg.querySelector(s);
-    const bed = q(".hp-bed"), obj = q(".hp-obj"), sil = q(".hp-sil"), rim = q(".hp-rim"), hole = q(".hp-in"), bead = q(".hp-bead"),
-      shadow = q(".hp-shadow"), gantry = q(".hp-gantry"), head = q(".hp-head"), fan = q(".hp-fan"), glow = q(".hp-glow"),
+    const bed = q(".hp-bed"), obj = q(".hp-obj"), done = q(".hp-done"), cur = q(".hp-cur"), fresh = q(".hp-fresh"),
+      gantry = q(".hp-gantry"), head = q(".hp-head"), fan = q(".hp-fan"), glow = q(".hp-glow"),
       fil = q(".hp-fil"), reel = q(".hp-reel"), spokes = q(".hp-spokes");
-    const shades = [...svg.querySelectorAll(".hp-shades rect")], lines = [...svg.querySelectorAll(".hp-lines path")];
+    const shades = [...svg.querySelectorAll(".hp-shades rect")];
     const f1 = (n) => n.toFixed(1);
     const top = (i) => BASE - (i + 1) * LH;      // dessus de la couche i (= pointe de la buse)
     const ease = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
     const lerp = (a, b, s) => a + (b - a) * s;
-    let R = [], prof = -1, shown = -1, stops = [], raf = 0, visible = true;
+    const SPAN = Array.from({ length: N }, (_, i) => penguinSpan(top(i) + LH / 2));
+    let shown = -1, raf = 0, visible = true;
 
-    /* Couleurs du dégradé de marque (suivent le thème clair / sombre) */
-    const readColors = () => {
-      const cs = getComputedStyle(svg);
-      stops = ["--violet", "--cyan", "--orange"].map((v) => (cs.getPropertyValue(v).trim().match(/[0-9a-f]{2}/gi) || ["80", "80", "80"]).map((h) => parseInt(h, 16)));
-    };
-    const colorAt = (u) => {
-      const [a, b, t] = u < 0.55 ? [stops[0], stops[1], u / 0.55] : [stops[1], stops[2], (u - 0.55) / 0.45];
-      return `rgb(${a.map((v, i) => Math.round(lerp(v, b[i], Math.min(1, Math.max(0, t))))).join(",")})`;
-    };
+    SPAN.forEach(([l, r], i) => { const s = shades[i]; s.setAttribute("x", f1(l)); s.setAttribute("width", f1(r - l)); s.setAttribute("y", f1(top(i))); s.setAttribute("height", f1(LH + (i ? 0.4 : 8))); });
+    const set = (e, a) => { for (const k in a) e.setAttribute(k, typeof a[k] === "number" ? f1(a[k]) : a[k]); };
 
-    /* Géométrie de l'objet en cours (rayon de chaque couche) */
-    function build(p) {
-      R = Array.from({ length: N }, (_, i) => PROFILES[p]((i + 0.5) / N));
-      shades.forEach((r, i) => { r.setAttribute("x", f1(CX - R[i])); r.setAttribute("width", f1(2 * R[i])); r.setAttribute("y", f1(top(i))); r.setAttribute("height", f1(LH + (i ? 0.6 : R[0] * E + 2))); });
-      lines.forEach((l, i) => { const r = Math.min(R[i], R[i + 1]), y = f1(top(i)); l.setAttribute("d", `M${f1(CX - r)} ${y}A${f1(r)} ${f1(r * E)} 0 0 0 ${f1(CX + r)} ${y}`); });
-      shadow.setAttribute("rx", f1(R[0] * 1.25)); shadow.setAttribute("ry", f1(R[0] * 1.25 * E));
-      shown = -1;
-    }
-    /* Affiche les k premières couches terminées */
+    /* Couches terminées : tout ce qui est sous le dessus de la couche k-1 */
     function show(k) {
       if (k === shown) return;
       shown = k;
-      shades.forEach((r, i) => r.style.display = i < k ? "" : "none");
-      lines.forEach((l, i) => l.style.display = i < k - 1 ? "" : "none");
-      if (!k) { sil.setAttribute("d", "M0 0"); rim.style.display = hole.style.display = "none"; return; }
-      let d = `M${f1(CX - R[0])} ${BASE}A${f1(R[0])} ${f1(R[0] * E)} 0 0 0 ${f1(CX + R[0])} ${BASE}`;
-      for (let i = 0; i < k; i++) d += `L${f1(CX + R[i])} ${f1(top(i) + LH)}L${f1(CX + R[i])} ${f1(top(i))}`;
-      const rt = R[k - 1], yt = f1(top(k - 1));
-      d += `A${f1(rt)} ${f1(rt * E)} 0 0 0 ${f1(CX - rt)} ${yt}`;
-      for (let i = k - 1; i >= 0; i--) d += `L${f1(CX - R[i])} ${f1(top(i))}L${f1(CX - R[i])} ${f1(top(i) + LH)}`;
-      sil.setAttribute("d", d + "Z");
-      for (const [e, r] of [[rim, rt], [hole, rt - 4]]) { e.setAttribute("cx", CX); e.setAttribute("cy", yt); e.setAttribute("rx", f1(r)); e.setAttribute("ry", f1(r * E)); }
-      rim.style.display = "";
-      hole.style.display = k > 2 ? "" : "none"; // le fond de l'objet est plein
+      const y = k ? top(k - 1) : BASE + 20;
+      set(done, { y, height: BASE + 20 - y });
+      shades.forEach((r, i) => r.style.display = i < k + 1 ? "" : "none");
     }
 
     function draw(now) {
       const T = now / 1000 + shift, t = RM ? T_IN + T_PRINT + T_OUT + 0.5 : T % CYCLE;
-      const p = RM ? 0 : Math.floor(T / CYCLE) % PROFILES.length;
-      if (p !== prof) { prof = p; build(p); }
-      let k, nx, ny, dy = 0, u, beadD = "M0 0", heat = 0, op = 1;
+      let k, nx, ny, dy = 0, cy = BASE, heat = 0, op = 1, curW = 0;
       if (t < T_IN) {                                   // la buse descend vers la première couche
-        const s = ease(t / T_IN); k = 0; u = 0;
-        nx = lerp(PARK[0], CX - R[0], s); ny = lerp(PARK[1], top(0), s); heat = s;
-      } else if (t < T_IN + T_PRINT) {                 // impression : un tour de buse par couche
+        const s = ease(t / T_IN); k = 0;
+        nx = lerp(PARK[0], SPAN[0][0], s); ny = lerp(PARK[1], top(0), s); heat = s;
+      } else if (t < T_IN + T_PRINT) {                 // impression : aller (couche déposée) puis retour
         const x = (t - T_IN) / L; k = Math.floor(x);
-        const f = x - k, phi = PI - 2 * PI * f, r = R[k], yc = top(k) + LH / 2;
-        nx = CX + r * Math.cos(phi); ny = top(k); dy = -E * r * Math.sin(phi); u = x / N; heat = 1;
-        const n = Math.max(2, Math.ceil(f * 48));
-        beadD = "";
-        for (let j = 0; j <= n; j++) { const a = PI - 2 * PI * f * (j / n); beadD += `${j ? "L" : "M"}${f1(CX + r * Math.cos(a))} ${f1(yc + r * E * Math.sin(a))}`; }
-      } else {                                          // la tête se range, pause, l'objet disparaît
+        const f = x - k, phi = PI - 2 * PI * f, [l, r] = SPAN[k], c = (l + r) / 2, rr = (r - l) / 2;
+        nx = c + rr * Math.cos(phi); ny = top(k); dy = -E * rr * Math.sin(phi); heat = 1; cy = top(k) + LH / 2;
+        curW = f < 0.5 ? nx - l + 1 : r - l + 2;
+        set(cur, { x: l - 1, y: top(k) - 0.3, width: curW, height: LH + 0.6 });
+        set(fresh, { x: l, y: top(k), width: Math.max(0, curW - 1) });
+      } else {                                          // la tête se range, pause, le pingouin disparaît
         const t2 = t - T_IN - T_PRINT, s = ease(Math.min(1, t2 / T_OUT)), fo = Math.max(0, (t2 - T_OUT - HOLD) / FADE);
-        k = N; nx = lerp(CX - R[N - 1], PARK[0], s); ny = lerp(top(N - 1), PARK[1], s);
-        heat = 1 - s; op = 1 - fo; u = 1 - fo;
+        k = N; nx = lerp(SPAN[N - 1][0], PARK[0], s); ny = lerp(top(N - 1), PARK[1], s);
+        heat = 1 - s; op = 1 - fo; cy = fo > 0 ? BASE : top(N - 1);
       }
+      if (!curW) { set(cur, { width: 0 }); set(fresh, { width: 0 }); }
       show(k);
-      bead.setAttribute("d", beadD);
       obj.style.opacity = op;
       bed.setAttribute("transform", `translate(0 ${f1(dy)})`);
       gantry.setAttribute("transform", `translate(0 ${f1(ny)})`);
@@ -326,17 +344,15 @@
       glow.setAttribute("cx", f1(nx)); glow.setAttribute("cy", f1(ny - 2)); glow.style.opacity = heat * 0.9;
       const ex = nx - 2, ey = ny - 102;
       fil.setAttribute("d", `M413 80C430 150 ${f1(ex + 100)} ${f1(ey - 60)} ${f1(ex)} ${f1(ey)}`);
-      const c = colorAt(u);
-      fil.style.stroke = reel.style.fill = c;
+      fil.style.stroke = reel.style.fill = penguinColor(cy);
       const spun = t < T_IN ? 0 : Math.min(1, (t - T_IN) / T_PRINT);
       spokes.setAttribute("transform", `rotate(${f1(-spun * 540)})`);
       if (!RM && visible) raf = requestAnimationFrame(draw);
     }
     const start = () => { cancelAnimationFrame(raf); raf = requestAnimationFrame(draw); };
-    readColors(); start();
+    start();
     new IntersectionObserver(([e]) => { visible = e.isIntersecting && !document.hidden; if (visible) start(); }).observe(svg);
     document.addEventListener("visibilitychange", () => { visible = !document.hidden; if (visible) start(); });
-    new MutationObserver(() => { readColors(); start(); }).observe(document.documentElement, { attributes: true, attributeFilter: ["data-theme"] });
   }
 
   /* ================= CATALOGUE (boutique + pages catégorie) ================= */

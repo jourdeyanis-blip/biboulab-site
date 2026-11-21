@@ -285,19 +285,25 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .hp { --hp-c1: #4E5363; --hp-c2: #393D4A; --hp-c3: #282B35; --hp-bed: #BFC3CE; --hp-bed2: #8F95A4; --hp-rod: #A9AFBD; }
 [data-theme="light"] .hp { --hp-c1: #6A7082; --hp-c2: #525868; --hp-c3: #3B3F4B; --hp-bed: #DCDFE6; --hp-bed2: #B4B9C5; --hp-rod: #8F95A5; }
 .hp .c1 { fill: var(--hp-c1); } .hp .c2 { fill: var(--hp-c2); } .hp .c3 { fill: var(--hp-c3); }
-.hp .s1 { stop-color: var(--violet); } .hp .s2 { stop-color: var(--cyan); } .hp .s3 { stop-color: var(--orange); }
 .hp-ground { fill: #000; opacity: .28; }
 [data-theme="light"] .hp-ground { opacity: .1; }
 .hp-plate { fill: var(--hp-bed); } .hp-plate2 { fill: var(--hp-bed2); }
 .hp-sheen { fill: #fff; opacity: .22; }
 .hp-shadow { fill: #000; opacity: .22; }
-.hp-rim { fill: none; stroke: #fff; stroke-opacity: .45; stroke-width: 1; }
-.hp-in { fill: #000; fill-opacity: .5; }
 .hp-hole-c { fill: var(--bg); }
 .hp-rod { fill: var(--hp-rod); }
 .hp-rod-f { fill: var(--hp-rod); }
 .hp-heat { fill: var(--hp-c1); }
 .hp-glow { fill: var(--orange); }
+/* Couleurs du pingouin imprimé */
+.hp .pk { fill: #2A2E39; stroke: #fff; stroke-opacity: .08; }
+.hp .pw { fill: #F2F2F5; }
+.hp .py { fill: #F5B82E; }
+.hp .pr { fill: #D7352F; }
+.hp .pr2 { fill: #C02C27; }
+.hp .pe { fill: #14161C; }
+.hp .pr2s { fill: none; stroke: #9E211D; stroke-width: 1.6; stroke-linecap: round; }
+.hp-fresh { fill: #fff; fill-opacity: .55; }
 .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .875rem; color: var(--muted); margin-bottom: 24px; }
 .eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
 .hero-title .w { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: .12em; margin-bottom: -.12em; }
