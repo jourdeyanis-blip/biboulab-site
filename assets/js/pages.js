@@ -132,7 +132,7 @@
       </div></section>
 
       <section class="section" style="padding-top:0" aria-labelledby="at-t"><div class="wrap split">
-        <div class="split-media" data-reveal="left">${ABOUT.photos[0].src ? `<img data-parallax=".1" src="${esc(ABOUT.photos[0].src)}" alt="${esc(ABOUT.photos[0].alt)}" loading="lazy">` : `<div data-parallax=".1">${heroPrinterSvg("hpa")}</div>`}</div>
+        <div class="split-media" data-reveal="left">${ABOUT.photos[0].src ? `<img data-parallax=".1" src="${esc(ABOUT.photos[0].src)}" alt="${esc(ABOUT.photos[0].alt)}" loading="lazy">` : `<div data-parallax=".1">${heroPrinterSvg("hpa", "figurine")}</div>`}</div>
         <div data-reveal="right">
           <p class="kicker">L'atelier</p>
           <h2 id="at-t">Imprimé couche par couche, <span class="grad-text">fini à la main</span></h2>
@@ -156,7 +156,7 @@
 
       ${extBlock()}`;
 
-    $$(".hp").forEach((svg, i) => heroPrinter(svg, i * 6.5)); // l'imprimante de l'atelier démarre décalée
+    $$(".hp").forEach((svg, i) => heroPrinter(svg, i * 6.5)); // pingouin en haut, figurine dans « L'atelier » (démarrage décalé)
     jsonLd({ "@context": "https://schema.org", "@type": "Store", name: SITE.name, url: SITE.url, slogan: SITE.slogan, email: SITE.email, sameAs: SITE.stores.map((s) => s.url) });
   }
 
@@ -169,62 +169,101 @@
       <span class="glare" aria-hidden="true"></span></a></div>`;
   }
 
-  /* Accueil (à droite du titre et dans « L'atelier ») : imprimante 3D qui imprime un pingouin couche par couche.
-     La buse balaie chaque couche, le plateau avance et recule (comme une vraie imprimante
-     à plateau mobile), le portique monte d'une couche à chaque passage, et la bobine prend
-     la couleur du filament en cours. Mis en pause hors écran ; pingouin terminé si « mouvement réduit ». */
+  /* Accueil : imprimante 3D qui imprime un objet couche par couche — un pingouin à droite du titre,
+     une figurine dans « L'atelier ». La buse balaie chaque couche, le plateau avance et recule
+     (comme une vraie imprimante à plateau mobile), le portique monte d'une couche à chaque passage,
+     et la bobine prend la couleur du filament en cours. Mis en pause hors écran ; objet terminé
+     si « mouvement réduit ». */
   const HP = { N: 37, LH: 4, CX: 240, BASE: 376, E: 0.12 };
   HP.H = HP.N * HP.LH;
-  /* Le pingouin, dessiné posé sur le plateau (bas = BASE = 376, haut du pompon = 228).
-     t : type (e = ellipse, r = rectangle, p = tracé), k : couleur, w : prise en compte dans la largeur imprimée */
-  const PENGUIN = [
-    { t: "e", k: "pk", cx: 196, cy: 334, rx: 10, ry: 27, rot: 18, w: [13, 27] },  // aile gauche
-    { t: "e", k: "pk", cx: 284, cy: 334, rx: 10, ry: 27, rot: -18, w: [13, 27] }, // aile droite
-    { t: "e", k: "pk", cx: 240, cy: 335, rx: 46, ry: 41 },                        // corps
-    { t: "e", k: "pw", cx: 240, cy: 341, rx: 33, ry: 31 },                        // ventre
-    { t: "e", k: "py", cx: 222, cy: 373, rx: 13, ry: 5 },                         // pattes
-    { t: "e", k: "py", cx: 258, cy: 373, rx: 13, ry: 5 },
-    { t: "e", k: "pk", cx: 240, cy: 282, rx: 33, ry: 33 },                        // tête
-    { t: "e", k: "pw", cx: 228, cy: 289, rx: 15, ry: 18 },                        // visage (deux lobes)
-    { t: "e", k: "pw", cx: 252, cy: 289, rx: 15, ry: 18 },
-    { t: "p", k: "py", d: "M229 296Q240 291 251 296Q246 306 240 306Q234 306 229 296Z" },       // bec
-    { t: "r", k: "pr", x: 199, y: 310, w: 82, h: 13, rx: 6.5 },                   // écharpe
-    { t: "r", k: "pr2", x: 252, y: 318, w: 12, h: 30, rx: 3 },                    // pan de l'écharpe
-    { t: "p", k: "pr", d: "M209 257C211 230 269 230 271 257Z", w: "dome" },       // bonnet
-    { t: "r", k: "pr", x: 205, y: 252, w: 70, h: 15, rx: 7 },                     // revers du bonnet
-    { t: "e", k: "pr", cx: 240, cy: 237, rx: 9, ry: 9 },                          // pompon
-  ];
-  const penguinShape = (s, cls = true) => {
+  /* Objets dessinés posés sur le plateau (bas = BASE = 376, sommet = 228).
+     t : type (e = ellipse, r = rectangle, p = tracé), k : classe de couleur,
+     sp : ellipse qui remplace la forme pour calculer la largeur imprimée (ymax : seulement au-dessus) */
+  /* Boucles de cheveux de la figurine : [x, y, rayon] */
+  const FIG_CURLS = [[199, 254, 8], [209, 243, 9], [224, 238, 9], [240, 237, 9], [256, 238, 9], [271, 243, 9], [281, 254, 8], [191, 267, 6], [289, 267, 6], [222, 256, 6], [240, 255, 6.5], [258, 256, 6]];
+  const PRINTS = {
+    penguin: {
+      name: "un pingouin",
+      shapes: [
+        { t: "e", k: "pk", cx: 196, cy: 334, rx: 10, ry: 27, rot: 18, sp: { rx: 13, ry: 27 } },  // aile gauche
+        { t: "e", k: "pk", cx: 284, cy: 334, rx: 10, ry: 27, rot: -18, sp: { rx: 13, ry: 27 } }, // aile droite
+        { t: "e", k: "pk", cx: 240, cy: 335, rx: 46, ry: 41 },                        // corps
+        { t: "e", k: "pw", cx: 240, cy: 341, rx: 33, ry: 31 },                        // ventre
+        { t: "e", k: "py", cx: 222, cy: 373, rx: 13, ry: 5 },                         // pattes
+        { t: "e", k: "py", cx: 258, cy: 373, rx: 13, ry: 5 },
+        { t: "e", k: "pk", cx: 240, cy: 282, rx: 33, ry: 33 },                        // tête
+        { t: "e", k: "pw", cx: 228, cy: 289, rx: 15, ry: 18 },                        // visage (deux lobes)
+        { t: "e", k: "pw", cx: 252, cy: 289, rx: 15, ry: 18 },
+        { t: "p", k: "py", d: "M229 296Q240 291 251 296Q246 306 240 306Q234 306 229 296Z" },       // bec
+        { t: "r", k: "pr", x: 199, y: 310, w: 82, h: 13, rx: 6.5 },                   // écharpe
+        { t: "r", k: "pr2", x: 252, y: 318, w: 12, h: 30, rx: 3 },                    // pan de l'écharpe
+        { t: "p", k: "pr", d: "M209 257C211 230 269 230 271 257Z", sp: { cx: 240, cy: 257, rx: 31, ry: 20, ymax: 257 } }, // bonnet
+        { t: "r", k: "pr", x: 205, y: 252, w: 70, h: 15, rx: 7 },                     // revers du bonnet
+        { t: "e", k: "pr", cx: 240, cy: 237, rx: 9, ry: 9 },                          // pompon
+      ],
+      details: `<circle class="pe" cx="229" cy="287" r="3.6"/><circle class="pe" cx="251" cy="287" r="3.6"/>
+              <circle class="pw" cx="230.2" cy="285.8" r="1.1"/><circle class="pw" cx="252.2" cy="285.8" r="1.1"/>
+              <path class="pr2s" d="M254 346v7M257.3 346v7M260.6 346v7M263 346v6M209 316h70${[212, 219, 226, 233, 240, 247, 254, 261, 268].map((x) => `M${x} 254v11`).join("")}"/>
+              <circle cx="240" cy="237" r="6" fill="none" stroke="#9E211D" stroke-width="2" stroke-dasharray="1.5 2.2"/>`,
+      color: (y) => (y > 368 ? "#F5B82E" : y > 323 ? "#F2F2F5" : y > 310 ? "#D7352F" : y > 268 ? "#2A2E39" : "#D7352F"),
+    },
+    figurine: {
+      name: "une figurine",
+      shapes: [
+        { t: "e", k: "fo", cx: 228, cy: 370, rx: 14, ry: 7 },                        // chaussures
+        { t: "e", k: "fo", cx: 252, cy: 370, rx: 14, ry: 7 },
+        { t: "r", k: "fp", x: 222, y: 329, w: 36, h: 37, rx: 3 },                     // pantalon
+        { t: "r", k: "fk", x: 205, y: 297, w: 15, h: 37, rx: 7, rot: 8 },             // manches
+        { t: "r", k: "fk", x: 260, y: 297, w: 15, h: 37, rx: 7, rot: -8 },
+        { t: "e", k: "fs", cx: 209, cy: 338, rx: 6, ry: 7.5 },                        // mains
+        { t: "e", k: "fs", cx: 271, cy: 338, rx: 6, ry: 7.5 },
+        { t: "r", k: "fk", x: 218, y: 295, w: 44, h: 37, rx: 5 },                     // haut noir
+        { t: "r", k: "fv", x: 217, y: 297, w: 19, h: 33, rx: 3 },                     // gilet
+        { t: "r", k: "fv", x: 244, y: 297, w: 19, h: 33, rx: 3 },
+        { t: "r", k: "fb", x: 220, y: 326, w: 40, h: 6, rx: 2 },                      // ceinture
+        { t: "r", k: "fs", x: 192, y: 230, w: 96, h: 70, rx: 28 },                    // tête
+        { t: "p", k: "fh", d: "M190 272C184 240 206 228 240 228C274 228 296 240 290 272C287 262 282 256 272 254C252 250 228 250 208 254C198 256 193 262 190 272Z", sp: { cx: 240, cy: 262, rx: 52, ry: 34, ymax: 272 } }, // cheveux
+        ...FIG_CURLS.map(([cx, cy, r]) => ({ t: "e", k: "fh", cx, cy, rx: r, ry: r })), // boucles
+      ],
+      details: `<path class="fhs" d="${FIG_CURLS.map(([x, y, r]) => `M${x - r / 2} ${y + 1}a${r / 2} ${r / 2} 0 1 1 ${r / 2} ${r / 2}`).join("")}"/>
+              <path class="fhs" stroke-width="3.2" d="M208 268q9-5 19-2M253 266q10-3 19 2"/>
+              <circle class="pe" cx="219" cy="280" r="8"/><circle class="pe" cx="261" cy="280" r="8"/>
+              <circle class="pw" cx="221.5" cy="277.5" r="2"/><circle class="pw" cx="263.5" cy="277.5" r="2"/>
+              <path d="M238 292l2-7 2 7z" fill="#DDA185"/>
+              <path d="M234 299l6 7 6-7M240 306v20" fill="none" stroke="#E9EAEC" stroke-width="1.6"/>
+              <path class="fvs" d="M219 311h12v8h-12zM249 311h12v8h-12zM240 336v30"/>
+              <rect x="235.5" y="326" width="9" height="6" rx="1" fill="#D6D9DD"/>`,
+      color: (y) => (y > 362 ? "#4B5058" : y > 332 ? "#A7ABB1" : y > 300 ? "#26282E" : y > 262 ? "#EAC29A" : "#B39A5A"),
+    },
+  };
+  const printShape = (s, cls = true) => {
     const c = cls ? ` class="${s.k}"` : "";
     if (s.t === "e") return `<ellipse${c} cx="${s.cx}" cy="${s.cy}" rx="${s.rx}" ry="${s.ry}"${s.rot ? ` transform="rotate(${s.rot} ${s.cx} ${s.cy})"` : ""}/>`;
-    if (s.t === "r") return `<rect${c} x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="${s.rx}"/>`;
+    if (s.t === "r") return `<rect${c} x="${s.x}" y="${s.y}" width="${s.w}" height="${s.h}" rx="${s.rx}"${s.rot ? ` transform="rotate(${s.rot} ${s.x + s.w / 2} ${s.y + s.h / 2})"` : ""}/>`;
     return `<path${c} d="${s.d}"/>`;
   };
   /* Largeur à imprimer à la hauteur y : [gauche, droite] */
-  const penguinSpan = (y) => {
+  const printSpan = (shapes, y) => {
     let l = Infinity, r = -Infinity;
     const add = (a, b) => { l = Math.min(l, a); r = Math.max(r, b); };
-    for (const s of PENGUIN) {
-      if (s.w === "dome") { if (y <= 257 && y >= 237) { const h = 31 * Math.sqrt(1 - ((257 - y) / 20) ** 2); add(240 - h, 240 + h); } continue; }
-      if (s.t === "e") { const [rx, ry] = s.w || [s.rx, s.ry], v = (y - s.cy) / ry; if (Math.abs(v) < 1) { const h = rx * Math.sqrt(1 - v * v); add(s.cx - h, s.cx + h); } }
+    for (const s of shapes) {
+      const e = s.sp ? { cx: s.cx, cy: s.cy, ...s.sp } : s.t === "e" ? s : null;
+      if (e) { if (e.ymax != null && y > e.ymax) continue; const v = (y - e.cy) / e.ry; if (Math.abs(v) < 1) { const h = e.rx * Math.sqrt(1 - v * v); add(e.cx - h, e.cx + h); } }
       else if (s.t === "r" && y >= s.y && y <= s.y + s.h) add(s.x, s.x + s.w);
     }
     return l < r ? [l, Math.max(r, l + 6)] : [237, 243];
   };
-  /* Couleur du filament selon la hauteur (comme un changeur de bobines) */
-  const penguinColor = (y) => (y > 368 ? "#F5B82E" : y > 323 ? "#F2F2F5" : y > 310 ? "#D7352F" : y > 268 ? "#2A2E39" : "#D7352F");
 
-  function heroPrinterSvg(uid = "hp") {
-    const { N, LH, BASE } = HP;
-    const art = PENGUIN.map((s) => penguinShape(s)).join("");
-    const clip = PENGUIN.filter((s) => s.k !== "pw").map((s) => penguinShape(s, false)).join("");
+  function heroPrinterSvg(uid = "hp", obj = "penguin") {
+    const { N, LH, BASE } = HP, P = PRINTS[obj];
+    const art = P.shapes.map((s) => printShape(s)).join("");
+    const clip = P.shapes.map((s) => printShape(s, false)).join("");
     const shades = Array.from({ length: N }, () => `<rect fill="url(#${uid}Shade)"/>`).join("");
+    const layerLines = Array.from({ length: N }, (_, i) => `M150 ${BASE - i * LH - 0.4}h180`).join(""); // lignes de couches
     const vents = [0, 1, 2, 3, 4, 5].map((j) => `M24 ${-92 + j * 6}h40`).join("");
-    const ribs = [212, 219, 226, 233, 240, 247, 254, 261, 268].map((x) => `M${x} 254v11`).join("");
-    return `<svg class="hp" viewBox="0 0 480 480" role="img" aria-label="Animation : une imprimante 3D imprime un pingouin couche par couche">
+    return `<svg class="hp" data-obj="${obj}" viewBox="0 0 480 480" role="img" aria-label="Animation : une imprimante 3D imprime ${P.name} couche par couche">
       <defs>
         <linearGradient id="${uid}Shade"><stop stop-color="#000" stop-opacity=".4"/><stop offset=".3" stop-color="#fff" stop-opacity=".2"/><stop offset=".55" stop-color="#fff" stop-opacity="0"/><stop offset="1" stop-color="#000" stop-opacity=".45"/></linearGradient>
-        <pattern id="${uid}Lines" patternUnits="userSpaceOnUse" x="0" y="${BASE}" width="480" height="${LH}"><rect width="480" height=".8" fill="#000" fill-opacity=".2"/></pattern>
         <clipPath id="${uid}Shape">${clip}</clipPath>
         <clipPath id="${uid}Rev"><rect class="hp-done" x="0" width="480"/><rect class="hp-cur"/></clipPath>
         <filter id="${uid}Blur" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="3"/></filter>
@@ -251,14 +290,11 @@
           <ellipse class="hp-shadow" cx="240" cy="377" rx="58" ry="7"/>
           <g clip-path="url(#${uid}Rev)">
             <g class="hp-art">${art}
-              <circle class="pe" cx="229" cy="287" r="3.6"/><circle class="pe" cx="251" cy="287" r="3.6"/>
-              <circle class="pw" cx="230.2" cy="285.8" r="1.1"/><circle class="pw" cx="252.2" cy="285.8" r="1.1"/>
-              <path class="pr2s" d="M254 346v7M257.3 346v7M260.6 346v7M263 346v6M209 316h70${ribs}"/>
-              <circle cx="240" cy="237" r="6" fill="none" stroke="#9E211D" stroke-width="2" stroke-dasharray="1.5 2.2"/>
+              ${P.details}
             </g>
             <g clip-path="url(#${uid}Shape)">
               <g class="hp-shades">${shades}</g>
-              <rect fill="url(#${uid}Lines)" x="150" y="220" width="180" height="170"/>
+              <path d="${layerLines}" stroke="#000" stroke-opacity=".2" stroke-width=".8"/>
               <rect class="hp-fresh" height="1.4"/>
             </g>
           </g>
@@ -289,7 +325,7 @@
   }
 
   function heroPrinter(svg, shift = 0) {
-    const { N, LH, BASE, E, H } = HP, PI = Math.PI;
+    const { N, LH, BASE, E, H } = HP, PI = Math.PI, P = PRINTS[svg.dataset.obj] || PRINTS.penguin;
     const T_IN = 0.9, L = 0.32, T_PRINT = N * L, T_OUT = 0.9, HOLD = 2.6, FADE = 0.8;
     const CYCLE = T_IN + T_PRINT + T_OUT + HOLD + FADE, PARK = [150, BASE - H];
     const q = (s) => svg.querySelector(s);
@@ -301,7 +337,7 @@
     const top = (i) => BASE - (i + 1) * LH;      // dessus de la couche i (= pointe de la buse)
     const ease = (x) => (x < 0.5 ? 4 * x ** 3 : 1 - (-2 * x + 2) ** 3 / 2);
     const lerp = (a, b, s) => a + (b - a) * s;
-    const SPAN = Array.from({ length: N }, (_, i) => penguinSpan(top(i) + LH / 2));
+    const SPAN = Array.from({ length: N }, (_, i) => printSpan(P.shapes, top(i) + LH / 2));
     let shown = -1, raf = 0, visible = true;
 
     SPAN.forEach(([l, r], i) => { const s = shades[i]; s.setAttribute("x", f1(l)); s.setAttribute("width", f1(r - l)); s.setAttribute("y", f1(top(i))); s.setAttribute("height", f1(LH + (i ? 0.4 : 8))); });
@@ -344,7 +380,7 @@
       glow.setAttribute("cx", f1(nx)); glow.setAttribute("cy", f1(ny - 2)); glow.style.opacity = heat * 0.9;
       const ex = nx - 2, ey = ny - 102;
       fil.setAttribute("d", `M413 80C430 150 ${f1(ex + 100)} ${f1(ey - 60)} ${f1(ex)} ${f1(ey)}`);
-      fil.style.stroke = reel.style.fill = penguinColor(cy);
+      fil.style.stroke = reel.style.fill = P.color(cy);
       const spun = t < T_IN ? 0 : Math.min(1, (t - T_IN) / T_PRINT);
       spokes.setAttribute("transform", `rotate(${f1(-spun * 540)})`);
       if (!RM && visible) raf = requestAnimationFrame(draw);

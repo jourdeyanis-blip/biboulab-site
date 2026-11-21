@@ -304,6 +304,16 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .hp .pe { fill: #14161C; }
 .hp .pr2s { fill: none; stroke: #9E211D; stroke-width: 1.6; stroke-linecap: round; }
 .hp-fresh { fill: #fff; fill-opacity: .55; }
+/* Couleurs de la figurine imprimée (section « L'atelier ») */
+.hp .fs { fill: #EAC29A; }
+.hp .fh { fill: #B39A5A; }
+.hp .fhs { fill: none; stroke: #8A7540; stroke-width: 1.6; stroke-linecap: round; }
+.hp .fk { fill: #26282E; stroke: #fff; stroke-opacity: .08; }
+.hp .fv { fill: #BFC3C8; }
+.hp .fvs { fill: none; stroke: #8E9399; stroke-width: 1.2; }
+.hp .fp { fill: #A7ABB1; }
+.hp .fb { fill: #8E9399; }
+.hp .fo { fill: #4B5058; }
 .eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .875rem; color: var(--muted); margin-bottom: 24px; }
 .eyebrow i { width: 6px; height: 6px; border-radius: 50%; background: var(--ok); }
 .hero-title .w { display: inline-block; overflow: hidden; vertical-align: bottom; padding-bottom: .12em; margin-bottom: -.12em; }
