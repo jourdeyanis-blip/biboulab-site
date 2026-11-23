@@ -53,6 +53,14 @@
     .t-leaf .t-pick { min-height: 36px; padding: 0 12px 0 8px; }
     .t-leaf .t-pick b { font-weight: 400; font-size: .875rem; color: var(--muted); }
     .t-leaf:hover .t-pick b, .t-leaf[aria-current="true"] .t-pick b { color: var(--text); }
+    .t-nc { width: 30px; height: 36px; flex: none; display: grid; place-items: center; border-radius: 8px; }
+    .t-nc i { width: 11px; height: 11px; border-radius: 50%; border: 1.5px solid var(--faint); opacity: 0; transition: opacity .18s var(--ease), transform .18s var(--ease); }
+    .t-row:hover .t-nc i, .t-nc:focus-visible i { opacity: 1; }
+    .t-nc:hover i { transform: scale(1.2); border-color: var(--nc); }
+    .t-nc[aria-pressed="true"] i { opacity: 1; background: var(--nc); border-color: var(--nc); }
+    @media (hover: none) { .t-nc i { opacity: .6; } }
+    .nc-dot { display: inline-block; width: 12px; height: 12px; border-radius: 50%; background: var(--nc); margin: 0 8px 0 6px; vertical-align: -1px; box-shadow: 0 0 0 2px rgba(255, 255, 255, .85); }
+    .nc-box { padding: 12px 14px; border: 1px solid var(--line); border-radius: var(--r-s); }
     .t-none { margin: 0; padding: 8px; color: var(--faint); font-size: .8125rem; }
     .t-row.dragging { opacity: .4; }
     .t-row.drop-in { box-shadow: inset 0 0 0 2px var(--accent); }
@@ -501,6 +509,7 @@
     let upCat = null;
     st.cats.forEach((c) => st.open.add(c));
     const catOf = (slug) => st.cats.find((c) => c.slug === slug);
+    const ncCol = () => (/^#[0-9a-f]{6}$/i.test((st.site.home && st.site.home.ncColor) || "") ? st.site.home.ncColor : "#E5484D"); // couleur de la pastille licence non commerciale
     const cur = () => st.sel;
     const isP = () => st.prods.includes(st.sel);
     const inCat = (c) => st.prods.filter((p) => p.category === c.slug);
@@ -568,7 +577,8 @@
       const match = (p) => slugify(p.name + " " + p.id).includes(q);
       const hit = (c) => !q || slugify(c.name).includes(q) || inCat(c).some(match) || kidsOf(c).some(hit);
       const leaf = (p) => `<div class="t-row t-leaf" draggable="true" data-kind="prod" data-i="${st.prods.indexOf(p)}" aria-current="${p === st.sel}">
-              <button class="t-pick" type="button" data-pick="prod" data-i="${st.prods.indexOf(p)}"><b>${esc(p.name) || "Sans nom"}</b><span class="num">${euro(p.price)}</span></button></div>`;
+              <button class="t-pick" type="button" data-pick="prod" data-i="${st.prods.indexOf(p)}"><b>${esc(p.name) || "Sans nom"}</b><span class="num">${euro(p.price)}</span></button>
+              <button class="t-nc" type="button" data-nc="${st.prods.indexOf(p)}" aria-pressed="${!!p.nonCommercial}" style="--nc:${ncCol()}" title="${p.nonCommercial ? "Pastille licence non commerciale activée (cliquer pour la retirer)" : "Activer la pastille licence non commerciale"}" aria-label="Pastille licence non commerciale : ${esc(p.name) || "Sans nom"}"><i></i></button></div>`;
       const node = (c) => {
         if (!hit(c)) return "";
         const ci = st.cats.indexOf(c), own = inCat(c), kids = q ? own.filter(match) : own, subs = kidsOf(c);
@@ -589,6 +599,11 @@
       const b = e.target.closest("button"); if (!b) return;
       if (b.dataset.tog !== undefined) { const c = st.cats[+b.dataset.tog]; st.open.has(c) ? st.open.delete(c) : st.open.add(c); return list(); }
       if (b.dataset.addin !== undefined) return addProduct(st.cats[+b.dataset.addin]);
+      if (b.dataset.nc !== undefined) { // pastille licence non commerciale, d'un clic
+        const p = st.prods[+b.dataset.nc]; if (!p) return;
+        if (p.nonCommercial) delete p.nonCommercial; else p.nonCommercial = true;
+        touch(); list(); if (st.sel === p) form(); return;
+      }
       if (b.dataset.pick) { st.sel = (b.dataset.pick === "cat" ? st.cats : st.prods)[+b.dataset.i]; list(); form(); $("#main").scrollTop = 0; }
     });
 
@@ -699,6 +714,8 @@
           ${idField(p, "id", "Identifiant")}
           <div class="fg"><label for="f-category">Catégorie</label><select class="select" id="f-category" data-k="category">${st.cats.map((c) => `<option value="${esc(c.slug)}"${c.slug === p.category ? " selected" : ""}>${esc(pathName(c))}</option>`).join("")}</select></div>
           ${F("price", "Prix en euros", { v: p.price, type: "number", num: 1, step: "0.1", hint: "Prix de base, avant supplément de taille" })}
+          <div class="fg full nc-box"><label class="check"><input type="checkbox" data-k="nonCommercial"${p.nonCommercial ? " checked" : ""}><span><i class="nc-dot" style="--nc:${ncCol()}"></i>Pastille licence non commerciale</span></label>
+            <p class="hint">Cochée : un point de couleur s'affiche sur la vignette de cette pièce, à l'accueil (modèles qu'on ne peut pas vendre, ex. licence CC BY-NC). Aussi activable d'un clic sur le point, dans la liste à gauche. Couleur : Réglages › Page d'accueil</p></div>
           ${F("short", "Accroche", { v: p.short, full: 1, ph: "Une phrase qui donne envie", hint: "Affichée sous le nom, sur la fiche" })}
           ${F("description", "Description", { v: p.description, full: 1, area: 1 })}
         </div></section>
@@ -720,8 +737,7 @@
         <section class="a-sec"><h2>Créateur et licence</h2><div class="form">
           ${F("creator", "Nom du créateur", { v: p.creator, opt: 1, ph: "Pseudo ou nom du créateur du modèle" })}
           ${F("license", "Licence", { v: p.license, opt: 1, ph: "CC BY-NC 4.0", hint: "Affichés au-dessus de la fiche technique (« Non renseigné » si vide)" })}
-          <div class="fg full"><label class="check"><input type="checkbox" data-k="nonCommercial"${p.nonCommercial ? " checked" : ""}><span>Licence non commerciale : afficher une pastille <i style="display:inline-block;width:12px;height:12px;border-radius:50%;vertical-align:-1px;background:${/^#[0-9a-f]{6}$/i.test(st.site.home.ncColor || "") ? st.site.home.ncColor : "#E5484D"}"></i> sur sa vignette, à l'accueil</span></label>
-            <p class="hint">${/\bNC\b|non[ -]?commerc/i.test(p.license || "") && !p.nonCommercial ? "La licence saisie semble non commerciale (NC) : pensez à cocher cette case. " : ""}Pour les modèles qui ne peuvent pas être vendus (ex. licence CC BY-NC). Un simple point de couleur, sans texte ; la couleur se règle dans Réglages › Page d'accueil</p></div>
+          ${/\bNC\b|non[ -]?commerc/i.test(p.license || "") && !p.nonCommercial ? `<div class="fg full"><p class="hint" style="color:#F5A524">Cette licence semble non commerciale (NC) : pensez à cocher « Pastille licence non commerciale », en haut de la fiche</p></div>` : ""}
         </div></section>
         <section class="a-sec"><h2>Fiche technique</h2><div class="form">
           ${F("material", "Matériau", { v: p.material, ph: "PLA", hint: "Le filtre de la boutique reconnaît PLA et PETG" })}
