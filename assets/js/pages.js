@@ -122,24 +122,18 @@
       <section class="section" aria-labelledby="cats-t">
         <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">Les univers</p><h2 id="cats-t">Huit catégories, <span class="grad-text">mille idées</span></h2></div>
           <a class="btn btn-ghost btn-sm" href="boutique.html">Toute la boutique ${icon("arrow", "ic-arrow")}</a></header></div>
-        <div class="pg">
-          <div class="pg-stage" tabindex="0" data-cursor="Glisser" aria-label="Galerie des créations. Glissez pour explorer, cliquez sur une création pour l'ouvrir. Au clavier : flèches pour se déplacer, Entrée pour ouvrir la création au centre.">
-            <div class="pg-grid" aria-hidden="true"></div>
-            <div class="pg-dim" aria-hidden="true"></div><div class="pg-spot" aria-hidden="true"></div><div class="pg-vig" aria-hidden="true"></div>
-            <p class="pg-hint" aria-hidden="true">Glissez pour explorer · cliquez pour ouvrir</p>
-          </div>
-        </div>
+        ${pgStage("pg-univ", "Galerie des créations")}
         <div class="wrap"><nav class="pg-univers" aria-label="Les univers">${roots().map((c) => {
           const n = PRODUCTS.filter((p) => catFamily(c.slug).includes(p.category)).length;
           return `<a class="chip" href="categorie.html?c=${c.slug}" style="--c:${c.color}"><i class="pg-dot" aria-hidden="true"></i>${esc(c.name)} <span class="muted">${n}</span></a>`;
         }).join("")}</nav></div>
       </section>
 
-      <section class="section" style="padding-top:0" aria-labelledby="new-t"><div class="wrap">
-        <header class="sec-h" data-reveal><div><p class="kicker">Derniers produits</p><h2 id="new-t">Tout juste sortis du plateau</h2></div>
-          <a class="btn btn-ghost btn-sm" href="boutique.html">Voir les ${PRODUCTS.length} créations ${icon("arrow", "ic-arrow")}</a></header>
-        <div class="grid">${latest.map(card).join("")}</div>
-      </div></section>
+      <section class="section" style="padding-top:0" aria-labelledby="new-t">
+        <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">Derniers produits</p><h2 id="new-t">Tout juste sortis du plateau</h2></div>
+          <a class="btn btn-ghost btn-sm" href="boutique.html">Voir les ${PRODUCTS.length} créations ${icon("arrow", "ic-arrow")}</a></header></div>
+        ${pgStage("pg-new", "Galerie des dernières créations")}
+      </section>
 
       <section class="section" style="padding-top:0" aria-labelledby="at-t"><div class="wrap split">
         <div class="split-media" data-reveal="left">${ABOUT.photos[0].src ? `<img data-parallax=".1" src="${esc(ABOUT.photos[0].src)}" alt="${esc(ABOUT.photos[0].alt)}" loading="lazy">` : `<div data-parallax=".1">${heroPrinterSvg("hpa", "figurine")}</div>`}</div>
@@ -167,7 +161,8 @@
       ${extBlock()}`;
 
     $$(".hp").forEach((svg, i) => heroPrinter(svg, i * 6.5)); // pingouin en haut, figurine dans « L'atelier » (démarrage décalé)
-    phantomGallery($(".pg-stage"));
+    phantomGallery($("#pg-univ"));   // toutes les créations, mélangées par univers
+    phantomGallery($("#pg-new"), latest); // les 8 dernières, de la plus récente à la plus ancienne
     jsonLd({ "@context": "https://schema.org", "@type": "Store", name: SITE.name, url: SITE.url, slogan: SITE.slogan, email: SITE.email, sameAs: SITE.stores.map((s) => s.url) });
   }
 
@@ -186,7 +181,17 @@
      légende tapée à la machine ; un clic ailleurs (ou Échap) la renvoie à sa place.
      Adapté du composant « Phantom Infinite Gallery » (Cue Foundations), en JavaScript natif.
      Les cases utilisent la 1re photo de chaque produit, sinon son visuel d'illustration. */
-  function phantomGallery(stage) {
+  /* Plateau d'une galerie (le contenu est ajouté par phantomGallery) */
+  const pgStage = (id, label) => `<div class="pg">
+          <div class="pg-stage" id="${id}" tabindex="0" data-cursor="Glisser" aria-label="${label}. Glissez pour explorer, cliquez sur une création pour l'ouvrir. Au clavier : flèches pour se déplacer, Entrée pour ouvrir la création au centre.">
+            <div class="pg-grid" aria-hidden="true"></div>
+            <div class="pg-dim" aria-hidden="true"></div><div class="pg-spot" aria-hidden="true"></div><div class="pg-vig" aria-hidden="true"></div>
+            <p class="pg-hint" aria-hidden="true">Glissez pour explorer · cliquez pour ouvrir</p>
+          </div>
+        </div>`;
+
+  /* list : créations à afficher (dans cet ordre). Sans list : tout le catalogue, mélangé par univers. */
+  function phantomGallery(stage, list) {
     if (!stage || !PRODUCTS.length) return;
     const CFG = {
       cell: 210, cellMobile: 150,   // taille d'une case (px)
@@ -202,8 +207,8 @@
 
     /* Créations mélangées univers par univers : deux cases voisines changent de couleur */
     const groups = roots().map((c) => PRODUCTS.filter((p) => catFamily(c.slug).includes(p.category))).filter((g) => g.length);
-    const items = [];
-    for (let k = 0, max = Math.max(0, ...groups.map((g) => g.length)); k < max; k++) groups.forEach((g) => g[k] && items.push(g[k]));
+    const items = list && list.length ? [...list] : [];
+    if (!items.length) for (let k = 0, max = Math.max(0, ...groups.map((g) => g.length)); k < max; k++) groups.forEach((g) => g[k] && items.push(g[k]));
     if (!items.length) items.push(...PRODUCTS);
     const N = items.length;
     const thumbs = items.map((p) => {
