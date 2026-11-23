@@ -950,7 +950,17 @@
           { title: "Tout juste sortis du plateau (dernières créations)", fields: [
             { k: "home.latest.kicker", label: "Surtitre" },
             { k: "home.latest.cta", label: "Bouton", hint: "{n} est remplacé par le nombre de créations" },
-            { k: "home.latest.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" }
+            { k: "home.latest.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" },
+            { k: "home.latest.gallery", type: "list", label: "Photos de la galerie", itemName: "photo", add: "Ajouter une photo",
+              hint: "Les photos du mur à faire glisser, dans cet ordre. Aucune photo : la galerie montre automatiquement les 8 dernières créations du catalogue",
+              title: (g, i) => g.title || `Photo ${i + 1}`, make: () => ({ src: "", title: "", meta: "", text: "", link: "", cta: "" }), item: [
+              { k: "src", label: "Photo", type: "photo", hint: "Format carré conseillé" },
+              { k: "title", label: "Titre", opt: 1, ph: "Dragon articulé" },
+              { k: "meta", label: "Petit texte à droite du titre", opt: 1, ph: "18,90 € · 2026" },
+              { k: "text", label: "Description", type: "area", opt: 1, hint: "Tapée à la machine quand on ouvre la photo" },
+              { k: "link", label: "Lien", opt: 1, ph: "produit.html?id=dragon-articule", hint: "Une page du site (ex. produit.html?id=…, categorie.html?c=…) ou une adresse en https://. Vide : pas de bouton" },
+              { k: "cta", label: "Texte du bouton", opt: 1, ph: "Découvrir" }
+            ] }
           ] },
           { title: "L'atelier", fields: [
             { k: "home.atelier.kicker", label: "Surtitre" },
@@ -1053,7 +1063,7 @@
       let fields = PANELS[st.panel].secs.flatMap((s) => s.fields), f = null;
       for (let i = 0; i < p.length; i++) {
         if (f && f.type === "list") { if (!Array.isArray(f.item)) return { k: p[i], type: f.item }; fields = f.item; f = null; continue; } // p[i] : numéro de l'élément
-        f = fields.find((x) => String(x.k).split(".")[0] === String(p[i]));
+        f = fields.find((x) => String(x.k).split(".").every((k, j) => String(p[i + j]) === k)); // clé simple ou chemin (« home.latest.gallery »)
         if (!f) return null;
         i += String(f.k).split(".").length - 1;
       }
@@ -1257,6 +1267,10 @@
       }
       for (const p of st.prods) { const gone = p.colors.find((c) => !keys.has(c)); if (gone) return at("filaments", `La couleur « ${gone} » est encore utilisée par « ${p.name} » : décochez-la sur l'objet avant de la supprimer`); }
       for (const r of st.reviews) { if (!r.name.trim()) return at("avis", "Un avis n'a pas de nom de client"); if (!(r.stars >= 1 && r.stars <= 5)) return at("avis", `La note de « ${r.name} » doit aller de 1 à 5`); }
+      for (const g of (S.home && S.home.latest && S.home.latest.gallery) || []) {
+        const l = (g.link || "").trim();
+        if (l && !/^(https?:\/\/[^\s"'<>]+|[a-z0-9-]+\.html(\?[\w=&%.-]*)?(#[\w-]*)?)$/i.test(l)) return at("accueil", `Lien invalide pour « ${g.title || "une photo de la galerie"} » : une page du site (ex. produit.html?id=dragon) ou une adresse en https://`);
+      }
       if (!st.about.title.trim()) return at("about", "La page À propos n'a pas de titre");
       for (const [k, d] of Object.entries(st.pages)) if (!d.title.trim()) return at(k, "Cette page n'a pas de titre");
       return "";
@@ -1265,6 +1279,7 @@
       const site = structuredClone(st.site);
       site.marquee = site.marquee.map((m) => m.trim()).filter(Boolean);
       if (site.home && site.home.atelier) site.home.atelier.points = (site.home.atelier.points || []).map((t) => t.trim()).filter(Boolean);
+      if (site.home && site.home.latest) site.home.latest.gallery = (site.home.latest.gallery || []).filter((g) => g.src && g.src.trim()).map((g) => ({ ...g, link: (g.link || "").trim() }));
       const about = structuredClone(st.about);
       about.story = about.story.map((t) => t.trim()).filter(Boolean);
       return {

@@ -442,6 +442,7 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .pg-fcat { display: inline-flex; align-items: center; gap: 8px; font-size: .8125rem; color: rgba(238, 240, 245, .8); }
 .pg-fcat::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
 .pg-fcat:hover { color: #fff; }
+.pg-cap [hidden] { display: none !important; } /* photo sans univers ou sans lien */
 .pg-fhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; width: 100%; font-size: 1.0625rem; min-height: 1.4em; }
 .pg-fhead b { font-weight: 500; }
 .pg-fhead span { flex: none; font-variant-numeric: tabular-nums; color: rgba(238, 240, 245, .85); }

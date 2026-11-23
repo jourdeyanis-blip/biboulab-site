@@ -124,6 +124,10 @@ class AdminTests(TestCase):
         contenu["site"]["legal"]["siret"] = "123 456 789 00012"
         contenu["site"]["home"]["univers"]["title"] = "Nos *univers*"
         contenu["site"]["home"]["atelier"]["photo"] = "assets/img/atelier/atelier-1.webp"
+        contenu["site"]["home"]["latest"]["gallery"] = [
+            {"src": "assets/img/atelier/g1.webp", "title": "Dragon", "meta": "2026", "text": "", "link": "produit.html?id=dragon", "cta": ""},
+            {"src": "assets/img/produits/g2.webp", "title": "", "meta": "", "text": "", "link": "https://makerworld.com/fr", "cta": "Voir"},
+        ]
         r = self.c.post("/api/sauver/", data=json.dumps({**CATALOGUE, **contenu}), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 200, r.content)
         js = (self.site / "assets" / "js" / "contenu.js").read_text("utf-8")
@@ -148,6 +152,8 @@ class AdminTests(TestCase):
             ("site", lambda c: c["site"]["home"].__setitem__("heroPhoto", "../../backend/x.php")),
             ("site", lambda c: c["site"]["home"]["atelier"].__setitem__("photo", "https://ailleurs.example/x.png")),
             ("site", lambda c: c["site"]["home"]["univers"].__setitem__("title", {"html": "<b>"})),
+            ("site", lambda c: c["site"]["home"]["latest"].__setitem__("gallery", [{"src": "assets/img/atelier/a.webp", "link": "javascript:alert(1)"}])),
+            ("site", lambda c: c["site"]["home"]["latest"].__setitem__("gallery", [{"src": "https://ailleurs.example/a.png"}])),
         ]
         for nom, piege in pieges:
             contenu = self.contenus()

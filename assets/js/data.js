@@ -49,7 +49,8 @@ const SITE = {
   home: {
     heroPhoto: "", heroPhotoAlt: "",   // photo du bandeau principal. Vide = imprimante 3D animée
     univers: { kicker: "Les univers", title: "Huit catégories, *mille idées*", cta: "Toute la boutique" },
-    latest: { kicker: "Derniers produits", title: "Tout juste sortis du plateau", cta: "Voir les {n} créations" },
+    latest: { kicker: "Derniers produits", title: "Tout juste sortis du plateau", cta: "Voir les {n} créations",
+      gallery: [] },                    // photos de la galerie : { src, title, meta, text, link, cta }. Vide = les 8 dernières créations
     atelier: {
       kicker: "L'atelier", title: "Imprimé couche par couche, *fini à la main*",
       points: ["Modélisé et imprimé par mes soins, sur imprimante Bambu Lab", "Petites séries et couleurs au choix, rien ne dort en stock", "Personnalisation et pièces sur mesure sur simple demande"],

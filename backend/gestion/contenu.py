@@ -18,6 +18,7 @@ HEX = re.compile(r"^#[0-9a-fA-F]{6}$")
 TEINTE = re.compile(r"^[#a-zA-Z0-9(),.%\s-]{1,200}$")   # couleur ou dégradé CSS, sans « ; » ni guillemet
 CLE_COULEUR = re.compile(r"^[a-z0-9]+$")
 URL = re.compile(r"^https?://[^\s\"'<>]+$")
+LIEN_PAGE = re.compile(r"^[a-z0-9-]+\.html(\?[\w=&%.-]*)?(#[\w-]*)?$", re.I)   # page du site, ex. produit.html?id=dragon
 TEXTE_MAX = 20_000
 
 
@@ -125,12 +126,27 @@ def verifier(contenu: dict, produits: list) -> None:
     _image(accueil.get("heroPhoto"), "photo du bandeau de l'accueil")
     for k, v in accueil.items():
         if isinstance(v, dict):
-            if not all(isinstance(x, str) or (isinstance(x, list) and all(isinstance(t, str) for t in x)) for x in v.values()):
-                raise Invalide("Page d'accueil incomplète.")
+            for cle, x in v.items():
+                if cle == "gallery":
+                    continue   # vérifiée plus bas
+                if not (isinstance(x, str) or (isinstance(x, list) and all(isinstance(t, str) for t in x))):
+                    raise Invalide("Page d'accueil incomplète.")
         elif not isinstance(v, str):
             raise Invalide("Page d'accueil incomplète.")
     if isinstance(accueil.get("atelier"), dict):
         _image(accueil["atelier"].get("photo"), "photo de l'atelier, à l'accueil")
+    # Photos de la galerie « Tout juste sortis du plateau » (vide : les dernières créations)
+    galerie = accueil.get("latest", {}).get("gallery", []) if isinstance(accueil.get("latest"), dict) else []
+    if not isinstance(galerie, list) or len(galerie) > 60:
+        raise Invalide("Galerie de l'accueil invalide (60 photos au maximum).")
+    for g in galerie:
+        if not isinstance(g, dict) or not all(isinstance(x, str) for x in g.values()):
+            raise Invalide("Une photo de la galerie de l'accueil est incomplète.")
+        if not g.get("src"):
+            raise Invalide("Une photo de la galerie de l'accueil n'a pas d'image.")
+        _image(g["src"], "photo de la galerie de l'accueil")
+        if g.get("link") and not (URL.match(g["link"]) or LIEN_PAGE.match(g["link"])):
+            raise Invalide(f"Lien invalide pour « {g.get('title') or 'une photo de la galerie'} » : une page du site (ex. produit.html?id=dragon) ou une adresse en https://")
 
     livraison = site.get("shipping")
     if not isinstance(livraison, dict):

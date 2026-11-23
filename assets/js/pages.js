@@ -158,7 +158,8 @@
       ${extBlock()}`;
 
     $$(".hp").forEach((svg, i) => heroPrinter(svg, i * 6.5)); // pingouin en haut, figurine dans « L'atelier » (démarrage décalé)
-    phantomGallery($("#pg-new"), latest); // les 8 dernières, de la plus récente à la plus ancienne
+    const photos = (H.latest.gallery || []).filter((g) => g && g.src);
+    phantomGallery($("#pg-new"), photos.length ? photos.map(galleryEntry) : latest.map(productEntry)); // vos photos, sinon les 8 dernières créations
     jsonLd({ "@context": "https://schema.org", "@type": "Store", name: SITE.name, url: SITE.url, slogan: SITE.slogan, email: SITE.email, sameAs: SITE.stores.map((s) => s.url) });
   }
 
@@ -202,9 +203,21 @@
           </div>
         </div>`;
 
-  /* list : créations à afficher (dans cet ordre). Sans list : tout le catalogue, mélangé par univers. */
+  /* Cases de la galerie : une création du catalogue, ou une photo choisie dans l'administration */
+  const productEntry = (p) => {
+    const c = cat(p.category) || {};
+    return { title: p.name, meta: (p.sizes && p.sizes.length ? "dès " : "") + euro(p.price), metaShort: euro(p.price), text: p.short || "",
+      label: c.name || "", labelHref: c.slug ? `categorie.html?c=${c.slug}` : "", color: c.color || "#8B5CF6",
+      href: `produit.html?id=${encodeURIComponent(p.id)}`, cta: "Voir la création", img: (p.images && p.images[0]) || "", p };
+  };
+  const safeLink = (u) => (/^(https?:\/\/[^\s"'<>]+|[a-z0-9-]+\.html(\?[\w=&%.-]*)?(#[\w-]*)?)$/i.test(u || "") ? u : "");
+  const galleryEntry = (g) => ({ title: g.title || "", meta: g.meta || "", metaShort: g.meta || "", text: g.text || "", label: "", labelHref: "",
+    color: "#8B5CF6", href: safeLink(g.link), cta: g.cta || "Découvrir", img: g.src });
+
+  /* list : cases à afficher (dans cet ordre), créées par productEntry ou galleryEntry.
+     Sans list : tout le catalogue, mélangé par univers. */
   function phantomGallery(stage, list) {
-    if (!stage || !PRODUCTS.length) return;
+    if (!stage || !(list && list.length) && !PRODUCTS.length) return;
     const CFG = {
       cell: 210, cellMobile: 150,   // taille d'une case (px)
       arcAmount: 0.6, arcMaxDeg: 28, // courbure horizontale du mur
@@ -220,14 +233,14 @@
     /* Créations mélangées univers par univers : deux cases voisines changent de couleur */
     const groups = roots().map((c) => PRODUCTS.filter((p) => catFamily(c.slug).includes(p.category))).filter((g) => g.length);
     const items = list && list.length ? [...list] : [];
-    if (!items.length) for (let k = 0, max = Math.max(0, ...groups.map((g) => g.length)); k < max; k++) groups.forEach((g) => g[k] && items.push(g[k]));
-    if (!items.length) items.push(...PRODUCTS);
+    if (!items.length) {
+      for (let k = 0, max = Math.max(0, ...groups.map((g) => g.length)); k < max; k++) groups.forEach((g) => g[k] && items.push(productEntry(g[k])));
+      if (!items.length) items.push(...PRODUCTS.map(productEntry));
+    }
     const N = items.length;
-    const thumbs = items.map((p) => {
-      const src = p.images && p.images[0];
-      if (src) return `url("${encodeURI(src).replace(/"/g, "%22")}")`;
-      return `url("data:image/svg+xml,${encodeURIComponent(art(p).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" '))}")`;
-    });
+    const thumbs = items.map((e) => e.img
+      ? `url("${encodeURI(e.img).replace(/"/g, "%22")}")`
+      : `url("data:image/svg+xml,${encodeURIComponent(art(e.p).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" '))}")`);
 
     /* ---- État du mouvement ---- */
     let W = 0, H = 0, base = CFG.cell, size, tSize;
@@ -241,11 +254,11 @@
     off = { x: W / 2 - size / 2, y: H / 2 - size / 2 }; tOff = { ...off };
 
     function makeCell(gx, gy) {
-      const i = (((gx + gy * 3) % N) + N) % N, p = items[i], c = cat(p.category) || {};
+      const i = (((gx + gy * 3) % N) + N) % N, e = items[i];
       const el = document.createElement("div");
       el.className = "pg-cell"; el.dataset.i = i;
-      el.style.setProperty("--c", c.color || "#8B5CF6");
-      el.innerHTML = `<div class="pg-thumb"></div><div class="pg-meta"><span>${esc(p.name)}</span><span>${euro(p.price)}</span></div>`;
+      el.style.setProperty("--c", e.color);
+      el.innerHTML = `<div class="pg-thumb"></div>${e.title || e.metaShort ? `<div class="pg-meta"><span>${esc(e.title)}</span><span>${esc(e.metaShort)}</span></div>` : ""}`;
       el.firstChild.style.backgroundImage = thumbs[i];
       return el;
     }
@@ -404,16 +417,20 @@
       tiltRaf = requestAnimationFrame(tiltLoop);
     }
     function openFocus(cell) {
-      const i = +cell.dataset.i, p = items[i], c = cat(p.category) || {};
+      const i = +cell.dataset.i, e = items[i];
       const r = cell.getBoundingClientRect();
       const w = Math.min(360, innerWidth - 48, (innerHeight - 140) / 1.3), h = w * 1.3;
-      const price = (p.sizes && p.sizes.length ? "dès " : "") + euro(p.price);
       fImg.style.backgroundImage = thumbs[i];
-      fc.style.setProperty("--c", c.color || "#8B5CF6");
-      fc.setAttribute("aria-label", p.name);
-      fCat.href = `categorie.html?c=${c.slug}`; fCat.textContent = c.name || "";
-      fGo.href = `produit.html?id=${encodeURIComponent(p.id)}`;
-      fSr.textContent = `${p.name}, ${price}. ${p.short || ""}`;
+      fc.style.setProperty("--c", e.color);
+      fc.setAttribute("aria-label", e.title || "Photo");
+      fCat.hidden = !e.label; fCat.href = e.labelHref || "#"; fCat.textContent = e.label;
+      fGo.hidden = !e.href;
+      if (e.href) {
+        fGo.href = e.href; fGo.innerHTML = `${esc(e.cta)} ${icon("arrow", "ic-arrow")}`;
+        const ext = /^https?:/i.test(e.href);
+        fGo.target = ext ? "_blank" : ""; fGo.rel = ext ? "noopener noreferrer" : "";
+      }
+      fSr.textContent = [e.title, e.meta].filter(Boolean).join(", ") + (e.text ? `. ${e.text}` : "");
       fTitle.textContent = fPrice.textContent = fDesc.textContent = "";
       Object.assign(fc.style, { width: w + "px", height: h + "px", transition: "none", left: r.left + r.width / 2 + "px", top: r.top + r.height / 2 + "px", opacity: "0", transform: `${P} scale(${r.width / w})` });
       void fc.offsetWidth; // fixe la position de départ avant la transition
@@ -421,10 +438,10 @@
       fc.classList.add("on"); dim.classList.add("on"); stage.classList.add("focused"); fc.inert = false;
       open = true; openedAt = performance.now(); focusCell = cell; scrollY0 = scrollY;
       tilt = { rx: 0, ry: 0, tx: 0, ty: 0 };
-      setTimeout(() => { if (open) fGo.focus({ preventScroll: true }); }, 60); // après le passage en visible
+      setTimeout(() => { if (open) (e.href ? fGo : $(".pg-fclose", fc)).focus({ preventScroll: true }); }, 60); // après le passage en visible
       typeTimer = setTimeout(() => {
         if (!open) return;
-        typewriter([[fTitle, p.name, 34], [fPrice, price, 28], [fDesc, p.short || "", 12]]);
+        typewriter([[fTitle, e.title, 34], [fPrice, e.meta, 28], [fDesc, e.text, 12]]);
         if (!RM && FINE) { fc.style.transition = "opacity .3s ease"; tiltLoop(); } // inclinaison 3D à la souris
       }, RM ? 0 : 600);
     }
@@ -447,7 +464,7 @@
       if (!open) return;
       if (e.key === "Escape") close();
       else if (e.key === "Tab") { // le focus reste dans la carte
-        const f = $$("a, button", fc), first = f[0], lastF = f[f.length - 1];
+        const f = $$("a:not([hidden]), button", fc), first = f[0], lastF = f[f.length - 1];
         if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastF.focus(); }
         else if (!e.shiftKey && document.activeElement === lastF) { e.preventDefault(); first.focus(); }
       }
