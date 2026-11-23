@@ -38,6 +38,8 @@ def verifier(cats: list, prods: list) -> None:
             raise Invalide(f"Deux catégories portent l'identifiant « {c['slug']} ».")
         if not str(c.get("name") or "").strip():
             raise Invalide(f"La catégorie « {c['slug']} » n'a pas de nom.")
+        if c.get("image") not in (None, "") and not (isinstance(c["image"], str) and IMAGE.match(c["image"])):
+            raise Invalide(f"Chemin de photo non autorisé pour la catégorie « {c['name']} ».")
         slugs.add(c["slug"])
 
     parents = {}

@@ -18,8 +18,16 @@ En ligne sur **/admin/** (voir « Administration en ligne » plus bas), ou en lo
 
 - **Catalogue** : catégories et objets (détail ci-dessous).
 - **Pages** : textes de la page À propos (histoire, photos de l'atelier, frise du process) et des quatre pages légales (mentions légales, CGV, confidentialité, rétractation). Chaque page se découpe en sections : intertitre, texte, encadré ou non ; ajoutez, réordonnez ou supprimez-les. Un aperçu se met à jour à côté pendant la saisie. Titre et description pour Google se règlent aussi ici.
-- **Réglages** : identité et contact (nom, slogan, e-mail, adresse du site, logo), **informations légales** (exploitant, SIRET, adresse, hébergeur, médiateur, mention TVA), page d'accueil (bandeau, chiffres, bandeau défilant), livraison, moyens de paiement, boutiques externes, couleurs de filament et avis clients.
+- **Réglages** : identité et contact (nom, slogan, e-mail, adresse du site, logo), **informations légales** (exploitant, SIRET, adresse, hébergeur, médiateur, mention TVA), **page d'accueil** (textes et photos de chaque section, voir ci-dessous), livraison, moyens de paiement, boutiques externes, couleurs de filament et avis clients.
 - **Suivi commande** : votre tableau personnel façon Trello (détail ci-dessous). Le bouton **« Commandes »**, lui, reste la liste des vraies commandes payées sur le site.
+
+**Page d'accueil** (Réglages › Page d'accueil) : chaque section se règle de haut en bas.
+- Bandeau principal : surtitre, titre, texte, boutons, et une **photo** à droite du titre (vide : l'imprimante 3D animée).
+- Chiffres animés et bandeau défilant.
+- « Les univers », « Tout juste sortis du plateau », « L'atelier », « Avis clients », « Retrouvez-moi aussi sur » : surtitre, titre, bouton. Les mots du titre entre `*étoiles*` passent en dégradé.
+- « L'atelier » : points forts (un par ligne) et **photo** (vide : 1re photo de la page À propos, sinon l'imprimante animée).
+- Le bloc « Retrouvez-moi aussi sur » apparaît aussi en bas des autres pages.
+- **Photo de chaque carte « Les univers »** : dans le Catalogue, sur la fiche de la catégorie (« Photo de la carte »). Vide : la 1re photo d'un de ses objets, sinon le visuel d'illustration.
 
 Dans les textes des pages : ligne vide = nouveau paragraphe, `- ` en début de ligne = puce, `**gras**`, `[lien](cgv.html)`, `### intertitre`. Les variables comme `{owner}`, `{siret}`, `{address}`, `{email}` sont remplacées par les informations légales des Réglages : changez votre SIRET une fois, toutes les pages suivent. Modifier une page légale met automatiquement à jour sa date « Dernière mise à jour ».
 

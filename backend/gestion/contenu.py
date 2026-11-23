@@ -119,6 +119,18 @@ def verifier(contenu: dict, produits: list) -> None:
         _nombre(s.get("value"), "Chiffre de l'accueil")
     if not isinstance(site.get("marquee"), list) or not all(isinstance(m, str) for m in site["marquee"]):
         raise Invalide("Bandeau défilant incomplet.")
+    accueil = site.get("home", {})   # textes et photos des sections de l'accueil (facultatif)
+    if not isinstance(accueil, dict):
+        raise Invalide("Page d'accueil incomplète.")
+    _image(accueil.get("heroPhoto"), "photo du bandeau de l'accueil")
+    for k, v in accueil.items():
+        if isinstance(v, dict):
+            if not all(isinstance(x, str) or (isinstance(x, list) and all(isinstance(t, str) for t in x)) for x in v.values()):
+                raise Invalide("Page d'accueil incomplète.")
+        elif not isinstance(v, str):
+            raise Invalide("Page d'accueil incomplète.")
+    if isinstance(accueil.get("atelier"), dict):
+        _image(accueil["atelier"].get("photo"), "photo de l'atelier, à l'accueil")
 
     livraison = site.get("shipping")
     if not isinstance(livraison, dict):

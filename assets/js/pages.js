@@ -12,14 +12,18 @@
 
   /* ================= Blocs réutilisables ================= */
 
+  /* Titre avec mots en dégradé : « Huit catégories, *mille idées* » */
+  const rich = (t) => esc(t).replace(/\*([^*]+)\*/g, '<span class="grad-text">$1</span>');
+  const H = SITE.home; // textes et photos de l'accueil (data.js ou administration)
+
   /* Bloc « Retrouvez-moi aussi sur » (MakerWorld / Cults3D) */
   const extBlock = () => `
     <section class="section" aria-labelledby="ext-t"><div class="wrap">
       <div class="ext-block" data-reveal="scale">
         <div>
-          <p class="kicker">Ailleurs sur le web</p>
-          <h2 id="ext-t">Retrouvez-moi aussi sur</h2>
-          <p class="muted" style="margin:14px 0 0;max-width:42ch">Vous avez une imprimante ? Mes modèles sont aussi disponibles en téléchargement, à imprimer chez vous.</p>
+          <p class="kicker">${esc(H.ext.kicker)}</p>
+          <h2 id="ext-t">${rich(H.ext.title)}</h2>
+          ${H.ext.text ? `<p class="muted" style="margin:14px 0 0;max-width:42ch">${esc(H.ext.text)}</p>` : ""}
         </div>
         <div class="ext-btns">
           ${SITE.stores.map((s) => `<a class="store-btn" href="${esc(s.url)}" ${extAttrs} style="--sc:${s.color}" data-magnetic>${storeLogo(s)}<span><b>${esc(s.name)}</b><small>${esc(s.tagline)}</small></span>${icon("ext")}<span class="sr">(nouvel onglet)</span></a>`).join("")}
@@ -97,6 +101,7 @@
     const plainTitle = SITE.hero.title.replace(/\*/g, "");
     const latest = [...PRODUCTS].sort((a, b) => b.date.localeCompare(a.date)).slice(0, 8);
     const loop = SITE.marquee.map((m) => `<span>${esc(m)}</span>`).join("");
+    const atPhoto = H.atelier.photo ? { src: H.atelier.photo, alt: H.atelier.photoAlt } : (ABOUT.photos[0] || {}); // photo de « L'atelier »
 
     main.innerHTML = `
       <section class="hero" aria-labelledby="hero-t">
@@ -113,40 +118,36 @@
           </dl>
           ${SITE.demo ? '<p class="fade-up" style="--d:1.2s;margin-top:14px"><span class="demo-note">Chiffres d\'exemple — à remplacer dans data.js</span></p>' : ""}
         </div>
-        <div class="hero-art fade-up" style="--d:.35s">${heroPrinterSvg()}</div></div>
+        <div class="hero-art fade-up" style="--d:.35s">${H.heroPhoto ? `<img class="hero-photo" src="${esc(H.heroPhoto)}" alt="${esc(H.heroPhotoAlt)}" fetchpriority="high" decoding="async">` : heroPrinterSvg()}</div></div>
         <span class="scroll-hint" aria-hidden="true"></span>
       </section>
 
       <div class="marquee" aria-label="${esc(SITE.marquee.join(", "))}"><div class="marquee-track" aria-hidden="true">${loop}${loop}${loop}${loop}</div></div>
 
       <section class="section" aria-labelledby="cats-t">
-        <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">Les univers</p><h2 id="cats-t">Huit catégories, <span class="grad-text">mille idées</span></h2></div>
-          <a class="btn btn-ghost btn-sm" href="boutique.html">Toute la boutique ${icon("arrow", "ic-arrow")}</a></header></div>
+        <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">${esc(H.univers.kicker)}</p><h2 id="cats-t">${rich(H.univers.title)}</h2></div>
+          <a class="btn btn-ghost btn-sm" href="boutique.html">${esc(H.univers.cta)} ${icon("arrow", "ic-arrow")}</a></header></div>
         <div class="wrap"><ul class="fc" role="list">${roots().map(focusCard).join("")}</ul></div>
       </section>
 
       <section class="section" style="padding-top:0" aria-labelledby="new-t">
-        <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">Derniers produits</p><h2 id="new-t">Tout juste sortis du plateau</h2></div>
-          <a class="btn btn-ghost btn-sm" href="boutique.html">Voir les ${PRODUCTS.length} créations ${icon("arrow", "ic-arrow")}</a></header></div>
+        <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">${esc(H.latest.kicker)}</p><h2 id="new-t">${rich(H.latest.title)}</h2></div>
+          <a class="btn btn-ghost btn-sm" href="boutique.html">${esc(H.latest.cta.replace("{n}", PRODUCTS.length))} ${icon("arrow", "ic-arrow")}</a></header></div>
         ${pgStage("pg-new", "Galerie des dernières créations")}
       </section>
 
       <section class="section" style="padding-top:0" aria-labelledby="at-t"><div class="wrap split">
-        <div class="split-media" data-reveal="left">${ABOUT.photos[0].src ? `<img data-parallax=".1" src="${esc(ABOUT.photos[0].src)}" alt="${esc(ABOUT.photos[0].alt)}" loading="lazy">` : `<div data-parallax=".1">${heroPrinterSvg("hpa", "figurine")}</div>`}</div>
+        <div class="split-media" data-reveal="left">${atPhoto.src ? `<img data-parallax=".1" src="${esc(atPhoto.src)}" alt="${esc(atPhoto.alt)}" loading="lazy">` : `<div data-parallax=".1">${heroPrinterSvg("hpa", "figurine")}</div>`}</div>
         <div data-reveal="right">
-          <p class="kicker">L'atelier</p>
-          <h2 id="at-t">Imprimé couche par couche, <span class="grad-text">fini à la main</span></h2>
-          <ul class="ticks">
-            <li>${icon("check")}<span>Modélisé et imprimé par mes soins, sur imprimante Bambu Lab</span></li>
-            <li>${icon("check")}<span>Petites séries et couleurs au choix, rien ne dort en stock</span></li>
-            <li>${icon("check")}<span>Personnalisation et pièces sur mesure sur simple demande</span></li>
-          </ul>
-          <a class="btn btn-ghost" href="a-propos.html">Découvrir l'atelier ${icon("arrow", "ic-arrow")}</a>
+          <p class="kicker">${esc(H.atelier.kicker)}</p>
+          <h2 id="at-t">${rich(H.atelier.title)}</h2>
+          ${H.atelier.points.length ? `<ul class="ticks">${H.atelier.points.map((t) => `<li>${icon("check")}<span>${esc(t)}</span></li>`).join("")}</ul>` : ""}
+          <a class="btn btn-ghost" href="a-propos.html">${esc(H.atelier.cta)} ${icon("arrow", "ic-arrow")}</a>
         </div>
       </div></section>
 
       ${REVIEWS.length ? `<section class="section" style="padding-top:0" aria-labelledby="rev-t"><div class="wrap">
-        <header class="sec-h" data-reveal><div><p class="kicker">Avis clients</p><h2 id="rev-t">Ils ont adopté une création</h2></div>
+        <header class="sec-h" data-reveal><div><p class="kicker">${esc(H.reviews.kicker)}</p><h2 id="rev-t">${rich(H.reviews.title)}</h2></div>
           ${SITE.demo ? '<span class="demo-note">Avis d\'exemple — à remplacer par de vrais avis</span>' : ""}</header>
         <div class="reviews">${REVIEWS.map((r, i) => `<figure class="review" data-reveal style="--i:${i}">
             <div class="stars" role="img" aria-label="${r.stars} étoiles sur 5">${"★".repeat(r.stars)}${"☆".repeat(5 - r.stars)}</div>

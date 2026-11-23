@@ -703,6 +703,11 @@
           ${F("short", "Résumé", { v: c.short, full: 1, ph: "Pions, rangements, accessoires", hint: "Affiché sur la carte de la catégorie, à l'accueil" })}
           ${F("description", "Description", { v: c.description, full: 1, area: 1, hint: "Affichée en haut de la page de la catégorie" })}
         </div></section>
+        <section class="a-sec"><h2>Photo de la carte (accueil)</h2><div class="form">
+          <div class="fg full"><label for="f-image">Photo <small>(facultatif)</small></label><div class="rowline img">${c.image ? `<img src="../${esc(c.image)}" alt="">` : `<img alt="">`}<input class="input" id="f-image" data-k="image" value="${esc(c.image || "")}" placeholder="assets/img/produits/…"><button class="rm" type="button" data-act="catimg" title="Envoyer une image" aria-label="Envoyer une image" ${st.canSave ? "" : "disabled"}>${icon("plus")}</button></div>
+            <p class="hint">Affichée sur la carte de la catégorie, dans « Les univers ». Vide : la 1re photo d'un de ses objets, sinon le visuel d'illustration</p></div>
+          <input type="file" id="cfile" accept="image/*" hidden>
+        </div></section>
         <section class="a-sec"><h2>Icône</h2>
           <div class="picks" role="radiogroup" aria-label="Icône de la catégorie">${CAT_ICONS.map((n) => `<label class="pick" title="${n}"><input type="radio" name="icon" data-k="icon" value="${n}"${c.icon === n ? " checked" : ""}><span>${icon(n)}</span></label>`).join("")}</div>
         </section>
@@ -736,7 +741,8 @@
         let v = t.dataset.num !== undefined ? (t.value === "" ? 0 : +t.value.replace(",", ".")) : t.value;
         if (k === "badge") v = v || null;
         if (k === idKey) { v = v.toLowerCase(); st.manualId.add(it); }
-        if ((k === "makerworld" || k === "cults3d" || k === "creator" || k === "license" || k === "parent") && !v) delete it[k]; else it[k] = v;
+        if ((k === "makerworld" || k === "cults3d" || k === "creator" || k === "license" || k === "parent" || k === "image") && !v.trim()) delete it[k]; else it[k] = k === "image" ? v.trim() : v;
+        if (k === "image") { const img = t.parentElement.querySelector("img"); if (img) img.src = v.trim() ? "../" + v.trim() : ""; }
         if (k === "parent" && v) st.open.add(catOf(v));
         if (k === "name") {
           $(".a-head h1").textContent = v || (isP() ? "Nouvel objet" : "Nouvelle catégorie");
@@ -767,6 +773,7 @@
       if (act === "sub") return addCat(it);
       if (act === "size") { it.sizes.push({ label: "", extra: it.sizes.length ? 2 : 0 }); touch(); form(); const all = $$('[data-f="label"]', main); all[all.length - 1].focus(); return; }
       if (act === "photo") return $("#file").click();
+      if (act === "catimg") return $("#cfile").click();
       if (b.dataset.rmSize !== undefined) { it.sizes.splice(+b.dataset.rmSize, 1); touch(); form(); }
       if (b.dataset.mvImg !== undefined) { const i = +b.dataset.mvImg, j = i + +b.dataset.dir; if (it.images[j] === undefined) return; [it.images[i], it.images[j]] = [it.images[j], it.images[i]]; touch(); form(); list(); return; }
       if (b.dataset.rmImg !== undefined) { it.images.splice(+b.dataset.rmImg, 1); touch(); form(); list(); }
@@ -798,6 +805,13 @@
     }
     main.addEventListener("change", async (e) => {
       if (e.target.id === "pfile") return panelUpload(e);
+      if (e.target.id === "cfile") { // photo de la carte d'une catégorie
+        const file = e.target.files[0], c = cur(); e.target.value = ""; if (!file || !c) return;
+        status("dirty", "Envoi de l'image");
+        try { c.image = await sendImage(file, "produits", c.slug); touch(); form(); list(); }
+        catch (err) { status("bad", err.message || "Envoi de l'image impossible"); }
+        return;
+      }
       if (e.target.id !== "file") return;
       const p = cur(), files = [...e.target.files]; if (!p || !files.length) return;
       if (!ID.test(p.id)) return alert("Donnez d'abord un nom à l'objet.");
@@ -906,13 +920,16 @@
           ] }
         ] },
       accueil: { mode: "site", group: "Boutique", label: () => "Page d'accueil", root: () => st.site, link: "../index.html",
+        intro: "Textes et photos de chaque section de l'accueil, de haut en bas",
         secs: [
           { title: "Bandeau principal", fields: [
             { k: "hero.eyebrow", label: "Surtitre", full: 1 },
             { k: "hero.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé néon" },
             { k: "hero.lead", label: "Texte d'introduction", type: "area" },
             { k: "hero.cta", label: "Bouton principal" },
-            { k: "hero.cta2", label: "Bouton secondaire" }
+            { k: "hero.cta2", label: "Bouton secondaire" },
+            { k: "home.heroPhoto", label: "Photo à droite du titre", type: "photo", opt: 1, hint: "Format carré conseillé. Vide : l'imprimante 3D animée" },
+            { k: "home.heroPhotoAlt", label: "Description de la photo", full: 1, opt: 1, hint: "Lue aux personnes malvoyantes, ex. « Dragon articulé violet posé sur l'imprimante »" }
           ] },
           { title: "Chiffres animés", fields: [
             { k: "stats", type: "list", itemName: "chiffre", add: "Ajouter un chiffre", title: (s) => `${s.prefix}${s.value}${s.suffix} ${s.label}`, make: () => ({ value: 0, prefix: "", suffix: "", label: "" }), item: [
@@ -924,7 +941,34 @@
           ] },
           { title: "Bandeau défilant", fields: [
             { k: "marquee", label: "Mots du bandeau", type: "lines", hint: "Un par ligne" }
-          ] }
+          ] },
+          { title: "Les univers (cartes des catégories)", fields: [
+            { k: "home.univers.kicker", label: "Surtitre" },
+            { k: "home.univers.cta", label: "Bouton" },
+            { k: "home.univers.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" }
+          ], html: '<p class="hint">La photo de chaque carte se choisit dans le Catalogue, sur la fiche de la catégorie</p>' },
+          { title: "Tout juste sortis du plateau (dernières créations)", fields: [
+            { k: "home.latest.kicker", label: "Surtitre" },
+            { k: "home.latest.cta", label: "Bouton", hint: "{n} est remplacé par le nombre de créations" },
+            { k: "home.latest.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" }
+          ] },
+          { title: "L'atelier", fields: [
+            { k: "home.atelier.kicker", label: "Surtitre" },
+            { k: "home.atelier.cta", label: "Bouton" },
+            { k: "home.atelier.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" },
+            { k: "home.atelier.points", label: "Points forts", type: "lines", hint: "Un par ligne, chacun précédé d'une coche" },
+            { k: "home.atelier.photo", label: "Photo", type: "photo", opt: 1, hint: "Vide : la 1re photo de la page À propos, sinon l'imprimante 3D animée" },
+            { k: "home.atelier.photoAlt", label: "Description de la photo", full: 1, opt: 1 }
+          ] },
+          { title: "Avis clients", fields: [
+            { k: "home.reviews.kicker", label: "Surtitre" },
+            { k: "home.reviews.title", label: "Titre", hint: "Les mots entre *étoiles* sont en dégradé" }
+          ], html: '<p class="hint">Les avis se gèrent dans Réglages › Avis clients</p>' },
+          { title: "Retrouvez-moi aussi sur (bas de page)", fields: [
+            { k: "home.ext.kicker", label: "Surtitre" },
+            { k: "home.ext.title", label: "Titre", hint: "Les mots entre *étoiles* sont en dégradé" },
+            { k: "home.ext.text", label: "Texte", type: "area", opt: 1 }
+          ], html: '<p class="hint">Ce bloc apparaît aussi en bas des autres pages du site</p>' }
         ] },
       livraison: { mode: "site", group: "Vente", label: () => "Livraison", root: () => st.site.shipping,
         secs: [
@@ -1127,20 +1171,23 @@
         const input = box && $("input.input:not([readonly]), textarea", box); if (input) { input.focus(); input.scrollIntoView({ block: "center" }); }
       }
     }
+    /* Image réduite à 1600 px (côté le plus long), convertie en WebP et envoyée dans assets/img/<dossier> */
+    async function sendImage(file, folder, base) {
+      const bmp = await createImageBitmap(file), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
+      const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
+      cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
+      const blob = await new Promise((ok) => cv.toBlob(ok, "image/webp", 0.86));
+      const name = `${slugify(base || file.name.replace(/\.\w+$/, "")) || "image"}-${Date.now().toString(36)}.${blob.type === "image/webp" ? "webp" : "png"}`;
+      const r = await call("photo", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: blob }, `&dossier=${encodeURIComponent(folder)}&nom=${encodeURIComponent(name)}`);
+      const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
+      return out.chemin;
+    }
     let upTo = null;
     async function panelUpload(e) {
       const file = e.target.files[0]; if (!file || !upTo) return;
       status("dirty", "Envoi de l'image");
-      try {
-        const bmp = await createImageBitmap(file), k = Math.min(1, 1600 / Math.max(bmp.width, bmp.height));
-        const cv = document.createElement("canvas"); cv.width = Math.round(bmp.width * k); cv.height = Math.round(bmp.height * k);
-        cv.getContext("2d").drawImage(bmp, 0, 0, cv.width, cv.height);
-        const blob = await new Promise((ok) => cv.toBlob(ok, "image/webp", 0.86));
-        const name = `${slugify(file.name.replace(/\.\w+$/, "")) || "image"}-${Date.now().toString(36)}.${blob.type === "image/webp" ? "webp" : "png"}`;
-        const r = await call("photo", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: blob }, `&dossier=${encodeURIComponent(upTo.folder)}&nom=${encodeURIComponent(name)}`);
-        const out = await r.json(); if (!r.ok) throw new Error(out.erreur);
-        setP(upTo.p, out.chemin); touch(); panelForm();
-      } catch (err) { status("bad", err.message || "Envoi de l'image impossible"); }
+      try { setP(upTo.p, await sendImage(file, upTo.folder)); touch(); panelForm(); }
+      catch (err) { status("bad", err.message || "Envoi de l'image impossible"); }
       e.target.value = "";
     }
     $("#main").addEventListener("focusin", (e) => { if (e.target.matches("textarea, input.input")) lastArea = e.target; });
@@ -1217,6 +1264,7 @@
     function contentPayload() {
       const site = structuredClone(st.site);
       site.marquee = site.marquee.map((m) => m.trim()).filter(Boolean);
+      if (site.home && site.home.atelier) site.home.atelier.points = (site.home.atelier.points || []).map((t) => t.trim()).filter(Boolean);
       const about = structuredClone(st.about);
       about.story = about.story.map((t) => t.trim()).filter(Boolean);
       return {

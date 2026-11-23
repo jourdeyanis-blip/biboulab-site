@@ -96,6 +96,10 @@ class AdminTests(TestCase):
         mauvais["products"][0]["images"] = ["../../admin/x.php"]
         r = self.c.post("/api/sauver/", data=json.dumps(mauvais), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 400)
+        mauvais = json.loads(json.dumps(CATALOGUE))
+        mauvais["categories"][0]["image"] = "javascript:alert(1)"   # photo de la carte d'une catégorie
+        r = self.c.post("/api/sauver/", data=json.dumps(mauvais), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        self.assertEqual(r.status_code, 400)
         r = self.c.post("/api/photo/?nom=x.png", data=b"<?php echo 1; ?>", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 400)
         r = self.c.post("/api/photo/?nom=../x.png", data=b"\x89PNG\r\n\x1a\n0000", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
@@ -118,12 +122,15 @@ class AdminTests(TestCase):
         contenu = self.contenus()
         contenu["pages"]["cgv"]["sections"][0]["text"] = "Nouveau texte </script><b>"
         contenu["site"]["legal"]["siret"] = "123 456 789 00012"
+        contenu["site"]["home"]["univers"]["title"] = "Nos *univers*"
+        contenu["site"]["home"]["atelier"]["photo"] = "assets/img/atelier/atelier-1.webp"
         r = self.c.post("/api/sauver/", data=json.dumps({**CATALOGUE, **contenu}), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 200, r.content)
         js = (self.site / "assets" / "js" / "contenu.js").read_text("utf-8")
         self.assertTrue(js.splitlines()[1].startswith("window.CONTENU = {"))
         self.assertNotIn("</script>", js)
         self.assertIn("123 456 789 00012", js)
+        self.assertIn("Nos *univers*", js)
         relu = json.loads(js.split("window.CONTENU = ", 1)[1].rstrip().rstrip(";"))
         self.assertEqual(relu["pages"]["cgv"]["sections"][0]["text"], "Nouveau texte </script><b>")
 
@@ -138,6 +145,9 @@ class AdminTests(TestCase):
             ("filaments", lambda c: c["filaments"]["rouge"].__setitem__("hex", "red\";}")),
             ("site", lambda c: c["site"]["shipping"]["methods"][0].__setitem__("price", -1)),
             ("pages", lambda c: c["pages"].pop("cgv")),
+            ("site", lambda c: c["site"]["home"].__setitem__("heroPhoto", "../../backend/x.php")),
+            ("site", lambda c: c["site"]["home"]["atelier"].__setitem__("photo", "https://ailleurs.example/x.png")),
+            ("site", lambda c: c["site"]["home"]["univers"].__setitem__("title", {"html": "<b>"})),
         ]
         for nom, piege in pieges:
             contenu = self.contenus()

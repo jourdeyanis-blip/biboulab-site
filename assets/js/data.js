@@ -44,6 +44,22 @@ const SITE = {
 
   marquee: ["Imprimé en 3D", "PLA", "PETG", "Fait main", "Sur mesure", "Livraison soignée", "Bambu Lab", "Petites séries"],
 
+  /* Textes et photos des sections de l'accueil (modifiables dans l'administration,
+     onglet Réglages › Page d'accueil). Les mots entre *étoiles* sont mis en dégradé. */
+  home: {
+    heroPhoto: "", heroPhotoAlt: "",   // photo du bandeau principal. Vide = imprimante 3D animée
+    univers: { kicker: "Les univers", title: "Huit catégories, *mille idées*", cta: "Toute la boutique" },
+    latest: { kicker: "Derniers produits", title: "Tout juste sortis du plateau", cta: "Voir les {n} créations" },
+    atelier: {
+      kicker: "L'atelier", title: "Imprimé couche par couche, *fini à la main*",
+      points: ["Modélisé et imprimé par mes soins, sur imprimante Bambu Lab", "Petites séries et couleurs au choix, rien ne dort en stock", "Personnalisation et pièces sur mesure sur simple demande"],
+      cta: "Découvrir l'atelier",
+      photo: "", photoAlt: ""          // vide = 1re photo de la page À propos, sinon imprimante 3D animée
+    },
+    reviews: { kicker: "Avis clients", title: "Ils ont adopté une création" },
+    ext: { kicker: "Ailleurs sur le web", title: "Retrouvez-moi aussi sur", text: "Vous avez une imprimante ? Mes modèles sont aussi disponibles en téléchargement, à imprimer chez vous." }
+  },
+
   /* Livraison (modifiable dans l'administration › Réglages › Livraison)
      carrier  : transporteur (colissimo, mondialrelay ou autre)
      point    : true = le client choisit un point de retrait (lien « finder » vers l'outil du transporteur)
@@ -432,8 +448,17 @@ const PAGES = {
    contenus (assets/js/contenu.js : réglages, pages, couleurs, avis), ils remplacent ceux-ci. */
 const LIVE = typeof window !== "undefined" && window.CATALOGUE && window.CATALOGUE.categories && window.CATALOGUE.products ? window.CATALOGUE : null;
 const LIVE_C = typeof window !== "undefined" && window.CONTENU && typeof window.CONTENU === "object" ? window.CONTENU : {};
+/* Accueil : les textes absents des contenus en ligne (enregistrés avant leur ajout) reprennent ceux d'ici */
+const withHome = (site) => {
+  const h = site.home || {}, home = {};
+  for (const k in SITE.home) {
+    const d = SITE.home[k];
+    home[k] = d && typeof d === "object" && !Array.isArray(d) ? { ...d, ...(h[k] && typeof h[k] === "object" ? h[k] : {}) } : (k in h ? h[k] : d);
+  }
+  return { ...site, home };
+};
 const SHOP = {
-  SITE: LIVE_C.site || SITE, FILAMENTS: LIVE_C.filaments || FILAMENTS,
+  SITE: LIVE_C.site ? withHome(LIVE_C.site) : SITE, FILAMENTS: LIVE_C.filaments || FILAMENTS,
   CATEGORIES: LIVE ? LIVE.categories : CATEGORIES, PRODUCTS: LIVE ? LIVE.products : PRODUCTS,
   REVIEWS: LIVE_C.reviews || REVIEWS, ABOUT: LIVE_C.about || ABOUT, PAGES: LIVE_C.pages || PAGES
 };
