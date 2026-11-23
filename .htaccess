@@ -34,6 +34,16 @@ ErrorDocument 503 /construction.html
 </IfModule>
 # --- FIN CONSTRUCTION ---
 
+# ---------- Pages, styles et scripts toujours à jour ----------
+# Le navigateur revérifie ces fichiers à chaque visite (réponse « inchangé » très légère
+# s'ils n'ont pas bougé) : une nouvelle version publiée s'affiche tout de suite,
+# sans avoir à vider le cache.
+<IfModule mod_headers.c>
+  <FilesMatch "\.(html|css|js)$">
+    Header set Cache-Control "no-cache"
+  </FilesMatch>
+</IfModule>
+
 # ---------- Catalogue écrit par l'administration en ligne ----------
 # Le navigateur revérifie toujours ce fichier : une modification est visible tout de suite.
 <IfModule mod_headers.c>
