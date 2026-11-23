@@ -6,7 +6,7 @@
 (() => {
   "use strict";
   const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT, PAGES = {} } = window.SHOP;
-  const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM } = window.UI;
+  const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, art, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM, FINE } = window.UI;
   const main = $("#main");
   const params = new URLSearchParams(location.search);
 
@@ -119,11 +119,21 @@
 
       <div class="marquee" aria-label="${esc(SITE.marquee.join(", "))}"><div class="marquee-track" aria-hidden="true">${loop}${loop}${loop}${loop}</div></div>
 
-      <section class="section" aria-labelledby="cats-t"><div class="wrap">
-        <header class="sec-h" data-reveal><div><p class="kicker">Les univers</p><h2 id="cats-t">Huit catégories, <span class="grad-text">mille idées</span></h2></div>
-          <a class="btn btn-ghost btn-sm" href="boutique.html">Toute la boutique ${icon("arrow", "ic-arrow")}</a></header>
-        <div class="cats">${roots().map(catCard).join("")}</div>
-      </div></section>
+      <section class="section" aria-labelledby="cats-t">
+        <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">Les univers</p><h2 id="cats-t">Huit catégories, <span class="grad-text">mille idées</span></h2></div>
+          <a class="btn btn-ghost btn-sm" href="boutique.html">Toute la boutique ${icon("arrow", "ic-arrow")}</a></header></div>
+        <div class="pg">
+          <div class="pg-stage" tabindex="0" data-cursor="Glisser" aria-label="Galerie des créations. Glissez pour explorer, cliquez sur une création pour l'ouvrir. Au clavier : flèches pour se déplacer, Entrée pour ouvrir la création au centre.">
+            <div class="pg-grid" aria-hidden="true"></div>
+            <div class="pg-dim" aria-hidden="true"></div><div class="pg-spot" aria-hidden="true"></div><div class="pg-vig" aria-hidden="true"></div>
+            <p class="pg-hint" aria-hidden="true">Glissez pour explorer · cliquez pour ouvrir</p>
+          </div>
+        </div>
+        <div class="wrap"><nav class="pg-univers" aria-label="Les univers">${roots().map((c) => {
+          const n = PRODUCTS.filter((p) => catFamily(c.slug).includes(p.category)).length;
+          return `<a class="chip" href="categorie.html?c=${c.slug}" style="--c:${c.color}"><i class="pg-dot" aria-hidden="true"></i>${esc(c.name)} <span class="muted">${n}</span></a>`;
+        }).join("")}</nav></div>
+      </section>
 
       <section class="section" style="padding-top:0" aria-labelledby="new-t"><div class="wrap">
         <header class="sec-h" data-reveal><div><p class="kicker">Derniers produits</p><h2 id="new-t">Tout juste sortis du plateau</h2></div>
@@ -157,6 +167,7 @@
       ${extBlock()}`;
 
     $$(".hp").forEach((svg, i) => heroPrinter(svg, i * 6.5)); // pingouin en haut, figurine dans « L'atelier » (démarrage décalé)
+    phantomGallery($(".pg-stage"));
     jsonLd({ "@context": "https://schema.org", "@type": "Store", name: SITE.name, url: SITE.url, slogan: SITE.slogan, email: SITE.email, sameAs: SITE.stores.map((s) => s.url) });
   }
 
@@ -167,6 +178,270 @@
       <h3>${esc(c.name)}</h3><p>${esc(c.short)}</p>
       <span class="cat-n">${n} création${n > 1 ? "s" : ""} ${icon("arrow")}</span>
       <span class="glare" aria-hidden="true"></span></a></div>`;
+  }
+
+  /* Galerie « fantôme » des univers (accueil)
+     Mur infini de créations qu'on fait glisser et qu'on peut lancer (inertie), projecteur
+     qui suit la souris, légère courbure 3D. Un clic ouvre la création au centre avec sa
+     légende tapée à la machine ; un clic ailleurs (ou Échap) la renvoie à sa place.
+     Adapté du composant « Phantom Infinite Gallery » (Cue Foundations), en JavaScript natif.
+     Les cases utilisent la 1re photo de chaque produit, sinon son visuel d'illustration. */
+  function phantomGallery(stage) {
+    if (!stage || !PRODUCTS.length) return;
+    const CFG = {
+      cell: 210, cellMobile: 150,   // taille d'une case (px)
+      arcAmount: 0.6, arcMaxDeg: 28, // courbure horizontale du mur
+      edgeFade: 0.25,                // rétrécissement des cases sur les bords
+      parallax: 0.08,                // décalage suivant la souris
+      friction: 0.92, throwMin: 80, throwMax: 2500, // lancer
+      zoom: 0.7, pressZoomDelay: 120, dragThreshold: 4
+    };
+    const grid = $(".pg-grid", stage), spot = $(".pg-spot", stage);
+    const clamp = (v, a, b) => Math.max(a, Math.min(b, v));
+    const P = "perspective(1200px) translate(-50%, -50%)";
+
+    /* Créations mélangées univers par univers : deux cases voisines changent de couleur */
+    const groups = roots().map((c) => PRODUCTS.filter((p) => catFamily(c.slug).includes(p.category))).filter((g) => g.length);
+    const items = [];
+    for (let k = 0, max = Math.max(0, ...groups.map((g) => g.length)); k < max; k++) groups.forEach((g) => g[k] && items.push(g[k]));
+    if (!items.length) items.push(...PRODUCTS);
+    const N = items.length;
+    const thumbs = items.map((p) => {
+      const src = p.images && p.images[0];
+      if (src) return `url("${encodeURI(src).replace(/"/g, "%22")}")`;
+      return `url("data:image/svg+xml,${encodeURIComponent(art(p).replace("<svg ", '<svg xmlns="http://www.w3.org/2000/svg" '))}")`;
+    });
+
+    /* ---- État du mouvement ---- */
+    let W = 0, H = 0, base = CFG.cell, size, tSize;
+    let off = { x: 0, y: 0 }, tOff = { x: 0, y: 0 }, inert = { x: 0, y: 0 }, vel = { x: 0, y: 0 }, mo = { x: 0, y: 0 }, tMo = { x: 0, y: 0 };
+    let pressing = false, dragging = false, throwing = false, press = { x: 0, y: 0 }, start = { x: 0, y: 0 }, last = { x: 0, y: 0, t: 0 };
+    let pressTimer = 0, raf = 0, lastT = 0, visible = false;
+    const cells = new Map();
+    const measure = () => { W = stage.clientWidth; H = stage.clientHeight; base = W < 640 ? CFG.cellMobile : CFG.cell; };
+    measure();
+    size = tSize = base;
+    off = { x: W / 2 - size / 2, y: H / 2 - size / 2 }; tOff = { ...off };
+
+    function makeCell(gx, gy) {
+      const i = (((gx + gy * 3) % N) + N) % N, p = items[i], c = cat(p.category) || {};
+      const el = document.createElement("div");
+      el.className = "pg-cell"; el.dataset.i = i;
+      el.style.setProperty("--c", c.color || "#8B5CF6");
+      el.innerHTML = `<div class="pg-thumb"></div><div class="pg-meta"><span>${esc(p.name)}</span><span>${euro(p.price)}</span></div>`;
+      el.firstChild.style.backgroundImage = thumbs[i];
+      return el;
+    }
+
+    function render() {
+      const ox = off.x + mo.x + inert.x, oy = off.y + mo.y + inert.y;
+      const x0 = Math.floor(-ox / size) - 1, y0 = Math.floor(-oy / size) - 1;
+      const cols = Math.ceil(W / size) + 3, rows = Math.ceil(H / size) + 3;
+      const maxA = (CFG.arcMaxDeg * Math.PI / 180) * CFG.arcAmount, radius = W / (2 * Math.sin(Math.max(0.001, maxA)));
+      const seen = new Set();
+      for (let gy = y0; gy < y0 + rows; gy++) for (let gx = x0; gx < x0 + cols; gx++) {
+        const key = gx + "," + gy; seen.add(key);
+        let el = cells.get(key);
+        if (!el) { el = makeCell(gx, gy); cells.set(key, el); grid.append(el); }
+        const left = gx * size + ox, top = gy * size + oy;
+        const dx = (left + size / 2 - W / 2) / (W / 2), ang = dx * maxA, edge = Math.min(1, Math.abs(dx));
+        const z = -radius * (Math.cos(ang) - 1), yaw = -ang * 180 / Math.PI;
+        el.style.width = el.style.height = size + "px";
+        el.style.transform = `translate3d(${left}px, ${top}px, ${z}px) rotateY(${yaw}deg) scale(${1 - CFG.edgeFade * edge * edge})`;
+        el.style.opacity = 1 - 0.4 * edge * CFG.arcAmount;
+      }
+      for (const [key, el] of cells) if (!seen.has(key)) { el.remove(); cells.delete(key); }
+    }
+
+    function commitInertia() { off.x += inert.x; off.y += inert.y; tOff.x += inert.x; tOff.y += inert.y; inert = { x: 0, y: 0 }; throwing = false; }
+    /* Change la taille des cases en gardant le centre de la galerie immobile */
+    function zoomTo(next) {
+      const px = W / 2, py = H / 2;
+      tOff = { x: px - ((px - off.x) / size) * next, y: py - ((py - off.y) / size) * next };
+      tSize = next;
+    }
+
+    function tick(now) {
+      raf = 0;
+      const dt = Math.min(0.05, (now - lastT) / 1000); lastT = now;
+      size += (tSize - size) * 0.15; if (Math.abs(size - tSize) < 0.05) size = tSize;
+      if (!dragging) {
+        off.x += (tOff.x - off.x) * 0.15; off.y += (tOff.y - off.y) * 0.15;
+        if (Math.abs(off.x - tOff.x) < 0.1) off.x = tOff.x;
+        if (Math.abs(off.y - tOff.y) < 0.1) off.y = tOff.y;
+      }
+      if (throwing) {
+        const f = Math.pow(CFG.friction, dt * 60);
+        vel.x *= f; vel.y *= f;
+        inert.x += vel.x * dt; inert.y += vel.y * dt;
+        if (Math.hypot(vel.x, vel.y) < 2) commitInertia();
+      }
+      mo.x += (tMo.x - mo.x) * 0.12; mo.y += (tMo.y - mo.y) * 0.12;
+      if (Math.abs(mo.x - tMo.x) < 0.05) mo.x = tMo.x;
+      if (Math.abs(mo.y - tMo.y) < 0.05) mo.y = tMo.y;
+      render();
+      const busy = dragging || throwing || size !== tSize || off.x !== tOff.x || off.y !== tOff.y || mo.x !== tMo.x || mo.y !== tMo.y;
+      if (busy && visible) raf = requestAnimationFrame(tick); // au repos : plus aucun calcul
+    }
+    const wake = () => { if (!raf && visible) { lastT = performance.now(); raf = requestAnimationFrame(tick); } };
+    new IntersectionObserver(([en]) => { visible = en.isIntersecting; if (visible) wake(); }, { rootMargin: "100px" }).observe(stage);
+    render();
+
+    /* ---- Glisser, lancer, maintenir pour dézoomer ---- */
+    stage.addEventListener("pointerdown", (e) => {
+      if (e.button) return;
+      if (throwing || inert.x || inert.y) commitInertia();
+      try { stage.setPointerCapture(e.pointerId); } catch { /* pointeur déjà relâché */ }
+      pressing = true; dragging = false;
+      press = { x: e.clientX, y: e.clientY }; last = { ...press, t: performance.now() };
+      vel = { x: 0, y: 0 }; start = { ...off };
+      clearTimeout(pressTimer);
+      if (!RM) pressTimer = setTimeout(() => { if (pressing && !dragging) { zoomTo(base * CFG.zoom); wake(); } }, CFG.pressZoomDelay);
+    });
+    stage.addEventListener("pointermove", (e) => {
+      const r = stage.getBoundingClientRect(), mx = e.clientX - r.left, my = e.clientY - r.top;
+      spot.style.setProperty("--mx", mx + "px"); spot.style.setProperty("--my", my + "px");
+      if (!pressing) {
+        if (!RM && e.pointerType === "mouse") { tMo = { x: (W / 2 - mx) * CFG.parallax, y: (H / 2 - my) * CFG.parallax }; wake(); }
+        return;
+      }
+      const now = performance.now(), dt = Math.max(0.001, (now - last.t) / 1000);
+      vel.x = clamp((e.clientX - last.x) / dt, -CFG.throwMax, CFG.throwMax) * 0.6 + vel.x * 0.4;
+      vel.y = clamp((e.clientY - last.y) / dt, -CFG.throwMax, CFG.throwMax) * 0.6 + vel.y * 0.4;
+      last = { x: e.clientX, y: e.clientY, t: now };
+      const dx = e.clientX - press.x, dy = e.clientY - press.y;
+      if (!dragging && Math.hypot(dx, dy) > CFG.dragThreshold) { dragging = true; stage.classList.add("dragging"); start = { ...off }; }
+      if (dragging) { off = { x: start.x + dx, y: start.y + dy }; tOff = { ...off }; wake(); }
+    });
+    function endPress(e) {
+      if (!pressing) return;
+      const wasDrag = dragging;
+      pressing = dragging = false; clearTimeout(pressTimer);
+      stage.classList.remove("dragging");
+      if (performance.now() - last.t > 80) vel = { x: 0, y: 0 }; // le doigt s'était arrêté : pas de lancer
+      throwing = !RM && wasDrag && Math.hypot(vel.x, vel.y) >= CFG.throwMin;
+      zoomTo(base);
+      if (!wasDrag && e.type === "pointerup") openAt(e.clientX, e.clientY);
+      wake();
+    }
+    stage.addEventListener("pointerup", endPress);
+    stage.addEventListener("pointercancel", endPress);
+    stage.addEventListener("pointerleave", () => { tMo = { x: 0, y: 0 }; wake(); });
+    stage.addEventListener("keydown", (e) => {
+      const k = { ArrowLeft: [1, 0], ArrowRight: [-1, 0], ArrowUp: [0, 1], ArrowDown: [0, -1] }[e.key];
+      if (k) { e.preventDefault(); if (throwing) commitInertia(); tOff.x += k[0] * size; tOff.y += k[1] * size; wake(); }
+      else if (e.key === "Enter" || e.key === " ") { e.preventDefault(); const r = stage.getBoundingClientRect(); openAt(r.left + W / 2, r.top + H / 2); }
+    });
+    addEventListener("resize", () => { measure(); if (!pressing) zoomTo(base); wake(); }, { passive: true });
+
+    /* ---- Mise en avant d'une création (carte au centre + légende tapée) ---- */
+    const dim = document.createElement("div"), fc = document.createElement("div");
+    dim.className = "pg-fdim";
+    fc.className = "pg-fcard"; fc.setAttribute("role", "dialog"); fc.setAttribute("aria-modal", "true"); fc.inert = true;
+    fc.innerHTML = `<div class="pg-fimg"></div>
+      <button class="pg-fclose" type="button" aria-label="Fermer">${icon("plus")}</button>
+      <div class="pg-cap">
+        <a class="pg-fcat" href="#"></a>
+        <p class="pg-fhead" aria-hidden="true"><b></b><span></span></p>
+        <p class="pg-fdesc" aria-hidden="true"><span></span><i class="pg-caret" hidden></i></p>
+        <p class="sr"></p>
+        <a class="btn btn-primary btn-sm pg-fgo" href="#">Voir la création ${icon("arrow", "ic-arrow")}</a>
+      </div>`;
+    document.body.append(dim, fc);
+    const fImg = $(".pg-fimg", fc), fCat = $(".pg-fcat", fc), fGo = $(".pg-fgo", fc), fSr = $(".sr", fc), caret = $(".pg-caret", fc);
+    const [fTitle, fPrice] = $$(".pg-fhead > *", fc), fDesc = $(".pg-fdesc span", fc);
+    const FULL = "left .55s cubic-bezier(.22,1,.36,1), top .55s cubic-bezier(.22,1,.36,1), transform .6s cubic-bezier(.34,1.25,.64,1), opacity .3s ease";
+    let open = false, openedAt = 0, focusCell = null, typeTimer = 0, tiltRaf = 0, scrollY0 = 0, tilt = { rx: 0, ry: 0, tx: 0, ty: 0 };
+
+    function openAt(x, y) {
+      if (open) return close();
+      const hit = document.elementFromPoint(x, y);
+      let cell = hit && stage.contains(hit) && hit.closest(".pg-cell");
+      if (!cell) { // clic entre deux cases : on prend la plus proche
+        let best = size * 0.75;
+        for (const el of cells.values()) {
+          const r = el.getBoundingClientRect(), d = Math.hypot(r.left + r.width / 2 - x, r.top + r.height / 2 - y);
+          if (d < best) { best = d; cell = el; }
+        }
+      }
+      if (cell) openFocus(cell);
+    }
+    function typewriter(parts) {
+      clearTimeout(typeTimer);
+      parts.forEach(([el, text]) => { el.textContent = RM ? text : ""; });
+      if (RM) return;
+      caret.hidden = false;
+      let pi = 0, ci = 0;
+      const step = () => {
+        if (pi >= parts.length) { typeTimer = setTimeout(() => { caret.hidden = true; }, 400); return; }
+        const [el, text, speed] = parts[pi];
+        if (ci < text.length) { el.textContent += text[ci++]; typeTimer = setTimeout(step, speed + Math.random() * 20); }
+        else { pi++; ci = 0; typeTimer = setTimeout(step, 160); }
+      };
+      step();
+    }
+    function tiltLoop() {
+      if (!open) return;
+      tilt.rx += (tilt.tx - tilt.rx) * 0.14; tilt.ry += (tilt.ty - tilt.ry) * 0.14;
+      fc.style.transform = `${P} rotateX(${tilt.rx}deg) rotateY(${tilt.ry}deg)`;
+      tiltRaf = requestAnimationFrame(tiltLoop);
+    }
+    function openFocus(cell) {
+      const i = +cell.dataset.i, p = items[i], c = cat(p.category) || {};
+      const r = cell.getBoundingClientRect();
+      const w = Math.min(360, innerWidth - 48, (innerHeight - 140) / 1.3), h = w * 1.3;
+      const price = (p.sizes && p.sizes.length ? "dès " : "") + euro(p.price);
+      fImg.style.backgroundImage = thumbs[i];
+      fc.style.setProperty("--c", c.color || "#8B5CF6");
+      fc.setAttribute("aria-label", p.name);
+      fCat.href = `categorie.html?c=${c.slug}`; fCat.textContent = c.name || "";
+      fGo.href = `produit.html?id=${encodeURIComponent(p.id)}`;
+      fSr.textContent = `${p.name}, ${price}. ${p.short || ""}`;
+      fTitle.textContent = fPrice.textContent = fDesc.textContent = "";
+      Object.assign(fc.style, { width: w + "px", height: h + "px", transition: "none", left: r.left + r.width / 2 + "px", top: r.top + r.height / 2 + "px", opacity: "0", transform: `${P} scale(${r.width / w})` });
+      void fc.offsetWidth; // fixe la position de départ avant la transition
+      Object.assign(fc.style, { transition: RM ? "opacity .2s" : FULL, left: innerWidth / 2 + "px", top: innerHeight / 2 + "px", opacity: "1", transform: `${P} scale(1)` });
+      fc.classList.add("on"); dim.classList.add("on"); stage.classList.add("focused"); fc.inert = false;
+      open = true; openedAt = performance.now(); focusCell = cell; scrollY0 = scrollY;
+      tilt = { rx: 0, ry: 0, tx: 0, ty: 0 };
+      setTimeout(() => { if (open) fGo.focus({ preventScroll: true }); }, 60); // après le passage en visible
+      typeTimer = setTimeout(() => {
+        if (!open) return;
+        typewriter([[fTitle, p.name, 34], [fPrice, price, 28], [fDesc, p.short || "", 12]]);
+        if (!RM && FINE) { fc.style.transition = "opacity .3s ease"; tiltLoop(); } // inclinaison 3D à la souris
+      }, RM ? 0 : 600);
+    }
+    function close() {
+      if (!open) return;
+      open = false; clearTimeout(typeTimer); cancelAnimationFrame(tiltRaf); caret.hidden = true;
+      const w = parseFloat(fc.style.width);
+      let x = innerWidth / 2, y = innerHeight / 2, s = 0.3;
+      if (focusCell && focusCell.isConnected) { const r = focusCell.getBoundingClientRect(); x = r.left + r.width / 2; y = r.top + r.height / 2; s = r.width / w; }
+      Object.assign(fc.style, { transition: RM ? "opacity .2s" : FULL, left: x + "px", top: y + "px", opacity: "0", transform: `${P} scale(${s})` });
+      dim.classList.remove("on"); stage.classList.remove("focused");
+      if (fc.contains(document.activeElement)) stage.focus({ preventScroll: true });
+      fc.inert = true; focusCell = null;
+      setTimeout(() => { if (!open) fc.classList.remove("on"); }, 450);
+    }
+    const soon = () => performance.now() - openedAt < 400; // ignore le « click » qui suit l'appui tactile d'ouverture
+    fc.addEventListener("click", (e) => { if (!soon() && !e.target.closest(".pg-cap a")) close(); });
+    dim.addEventListener("click", () => { if (!soon()) close(); });
+    document.addEventListener("keydown", (e) => {
+      if (!open) return;
+      if (e.key === "Escape") close();
+      else if (e.key === "Tab") { // le focus reste dans la carte
+        const f = $$("a, button", fc), first = f[0], lastF = f[f.length - 1];
+        if (e.shiftKey && document.activeElement === first) { e.preventDefault(); lastF.focus(); }
+        else if (!e.shiftKey && document.activeElement === lastF) { e.preventDefault(); first.focus(); }
+      }
+    });
+    addEventListener("mousemove", (e) => {
+      if (!open) return;
+      const w = parseFloat(fc.style.width), h = parseFloat(fc.style.height);
+      tilt.ty = clamp((e.clientX - innerWidth / 2) / (w / 2), -1.4, 1.4) * 10;
+      tilt.tx = -clamp((e.clientY - innerHeight / 2) / (h / 2), -1.4, 1.4) * 10;
+    }, { passive: true });
+    addEventListener("scroll", () => { if (open && Math.abs(scrollY - scrollY0) > 40) close(); }, { passive: true });
   }
 
   /* Accueil : imprimante 3D qui imprime un objet couche par couche — un pingouin à droite du titre,

@@ -8,7 +8,7 @@
     5. En-tête & navigation
     6. Hero (accueil)
     7. Bandeau défilant
-    8. Catégories (+ effets flocons / brouillard / plan)
+    8. Catégories (+ effets flocons / brouillard / plan, galerie des univers)
     9. Cartes produits & grilles
    10. Catalogue (filtres), page catégorie
    11. Fiche produit
@@ -384,6 +384,80 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   animation: plan 6s linear infinite;
 }
 @keyframes plan { to { background-position: 26px 26px; } }
+
+/* ---------- 8 bis. Galerie « fantôme » des univers (accueil) ----------
+   Mur infini de créations (pages.js, phantomGallery). Le plateau reste sombre
+   dans les deux thèmes ; la couleur de survol d'une case est celle de sa catégorie. */
+.pg { max-width: 1600px; margin: 0 auto; padding: 0 clamp(16px, 2vw, 24px); }
+.pg-stage {
+  --pg-bg: #0B0C10;
+  position: relative; height: clamp(440px, 76vh, 760px); overflow: hidden; isolation: isolate;
+  border-radius: 24px; background: var(--pg-bg); border: 1px solid var(--line);
+  cursor: grab; user-select: none; -webkit-user-select: none; touch-action: pan-y;
+  perspective: 1000px; outline-offset: 4px;
+}
+.pg-stage.dragging { cursor: grabbing; }
+.pg-grid { position: absolute; inset: 0; transform-style: preserve-3d; }
+.pg-cell {
+  position: absolute; left: 0; top: 0; box-sizing: border-box; padding: 10px;
+  display: flex; flex-direction: column; gap: 10px;
+  background-color: rgba(0, 0, 0, .1); border-radius: 8px; cursor: pointer;
+  transition: background-color .3s ease; will-change: transform, opacity;
+}
+.pg-cell:hover { background-color: var(--c); }
+.pg-thumb { flex: 1; min-height: 0; border-radius: 4px; background: #14141c center / cover no-repeat; }
+.pg-meta { display: flex; justify-content: space-between; gap: 8px; font-size: .75rem; line-height: 1.2; color: #8A8F9C; }
+.pg-meta span:first-child { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pg-meta span:last-child { flex: none; font-variant-numeric: tabular-nums; }
+.pg-cell:hover .pg-meta { color: #0B0C10; }
+.pg-dim, .pg-spot, .pg-vig { position: absolute; inset: 0; pointer-events: none; }
+.pg-dim { background: rgba(0, 0, 0, .38); transition: background .45s var(--ease); }
+.pg-spot {
+  background: radial-gradient(circle 340px at var(--mx, 50%) var(--my, 50%),
+    rgba(255, 255, 255, .55) 0%, rgba(255, 255, 255, .3) 25%, rgba(255, 255, 255, .08) 50%, rgba(0, 0, 0, 0) 65%, rgba(0, 0, 0, .3) 100%);
+  mix-blend-mode: overlay; transition: opacity .4s ease;
+}
+.pg-vig { background: radial-gradient(ellipse at center, transparent 30%, rgba(11, 12, 16, .2) 60%, rgba(11, 12, 16, .8) 90%, var(--pg-bg) 100%); }
+.pg-stage.focused .pg-spot { opacity: 0; }
+.pg-stage.focused .pg-dim { background: rgba(0, 0, 0, .6); }
+.pg-hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); margin: 0; pointer-events: none; white-space: nowrap;
+  font-size: .8125rem; color: rgba(238, 240, 245, .7); padding: 6px 12px; border-radius: 999px; background: rgba(11, 12, 16, .6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.pg-univers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
+.pg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.pg-univers .muted { font-variant-numeric: tabular-nums; }
+
+/* Carte mise en avant (ajoutée à la fin de <body>) */
+.pg-fdim { position: fixed; inset: 0; z-index: 140; background: rgba(5, 6, 9, .72); opacity: 0; pointer-events: none; transition: opacity .45s var(--ease); }
+.pg-fdim.on { opacity: 1; pointer-events: auto; cursor: pointer; }
+.pg-fcard {
+  position: fixed; left: 50%; top: 50%; z-index: 141; overflow: hidden; border-radius: 14px;
+  background: #14141c; color: #EEF0F5; opacity: 0; pointer-events: none;
+  box-shadow: 0 30px 80px -20px rgba(0, 0, 0, .85), 0 0 0 1px rgba(255, 255, 255, .06);
+}
+.pg-fcard.on { pointer-events: auto; cursor: pointer; }
+.pg-fimg { position: absolute; inset: 0; background: center / cover no-repeat; }
+.pg-fimg::after { content: ""; position: absolute; inset: 0; background: linear-gradient(transparent 35%, rgba(8, 9, 12, .55) 62%, rgba(8, 9, 12, .92)); }
+.pg-fclose { position: absolute; top: 12px; right: 12px; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; background: rgba(8, 9, 12, .55); color: #EEF0F5; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.pg-fclose .ic { width: 18px; height: 18px; transform: rotate(45deg); }
+.pg-cap { position: absolute; left: 20px; right: 20px; bottom: 20px; display: flex; flex-direction: column; align-items: flex-start; gap: 8px; text-shadow: 0 2px 12px rgba(0, 0, 0, .6); }
+.pg-cap p { margin: 0; }
+.pg-fcat { display: inline-flex; align-items: center; gap: 8px; font-size: .8125rem; color: rgba(238, 240, 245, .8); }
+.pg-fcat::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
+.pg-fcat:hover { color: #fff; }
+.pg-fhead { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; width: 100%; font-size: 1.0625rem; min-height: 1.4em; }
+.pg-fhead b { font-weight: 500; }
+.pg-fhead span { flex: none; font-variant-numeric: tabular-nums; color: rgba(238, 240, 245, .85); }
+.pg-fdesc { font-size: .875rem; line-height: 1.5; color: rgba(238, 240, 245, .78); min-height: 3em; }
+.pg-caret { display: inline-block; width: 6px; height: 1em; margin-left: 2px; vertical-align: -2px; background: rgba(255, 255, 255, .85); animation: pg-blink .8s steps(1) infinite; }
+@keyframes pg-blink { 50% { opacity: 0; } }
+.pg-fgo { margin-top: 4px; background: #EEF0F5; color: #0E0F13; }
+.pg-fhead, .pg-fdesc, .pg-fcat, .pg-meta, .pg-hint { font-family: var(--font-sub); }
+@media (max-width: 640px) {
+  .pg-stage { height: clamp(380px, 68vh, 560px); border-radius: 18px; }
+  .pg-cell { padding: 6px; gap: 6px; }
+  .pg-meta { font-size: .6875rem; }
+}
+@media (prefers-reduced-motion: reduce) { .pg-cell { transition: none; } }
 
 /* ---------- 9. Cartes produits & grilles ---------- */
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
