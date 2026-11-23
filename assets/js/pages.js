@@ -214,7 +214,9 @@
   const galleryEntry = (g) => ({ title: g.title || "", meta: g.meta || "", metaShort: g.meta || "", text: g.text || "", label: "", labelHref: "",
     color: "#8B5CF6", href: safeLink(g.link), cta: g.cta || "Découvrir", img: g.src, nc: g.nc === true });
   /* Pastille des objets sous licence non commerciale (texte réglable dans l'administration) */
-  const ncBadge = (cls) => `<span class="${cls}">${icon("shield")}${esc(H.ncLabel || "Licence non commerciale")}</span>`;
+  const ncColor = /^#[0-9a-f]{6}$/i.test(H.ncColor || "") ? H.ncColor : "#E5484D";
+  const ncText = H.ncLabel || "Licence non commerciale"; // lu par les lecteurs d'écran et affiché au survol, jamais écrit sur la vignette
+  const ncBadge = (cls) => `<span class="${cls}" style="--nc:${ncColor}" title="${esc(ncText)}"><span class="sr">${esc(ncText)}</span></span>`;
 
   /* list : cases à afficher (dans cet ordre), créées par productEntry ou galleryEntry.
      Sans list : tout le catalogue, mélangé par univers. */
@@ -434,7 +436,7 @@
         const ext = /^https?:/i.test(e.href);
         fGo.target = ext ? "_blank" : ""; fGo.rel = ext ? "noopener noreferrer" : "";
       }
-      fSr.textContent = [e.title, e.meta, e.nc ? H.ncLabel || "Licence non commerciale" : ""].filter(Boolean).join(", ") + (e.text ? `. ${e.text}` : "");
+      fSr.textContent = [e.title, e.meta, e.nc ? ncText : ""].filter(Boolean).join(", ") + (e.text ? `. ${e.text}` : "");
       fTitle.textContent = fPrice.textContent = fDesc.textContent = "";
       Object.assign(fc.style, { width: w + "px", height: h + "px", transition: "none", left: r.left + r.width / 2 + "px", top: r.top + r.height / 2 + "px", opacity: "0", transform: `${P} scale(${r.width / w})` });
       void fc.offsetWidth; // fixe la position de départ avant la transition

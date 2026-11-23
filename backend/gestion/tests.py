@@ -162,6 +162,7 @@ class AdminTests(TestCase):
             ("site", lambda c: c["site"]["home"]["univers"].__setitem__("title", {"html": "<b>"})),
             ("site", lambda c: c["site"]["home"]["latest"].__setitem__("gallery", [{"src": "assets/img/atelier/a.webp", "link": "javascript:alert(1)"}])),
             ("site", lambda c: c["site"]["home"]["latest"].__setitem__("gallery", [{"src": "https://ailleurs.example/a.png"}])),
+            ("site", lambda c: c["site"]["home"].__setitem__("ncColor", "red;background:url(x)")),
         ]
         for nom, piege in pieges:
             contenu = self.contenus()

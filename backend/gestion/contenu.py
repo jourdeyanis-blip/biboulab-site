@@ -124,6 +124,8 @@ def verifier(contenu: dict, produits: list) -> None:
     if not isinstance(accueil, dict):
         raise Invalide("Page d'accueil incomplète.")
     _image(accueil.get("heroPhoto"), "photo du bandeau de l'accueil")
+    if accueil.get("ncColor") and not (isinstance(accueil["ncColor"], str) and HEX.match(accueil["ncColor"])):
+        raise Invalide("Couleur de la pastille « licence non commerciale » invalide (format #RRVVBB).")
     for k, v in accueil.items():
         if isinstance(v, dict):
             for cle, x in v.items():

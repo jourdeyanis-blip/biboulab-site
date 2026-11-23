@@ -49,7 +49,8 @@ const SITE = {
   home: {
     heroPhoto: "", heroPhotoAlt: "",   // photo du bandeau principal. Vide = imprimante 3D animée
     univers: { kicker: "Les univers", title: "Huit catégories, *mille idées*", cta: "Toute la boutique" },
-    ncLabel: "Licence non commerciale", // pastille des objets cochés « Licence non commerciale » dans l'administration
+    ncColor: "#E5484D",                 // couleur de la pastille des objets cochés « Licence non commerciale » dans l'administration
+    ncLabel: "Licence non commerciale", // sens de la pastille : jamais écrit, lu aux lecteurs d'écran et affiché au survol
     latest: { kicker: "Derniers produits", title: "Tout juste sortis du plateau", cta: "Voir les {n} créations",
       gallery: [] },                    // photos de la galerie : { src, title, meta, text, link, cta }. Vide = les 8 dernières créations
     atelier: {

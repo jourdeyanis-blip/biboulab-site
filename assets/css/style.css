@@ -411,18 +411,16 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .pg-meta span:first-child { font-weight: 500; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 .pg-meta span:last-child { flex: none; font-variant-numeric: tabular-nums; }
 .pg-cell:hover .pg-meta { color: #0B0C10; }
-/* Pastille « Licence non commerciale » (case à cocher sur la fiche de l'objet, dans l'administration) */
+/* Pastille de couleur des objets sous licence non commerciale (case à cocher sur la fiche de l'objet,
+   couleur réglable dans l'administration). Aucun texte visible : le sens est donné au survol et aux lecteurs d'écran. */
 .pg-thumb { position: relative; }
 .pg-nc {
-  display: inline-flex; align-items: center; gap: 5px; max-width: calc(100% - 12px);
-  padding: 4px 9px 4px 7px; border-radius: 999px; background: #E5484D; color: #fff;
-  font-family: var(--font-sub); font-size: .6875rem; font-weight: 500; line-height: 1.2; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
-  box-shadow: 0 2px 10px rgba(0, 0, 0, .35);
+  display: inline-block; flex: none; width: 14px; height: 14px; border-radius: 50%;
+  background: var(--nc, #E5484D); box-shadow: 0 0 0 2px rgba(255, 255, 255, .9), 0 2px 8px rgba(0, 0, 0, .45);
 }
-.pg-nc .ic { flex: none; width: 12px; height: 12px; }
-.pg-thumb .pg-nc { position: absolute; top: 6px; left: 6px; }
-.pg-fnc { text-shadow: none; font-size: .75rem; }
-@media (max-width: 640px) { .pg-thumb .pg-nc { top: 4px; left: 4px; padding: 3px 7px 3px 5px; font-size: .625rem; } }
+.pg-thumb .pg-nc { position: absolute; top: 8px; left: 8px; }
+.pg-fnc { width: 12px; height: 12px; }
+@media (max-width: 640px) { .pg-thumb .pg-nc { top: 6px; left: 6px; width: 11px; height: 11px; } }
 .pg-dim, .pg-spot, .pg-vig { position: absolute; inset: 0; pointer-events: none; }
 .pg-dim { background: rgba(0, 0, 0, .38); transition: background .45s var(--ease); }
 .pg-spot {
