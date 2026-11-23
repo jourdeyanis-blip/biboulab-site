@@ -28,7 +28,7 @@ En ligne sur **/admin/** (voir « Administration en ligne » plus bas), ou en lo
 - **Galerie « Tout juste sortis du plateau »** : les photos forment une liste repliée (vignette, nom, petit texte) ; « Modifier » déplie une photo pour changer sa photo de couverture et ses textes, les flèches changent l'ordre. « Ajouter une photo » pour composer le mur à faire glisser avec vos propres images. Chaque photo peut avoir un titre, un petit texte à droite (prix, année…), une description (tapée à la machine à l'ouverture) et un lien avec son bouton (page du site comme `produit.html?id=…`, ou adresse en https://). Sans aucune photo, la galerie montre automatiquement les 8 dernières créations du catalogue.
 - « L'atelier » : points forts (un par ligne) et **photo** (vide : 1re photo de la page À propos, sinon l'imprimante animée).
 - Le bloc « Retrouvez-moi aussi sur » apparaît aussi en bas des autres pages.
-- **Photo de chaque carte « Les univers »** : dans le Catalogue, sur la fiche de la catégorie (« Photo de la carte »). Vide : la 1re photo d'un de ses objets, sinon le visuel d'illustration.
+- **Cartes « Les univers »** (« Huit catégories, mille idées ») : la section affiche la liste des cartes, avec leur vignette actuelle ; « Modifier » déplie une carte pour choisir sa **photo fixe** et changer le nom de l'univers. La même photo se règle aussi dans le Catalogue, sur la fiche de la catégorie. Vide : le visuel d'illustration aux couleurs de la catégorie (les photos des objets ne sont pas utilisées).
 
 Dans les textes des pages : ligne vide = nouveau paragraphe, `- ` en début de ligne = puce, `**gras**`, `[lien](cgv.html)`, `### intertitre`. Les variables comme `{owner}`, `{siret}`, `{address}`, `{email}` sont remplacées par les informations légales des Réglages : changez votre SIRET une fois, toutes les pages suivent. Modifier une page légale met automatiquement à jour sa date « Dernière mise à jour ».
 
@@ -304,7 +304,7 @@ Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré
 | Hero : vase imprimé en temps réel, particules, sol en perspective | `pages.js` `heroCanvas` | `cycle` (durée), `N` (nombre de couches), `profile` (forme) |
 | Titre mot par mot, mots en dégradé | `data.js` `hero.title` | entourez les mots d'`*étoiles*` |
 | Bouton magnétique | attribut `data-magnetic` | force : `0.3` / `0.4` dans `magnetic()` |
-| Cartes des univers (accueil) : au survol, les autres se floutent et le nom apparaît | `pages.js` `focusCard`, `style.css` section 8 ter | visuel : `image` de la catégorie, sinon 1re photo d'un de ses produits |
+| Cartes des univers (accueil) : au survol, les autres se floutent et le nom apparaît | `pages.js` `focusCard`, `style.css` section 8 ter | visuel : photo fixe `image` de la catégorie, sinon illustration |
 | « Tout juste sortis du plateau » (accueil) : mur infini des 8 dernières créations à faire glisser, carte mise en avant au clic | `pages.js` `phantomGallery` | objet `CFG` (taille des cases, courbure, inertie) |
 | Cartes inclinées en 3D + reflet | attribut `data-tilt` | amplitude : `12` (degrés) dans `tilt()` |
 | Révélations au défilement | attribut `data-reveal` (`left`, `right`, `scale`) | `style.css` section 15 |

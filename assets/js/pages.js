@@ -165,11 +165,11 @@
 
   /* Carte « focus » d'un univers (accueil) : au survol, les autres cartes se floutent
      et le nom apparaît sur un voile sombre. Adapté du composant « Focus Cards » (Aceternity UI).
-     Visuel : c.image si renseignée, sinon la 1re photo d'un produit de l'univers,
-     sinon un visuel d'illustration aux couleurs de la catégorie. */
+     Visuel fixe : la photo choisie pour la carte (c.image, administration), sinon un visuel
+     d'illustration aux couleurs de la catégorie. Les photos des objets ne sont pas utilisées. */
   function focusCard(c, i) {
     const fam = catFamily(c.slug), prods = PRODUCTS.filter((p) => fam.includes(p.category)), n = prods.length;
-    const photo = c.image || (prods.find((p) => p.images && p.images[0]) || { images: [] }).images[0];
+    const photo = c.image;
     const visual = photo
       ? `<img src="${esc(photo)}" alt="" loading="lazy" decoding="async">`
       : art({ id: `univers-${c.slug}`, name: c.name, category: c.slug }).replace('role="img"', 'aria-hidden="true"');

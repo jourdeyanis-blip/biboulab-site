@@ -495,8 +495,10 @@
       mode: "cat", panel: null, // onglet affiché : catalogue, pages ou réglages
       site: structuredClone(SITE), about: structuredClone(ABOUT), pages: structuredClone(PAGES || {}), reviews: structuredClone(REVIEWS || []),
       fils: Object.entries(FILAMENTS).map(([key, f]) => ({ key, ...f })), // couleurs de filament, sous forme de liste
-      folds: new WeakSet()  // éléments dépliés dans les listes dépliables (gardés si on les déplace)
+      folds: new WeakSet(), // éléments dépliés dans les listes dépliables (gardés si on les déplace)
+      ufolds: new Set()     // cartes « Les univers » dépliées (onglet Page d'accueil)
     };
+    let upCat = null;
     st.cats.forEach((c) => st.open.add(c));
     const catOf = (slug) => st.cats.find((c) => c.slug === slug);
     const cur = () => st.sel;
@@ -509,6 +511,32 @@
     const siblings = (c) => (parentA(c) ? kidsOf(parentA(c)) : rootsA());
     const below = (c) => { const out = [c]; for (const x of out) kidsOf(x).forEach((k) => out.includes(k) || out.push(k)); return out; }; // elle-même + toutes ses sous-catégories
     const inTree = (c) => { const all = below(c).map((x) => x.slug); return st.prods.filter((p) => all.includes(p.category)); };
+
+    /* Cartes « Les univers » de l'accueil, telles qu'affichées sur le site :
+       photo fixe choisie pour la carte, sinon visuel d'illustration aux couleurs de la catégorie */
+    let artN = 0;
+    const univPhoto = (c) => c.image || "";
+    const univThumb = (c) => {
+      const src = univPhoto(c); if (src) return `<img src="../${esc(src)}" alt="">`;
+      const id = `ua${++artN}`;
+      return `<svg viewBox="0 0 48 48" aria-hidden="true" style="width:100%;height:100%"><defs><linearGradient id="${id}" gradientTransform="rotate(50)"><stop stop-color="${esc(c.color)}"/><stop offset="1" stop-color="${esc(c.color2)}"/></linearGradient></defs>
+        <rect width="48" height="48" fill="#14141c"/><rect width="48" height="48" fill="url(#${id})" opacity=".22"/><circle cx="24" cy="24" r="17" fill="url(#${id})"/>
+        <g transform="translate(14 14) scale(.83)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONS[c.icon] || ""}</g></svg>`;
+    };
+    const univSub = (c) => { const n = inTree(c).length; return `${n} création${n > 1 ? "s" : ""} · ${c.image ? "photo choisie" : "pas de photo : visuel d'illustration"}`; };
+    function univCards() {
+      return `<p class="hint">Les cartes de la section, dans l'ordre du site. « Modifier » pour changer la photo ou le nom d'un univers (l'ordre se règle dans le Catalogue)</p>
+        <div class="li-list" style="margin-top:12px">${rootsA().map((c) => `<details class="li-card li-fold" data-ufold="${esc(c.slug)}"${st.ufolds.has(c.slug) ? " open" : ""}>
+          <summary class="li-head"><span class="li-thumb">${univThumb(c)}</span><b><span data-uname>${esc(c.name) || "Sans nom"}</span><span class="li-sub" data-usub>${esc(univSub(c))}</span></b>
+            <span class="li-chev" aria-hidden="true"><span class="li-chev-o">Modifier</span><span class="li-chev-c">Replier</span>${icon("chevron")}</span></summary>
+          <div class="form">
+            <div class="fg full"><label for="u-img-${esc(c.slug)}">Photo de la carte <small>(facultatif)</small></label><div class="rowline img">${c.image ? `<img src="../${esc(c.image)}" alt="">` : `<img alt="">`}<input class="input" id="u-img-${esc(c.slug)}" data-ucat="${esc(c.slug)}" data-uk="image" value="${esc(c.image || "")}" placeholder="assets/img/produits/…"><button class="rm" type="button" data-uup="${esc(c.slug)}" title="Envoyer une image" aria-label="Envoyer une image" ${st.canSave ? "" : "disabled"}>${icon("plus")}</button></div>
+              <p class="hint">Photo fixe : elle ne change pas quand vous ajoutez des objets. Vide : le visuel d'illustration aux couleurs de la catégorie</p></div>
+            <div class="fg full"><label for="u-name-${esc(c.slug)}">Nom de l'univers</label><input class="input" id="u-name-${esc(c.slug)}" data-ucat="${esc(c.slug)}" data-uk="name" value="${esc(c.name)}" autocomplete="off">
+              <p class="hint">C'est le nom de la catégorie : il change aussi dans le menu et sur sa page</p></div>
+          </div></details>`).join("")}</div>
+        <input type="file" id="ufile" accept="image/*" hidden>`;
+    }
     const pathName = (c) => { const out = []; for (let x = c; x && !out.includes(x); x = parentA(x)) out.unshift(x); return out.map((x) => x.name || x.slug).join(" › "); };
 
     /* ---------- Barre du haut ---------- */
@@ -725,7 +753,7 @@
         </div></section>
         <section class="a-sec"><h2>Photo de la carte (accueil)</h2><div class="form">
           <div class="fg full"><label for="f-image">Photo <small>(facultatif)</small></label><div class="rowline img">${c.image ? `<img src="../${esc(c.image)}" alt="">` : `<img alt="">`}<input class="input" id="f-image" data-k="image" value="${esc(c.image || "")}" placeholder="assets/img/produits/…"><button class="rm" type="button" data-act="catimg" title="Envoyer une image" aria-label="Envoyer une image" ${st.canSave ? "" : "disabled"}>${icon("plus")}</button></div>
-            <p class="hint">Affichée sur la carte de la catégorie, dans « Les univers ». Vide : la 1re photo d'un de ses objets, sinon le visuel d'illustration</p></div>
+            <p class="hint">Photo fixe de la carte de la catégorie, dans « Les univers » à l'accueil. Vide : le visuel d'illustration</p></div>
           <input type="file" id="cfile" accept="image/*" hidden>
         </div></section>
         <section class="a-sec"><h2>Icône</h2>
@@ -825,6 +853,13 @@
     }
     main.addEventListener("change", async (e) => {
       if (e.target.id === "pfile") return panelUpload(e);
+      if (e.target.id === "ufile") { // photo de la carte d'un univers (onglet Page d'accueil)
+        const file = e.target.files[0], c = catOf(upCat); e.target.value = ""; if (!file || !c) return;
+        status("dirty", "Envoi de l'image");
+        try { c.image = await sendImage(file, "produits", c.slug); st.ufolds.add(c.slug); touch(); panelForm(); }
+        catch (err) { status("bad", err.message || "Envoi de l'image impossible"); }
+        return;
+      }
       if (e.target.id === "cfile") { // photo de la carte d'une catégorie
         const file = e.target.files[0], c = cur(); e.target.value = ""; if (!file || !c) return;
         status("dirty", "Envoi de l'image");
@@ -966,7 +1001,7 @@
             { k: "home.univers.kicker", label: "Surtitre" },
             { k: "home.univers.cta", label: "Bouton" },
             { k: "home.univers.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" }
-          ], html: '<p class="hint">La photo de chaque carte se choisit dans le Catalogue, sur la fiche de la catégorie</p>' },
+          ], html: () => univCards() },
           { title: "Tout juste sortis du plateau (dernières créations)", fields: [
             { k: "home.latest.kicker", label: "Surtitre" },
             { k: "home.latest.cta", label: "Bouton", hint: "{n} est remplacé par le nombre de créations" },
@@ -1149,7 +1184,7 @@
       const P = PANELS[st.panel], main = $("#main"), y = main.scrollTop;
       const form = `<form class="a-form" novalidate>
         <header class="a-head"><div><h1>${esc(P.label())}</h1><p>${P.intro ? esc(P.intro) + ". " : ""}${P.link ? `<a href="${P.link}" target="_blank" rel="noopener" style="text-decoration:underline">Voir sur le site</a>` : ""}</p></div></header>
-        ${P.secs.map((s) => `<section class="a-sec"><h2>${esc(s.title)}</h2>${s.html || ""}<div class="form"${s.html ? ' style="margin-top:16px"' : ""}>${s.fields.map((f) => fld(f, [])).join("")}</div></section>`).join("")}
+        ${P.secs.map((s) => `<section class="a-sec"><h2>${esc(s.title)}</h2>${typeof s.html === "function" ? s.html() : s.html || ""}<div class="form"${s.html ? ' style="margin-top:16px"' : ""}>${s.fields.map((f) => fld(f, [])).join("")}</div></section>`).join("")}
         <input type="file" id="pfile" accept="image/*" hidden></form>`;
       main.innerHTML = P.preview ? `<div class="a-split">${form}<aside class="a-prev" aria-label="Aperçu"><p class="a-prev-t">Aperçu · enregistrez pour publier</p><div id="pv"></div></aside></div>` : form;
       main.scrollTop = y;
@@ -1162,7 +1197,17 @@
     }
     let lastArea = null;
     function panelInput(e) {
-      const t = e.target; if (!t.dataset.p) return;
+      const t = e.target;
+      if (t.dataset.ucat) { // carte d'un univers : photo ou nom de la catégorie
+        const c = catOf(t.dataset.ucat); if (!c) return;
+        const v = t.value, k = t.dataset.uk;
+        if (k === "image") { if (v.trim()) c.image = v.trim(); else delete c.image; }
+        if (k === "name") c.name = v;
+        const card = t.closest(".li-fold");
+        if (card) { $(".li-thumb", card).innerHTML = univThumb(c); $("[data-uname]", card).textContent = c.name || "Sans nom"; $("[data-usub]", card).textContent = univSub(c); if (k === "image") { const img = t.parentElement.querySelector("img"); if (img) img.src = v.trim() ? "../" + v.trim() : ""; } }
+        touch(); return;
+      }
+      if (!t.dataset.p) return;
       const p = JSON.parse(t.dataset.p), type = t.dataset.t;
       const v = type === "check" ? t.checked : type === "num" ? (t.value === "" ? 0 : +t.value.replace(",", ".")) : type === "lines" ? t.value.split("\n") : t.value;
       setP(p, v);
@@ -1199,6 +1244,7 @@
         a.dispatchEvent(new Event("input", { bubbles: true })); return;
       }
       const b = e.target.closest("button"); if (!b) return;
+      if (b.dataset.uup) { upCat = b.dataset.uup; return $("#ufile").click(); }
       if (b.closest("summary")) e.preventDefault(); // Monter / Descendre / Supprimer sans plier ni déplier la ligne
       if (b.dataset.up) { upTo = { p: JSON.parse(b.dataset.up), folder: b.dataset.folder }; return $("#pfile").click(); }
       if (!b.dataset.op) return;
@@ -1236,7 +1282,9 @@
       e.target.value = "";
     }
     $("#main").addEventListener("toggle", (e) => {
-      const d = e.target; if (!d.dataset || !d.dataset.fold) return;
+      const d = e.target;
+      if (d.dataset && d.dataset.ufold) { if (d.open) st.ufolds.add(d.dataset.ufold); else st.ufolds.delete(d.dataset.ufold); return; }
+      if (!d.dataset || !d.dataset.fold) return;
       const it = getP(JSON.parse(d.dataset.fold)); if (!it || typeof it !== "object") return;
       if (d.open) st.folds.add(it); else st.folds.delete(it);
     }, true);
