@@ -100,6 +100,14 @@ class AdminTests(TestCase):
         mauvais["categories"][0]["image"] = "javascript:alert(1)"   # photo de la carte d'une catégorie
         r = self.c.post("/api/sauver/", data=json.dumps(mauvais), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 400)
+        mauvais = json.loads(json.dumps(CATALOGUE))
+        mauvais["products"][0]["nonCommercial"] = "<b>oui</b>"   # pastille « licence non commerciale » : vrai ou faux uniquement
+        r = self.c.post("/api/sauver/", data=json.dumps(mauvais), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        self.assertEqual(r.status_code, 400)
+        bon = json.loads(json.dumps(CATALOGUE))
+        bon["products"][0]["nonCommercial"] = True
+        r = self.c.post("/api/sauver/", data=json.dumps(bon), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        self.assertEqual(r.status_code, 200, r.content)
         r = self.c.post("/api/photo/?nom=x.png", data=b"<?php echo 1; ?>", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 400)
         r = self.c.post("/api/photo/?nom=../x.png", data=b"\x89PNG\r\n\x1a\n0000", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
@@ -125,7 +133,7 @@ class AdminTests(TestCase):
         contenu["site"]["home"]["univers"]["title"] = "Nos *univers*"
         contenu["site"]["home"]["atelier"]["photo"] = "assets/img/atelier/atelier-1.webp"
         contenu["site"]["home"]["latest"]["gallery"] = [
-            {"src": "assets/img/atelier/g1.webp", "title": "Dragon", "meta": "2026", "text": "", "link": "produit.html?id=dragon", "cta": ""},
+            {"src": "assets/img/atelier/g1.webp", "title": "Dragon", "meta": "2026", "text": "", "link": "produit.html?id=dragon", "cta": "", "nc": True},
             {"src": "assets/img/produits/g2.webp", "title": "", "meta": "", "text": "", "link": "https://makerworld.com/fr", "cta": "Voir"},
         ]
         r = self.c.post("/api/sauver/", data=json.dumps({**CATALOGUE, **contenu}), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)

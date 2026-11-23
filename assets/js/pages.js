@@ -208,11 +208,13 @@
     const c = cat(p.category) || {};
     return { title: p.name, meta: (p.sizes && p.sizes.length ? "dès " : "") + euro(p.price), metaShort: euro(p.price), text: p.short || "",
       label: c.name || "", labelHref: c.slug ? `categorie.html?c=${c.slug}` : "", color: c.color || "#8B5CF6",
-      href: `produit.html?id=${encodeURIComponent(p.id)}`, cta: "Voir la création", img: (p.images && p.images[0]) || "", p };
+      href: `produit.html?id=${encodeURIComponent(p.id)}`, cta: "Voir la création", img: (p.images && p.images[0]) || "", nc: !!p.nonCommercial, p };
   };
   const safeLink = (u) => (/^(https?:\/\/[^\s"'<>]+|[a-z0-9-]+\.html(\?[\w=&%.-]*)?(#[\w-]*)?)$/i.test(u || "") ? u : "");
   const galleryEntry = (g) => ({ title: g.title || "", meta: g.meta || "", metaShort: g.meta || "", text: g.text || "", label: "", labelHref: "",
-    color: "#8B5CF6", href: safeLink(g.link), cta: g.cta || "Découvrir", img: g.src });
+    color: "#8B5CF6", href: safeLink(g.link), cta: g.cta || "Découvrir", img: g.src, nc: g.nc === true });
+  /* Pastille des objets sous licence non commerciale (texte réglable dans l'administration) */
+  const ncBadge = (cls) => `<span class="${cls}">${icon("shield")}${esc(H.ncLabel || "Licence non commerciale")}</span>`;
 
   /* list : cases à afficher (dans cet ordre), créées par productEntry ou galleryEntry.
      Sans list : tout le catalogue, mélangé par univers. */
@@ -258,7 +260,7 @@
       const el = document.createElement("div");
       el.className = "pg-cell"; el.dataset.i = i;
       el.style.setProperty("--c", e.color);
-      el.innerHTML = `<div class="pg-thumb"></div>${e.title || e.metaShort ? `<div class="pg-meta"><span>${esc(e.title)}</span><span>${esc(e.metaShort)}</span></div>` : ""}`;
+      el.innerHTML = `<div class="pg-thumb">${e.nc ? ncBadge("pg-nc") : ""}</div>${e.title || e.metaShort ? `<div class="pg-meta"><span>${esc(e.title)}</span><span>${esc(e.metaShort)}</span></div>` : ""}`;
       el.firstChild.style.backgroundImage = thumbs[i];
       return el;
     }
@@ -372,6 +374,7 @@
       <button class="pg-fclose" type="button" aria-label="Fermer">${icon("plus")}</button>
       <div class="pg-cap">
         <a class="pg-fcat" href="#"></a>
+        ${ncBadge("pg-nc pg-fnc")}
         <p class="pg-fhead" aria-hidden="true"><b></b><span></span></p>
         <p class="pg-fdesc" aria-hidden="true"><span></span><i class="pg-caret" hidden></i></p>
         <p class="sr"></p>
@@ -424,13 +427,14 @@
       fc.style.setProperty("--c", e.color);
       fc.setAttribute("aria-label", e.title || "Photo");
       fCat.hidden = !e.label; fCat.href = e.labelHref || "#"; fCat.textContent = e.label;
+      $(".pg-fnc", fc).hidden = !e.nc;
       fGo.hidden = !e.href;
       if (e.href) {
         fGo.href = e.href; fGo.innerHTML = `${esc(e.cta)} ${icon("arrow", "ic-arrow")}`;
         const ext = /^https?:/i.test(e.href);
         fGo.target = ext ? "_blank" : ""; fGo.rel = ext ? "noopener noreferrer" : "";
       }
-      fSr.textContent = [e.title, e.meta].filter(Boolean).join(", ") + (e.text ? `. ${e.text}` : "");
+      fSr.textContent = [e.title, e.meta, e.nc ? H.ncLabel || "Licence non commerciale" : ""].filter(Boolean).join(", ") + (e.text ? `. ${e.text}` : "");
       fTitle.textContent = fPrice.textContent = fDesc.textContent = "";
       Object.assign(fc.style, { width: w + "px", height: h + "px", transition: "none", left: r.left + r.width / 2 + "px", top: r.top + r.height / 2 + "px", opacity: "0", transform: `${P} scale(${r.width / w})` });
       void fc.offsetWidth; // fixe la position de départ avant la transition

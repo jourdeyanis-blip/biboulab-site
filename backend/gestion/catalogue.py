@@ -77,6 +77,8 @@ def verifier(cats: list, prods: list) -> None:
             raise Invalide(f"L'objet « {nom} » est incomplet.")
         if not all(isinstance(i, str) and IMAGE.match(i) for i in p["images"]):
             raise Invalide(f"Chemin de photo non autorisé dans « {nom} ».")
+        if not isinstance(p.get("nonCommercial", False), bool):
+            raise Invalide(f"Réglage « licence non commerciale » invalide pour « {nom} ».")
         ids.add(p["id"])
 
 

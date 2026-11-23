@@ -720,6 +720,8 @@
         <section class="a-sec"><h2>Créateur et licence</h2><div class="form">
           ${F("creator", "Nom du créateur", { v: p.creator, opt: 1, ph: "Pseudo ou nom du créateur du modèle" })}
           ${F("license", "Licence", { v: p.license, opt: 1, ph: "CC BY-NC 4.0", hint: "Affichés au-dessus de la fiche technique (« Non renseigné » si vide)" })}
+          <div class="fg full"><label class="check"><input type="checkbox" data-k="nonCommercial"${p.nonCommercial ? " checked" : ""}><span>Licence non commerciale : afficher la pastille « ${esc(st.site.home.ncLabel || "Licence non commerciale")} » sur sa vignette, à l'accueil</span></label>
+            <p class="hint">${/\bNC\b|non[ -]?commerc/i.test(p.license || "") && !p.nonCommercial ? "La licence saisie semble non commerciale (NC) : pensez à cocher cette case. " : ""}Pour les modèles qui ne peuvent pas être vendus (ex. licence CC BY-NC). Le texte de la pastille se règle dans Réglages › Page d'accueil</p></div>
         </div></section>
         <section class="a-sec"><h2>Fiche technique</h2><div class="form">
           ${F("material", "Matériau", { v: p.material, ph: "PLA", hint: "Le filtre de la boutique reconnaît PLA et PETG" })}
@@ -786,6 +788,7 @@
       if (t.dataset.k) {
         const k = t.dataset.k;
         if (t.type === "radio" && !t.checked) return;
+        if (t.type === "checkbox") { if (t.checked) it[k] = true; else delete it[k]; touch(); list(); return; } // ex. licence non commerciale
         let v = t.dataset.num !== undefined ? (t.value === "" ? 0 : +t.value.replace(",", ".")) : t.value;
         if (k === "badge") v = v || null;
         if (k === idKey) { v = v.toLowerCase(); st.manualId.add(it); }
@@ -1006,6 +1009,7 @@
             { k: "home.latest.kicker", label: "Surtitre" },
             { k: "home.latest.cta", label: "Bouton", hint: "{n} est remplacé par le nombre de créations" },
             { k: "home.latest.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" },
+            { k: "home.ncLabel", label: "Texte de la pastille « licence non commerciale »", full: 1, ph: "Licence non commerciale", hint: "Affichée sur la vignette des objets cochés « Licence non commerciale » (fiche de l'objet, dans le Catalogue) et des photos cochées ci-dessous" },
             { k: "home.latest.gallery", type: "list", label: "Photos de la galerie", itemName: "photo", add: "Ajouter une photo",
               hint: "Les photos du mur à faire glisser, dans cet ordre. Aucune photo : la galerie montre automatiquement les 8 dernières créations du catalogue",
               fold: 1, thumb: "src", sub: (g) => [g.meta, g.text].filter(Boolean).join(" · ") || (g.src ? "Cliquez pour modifier le texte et la photo" : "Pas encore de photo"),
@@ -1015,7 +1019,8 @@
               { k: "meta", label: "Petit texte à droite du titre", opt: 1, ph: "18,90 € · 2026" },
               { k: "text", label: "Description", type: "area", opt: 1, hint: "Tapée à la machine quand on ouvre la photo" },
               { k: "link", label: "Lien", opt: 1, ph: "produit.html?id=dragon-articule", hint: "Une page du site (ex. produit.html?id=…, categorie.html?c=…) ou une adresse en https://. Vide : pas de bouton" },
-              { k: "cta", label: "Texte du bouton", opt: 1, ph: "Découvrir" }
+              { k: "cta", label: "Texte du bouton", opt: 1, ph: "Découvrir" },
+              { k: "nc", label: "Licence non commerciale : afficher la pastille sur cette photo", type: "check" }
             ] }
           ] },
           { title: "L'atelier", fields: [

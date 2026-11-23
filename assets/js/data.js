@@ -49,6 +49,7 @@ const SITE = {
   home: {
     heroPhoto: "", heroPhotoAlt: "",   // photo du bandeau principal. Vide = imprimante 3D animée
     univers: { kicker: "Les univers", title: "Huit catégories, *mille idées*", cta: "Toute la boutique" },
+    ncLabel: "Licence non commerciale", // pastille des objets cochés « Licence non commerciale » dans l'administration
     latest: { kicker: "Derniers produits", title: "Tout juste sortis du plateau", cta: "Voir les {n} créations",
       gallery: [] },                    // photos de la galerie : { src, title, meta, text, link, cta }. Vide = les 8 dernières créations
     atelier: {
@@ -171,6 +172,7 @@ const CATEGORIES = [
    - sizes     : [] si taille unique, sinon [{ label, extra }] (extra = supplément en €)
    - images    : chemins de vos photos (WebP conseillé). Vide = visuel d'illustration généré
    - creator / license : nom du créateur du modèle et licence, toujours affichés au-dessus de la fiche technique (« Non renseigné » si vide)
+   - nonCommercial : true pour un modèle sous licence non commerciale (pastille sur sa vignette, à l'accueil)
    - makerworld / cults3d : lien direct vers le modèle sur la plateforme (facultatif)
    ⚠️ Tous les produits ci-dessous sont des EXEMPLES à remplacer. */
 const PRODUCTS = [

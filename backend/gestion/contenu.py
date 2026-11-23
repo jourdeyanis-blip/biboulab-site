@@ -140,7 +140,7 @@ def verifier(contenu: dict, produits: list) -> None:
     if not isinstance(galerie, list) or len(galerie) > 60:
         raise Invalide("Galerie de l'accueil invalide (60 photos au maximum).")
     for g in galerie:
-        if not isinstance(g, dict) or not all(isinstance(x, str) for x in g.values()):
+        if not isinstance(g, dict) or not all(isinstance(x, bool) if k == "nc" else isinstance(x, str) for k, x in g.items()):
             raise Invalide("Une photo de la galerie de l'accueil est incomplète.")
         if not g.get("src"):
             raise Invalide("Une photo de la galerie de l'accueil n'a pas d'image.")
