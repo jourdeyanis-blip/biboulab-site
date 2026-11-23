@@ -6,7 +6,7 @@
 (() => {
   "use strict";
   const { SITE, FILAMENTS, CATEGORIES, PRODUCTS, REVIEWS, ABOUT, PAGES = {} } = window.SHOP;
-  const { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, art, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM, FINE } = window.UI;
+  const { $, $$, esc, euro, ncDot, cat, roots, subcats, catFamily, lineage, product, icon, art, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM, FINE } = window.UI;
   const main = $("#main");
   const params = new URLSearchParams(location.search);
 
@@ -174,7 +174,7 @@
       ? `<img src="${esc(photo)}" alt="" loading="lazy" decoding="async">`
       : art({ id: `univers-${c.slug}`, name: c.name, category: c.slug }).replace('role="img"', 'aria-hidden="true"');
     return `<li data-reveal style="--i:${i % 4}"><a class="fc-card" href="categorie.html?c=${c.slug}" style="--c:${c.color}">
-      ${visual}
+      ${visual}${c.nonCommercial ? ncDot("nc-fc") : ""}
       <span class="fc-veil"><span class="fc-title">${esc(c.name)}</span><span class="fc-n">${n} création${n > 1 ? "s" : ""} ${icon("arrow")}</span></span>
     </a></li>`;
   }
@@ -214,9 +214,7 @@
   const galleryEntry = (g) => ({ title: g.title || "", meta: g.meta || "", metaShort: g.meta || "", text: g.text || "", label: "", labelHref: "",
     color: "#8B5CF6", href: safeLink(g.link), cta: g.cta || "Découvrir", img: g.src, nc: g.nc === true });
   /* Pastille des objets sous licence non commerciale (texte réglable dans l'administration) */
-  const ncColor = /^#[0-9a-f]{6}$/i.test(H.ncColor || "") ? H.ncColor : "#E5484D";
-  const ncText = H.ncLabel || "Licence non commerciale"; // lu par les lecteurs d'écran et affiché au survol, jamais écrit sur la vignette
-  const ncBadge = (cls) => `<span class="${cls}" style="--nc:${ncColor}" title="${esc(ncText)}"><span class="sr">${esc(ncText)}</span></span>`;
+  const ncText = H.ncLabel || "Licence non commerciale"; // sens de la pastille (app.js › ncDot), jamais écrit sur la vignette
 
   /* list : cases à afficher (dans cet ordre), créées par productEntry ou galleryEntry.
      Sans list : tout le catalogue, mélangé par univers. */
@@ -262,7 +260,7 @@
       const el = document.createElement("div");
       el.className = "pg-cell"; el.dataset.i = i;
       el.style.setProperty("--c", e.color);
-      el.innerHTML = `<div class="pg-thumb">${e.nc ? ncBadge("pg-nc") : ""}</div>${e.title || e.metaShort ? `<div class="pg-meta"><span>${esc(e.title)}</span><span>${esc(e.metaShort)}</span></div>` : ""}`;
+      el.innerHTML = `<div class="pg-thumb">${e.nc ? ncDot() : ""}</div>${e.title || e.metaShort ? `<div class="pg-meta"><span>${esc(e.title)}</span><span>${esc(e.metaShort)}</span></div>` : ""}`;
       el.firstChild.style.backgroundImage = thumbs[i];
       return el;
     }
@@ -376,7 +374,7 @@
       <button class="pg-fclose" type="button" aria-label="Fermer">${icon("plus")}</button>
       <div class="pg-cap">
         <a class="pg-fcat" href="#"></a>
-        ${ncBadge("pg-nc pg-fnc")}
+        ${ncDot("pg-fnc")}
         <p class="pg-fhead" aria-hidden="true"><b></b><span></span></p>
         <p class="pg-fdesc" aria-hidden="true"><span></span><i class="pg-caret" hidden></i></p>
         <p class="sr"></p>
@@ -781,7 +779,7 @@
       <section class="wrap">
         <div class="cat-hero fx-${c.fx}" style="--c:${c.color};--c2:${c.color2}" data-reveal="scale">
           <ol class="crumbs"><li><a href="index.html">Accueil</a></li><li><a href="boutique.html">Boutique</a></li>${lineage(c).slice(0, -1).map((x) => `<li><a href="categorie.html?c=${x.slug}">${esc(x.name)}</a></li>`).join("")}<li aria-current="page">${esc(c.name)}</li></ol>
-          <h1>${esc(c.name)}</h1>
+          <h1>${esc(c.name)}${c.nonCommercial ? ncDot("nc-title") : ""}</h1>
           <p class="lead">${esc(c.description)}</p>
           ${icon(c.icon, "big-ic")}
         </div>
@@ -821,7 +819,7 @@
 
           <div class="p-info" data-reveal="right">
             <a class="p-cat" href="categorie.html?c=${c.slug}">${icon(c.icon)}${esc(c.name)}</a>
-            <h1>${esc(p.name)}</h1>
+            <h1>${esc(p.name)}${p.nonCommercial ? ncDot("nc-title") : ""}</h1>
             <p class="lead" style="margin:0">${esc(p.short)}</p>
             <p class="p-price" id="price" aria-live="polite">${euro(unit())}</p>
             <p class="p-tax">TVA non applicable, art. 293 B du CGI · livraison offerte dès ${euro(SITE.shipping.freeFrom)}</p>

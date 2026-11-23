@@ -101,11 +101,16 @@ class AdminTests(TestCase):
         r = self.c.post("/api/sauver/", data=json.dumps(mauvais), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 400)
         mauvais = json.loads(json.dumps(CATALOGUE))
+        mauvais["categories"][0]["nonCommercial"] = "oui"   # pastille sur la carte d'une catégorie : vrai ou faux uniquement
+        r = self.c.post("/api/sauver/", data=json.dumps(mauvais), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+        self.assertEqual(r.status_code, 400)
+        mauvais = json.loads(json.dumps(CATALOGUE))
         mauvais["products"][0]["nonCommercial"] = "<b>oui</b>"   # pastille « licence non commerciale » : vrai ou faux uniquement
         r = self.c.post("/api/sauver/", data=json.dumps(mauvais), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 400)
         bon = json.loads(json.dumps(CATALOGUE))
         bon["products"][0]["nonCommercial"] = True
+        bon["categories"][0]["nonCommercial"] = True
         r = self.c.post("/api/sauver/", data=json.dumps(bon), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
         self.assertEqual(r.status_code, 200, r.content)
         r = self.c.post("/api/photo/?nom=x.png", data=b"<?php echo 1; ?>", content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)

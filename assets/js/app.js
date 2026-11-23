@@ -17,6 +17,12 @@
   const $$ = (s, r = document) => [...r.querySelectorAll(s)];
   const esc = (s) => String(s ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
   const euro = (n) => n.toLocaleString("fr-FR", { style: "currency", currency: "EUR" });
+  /* Pastille « licence non commerciale » (produits et catégories cochés dans l'administration) :
+     un simple point de couleur, sans texte ; son sens est donné au survol et aux lecteurs d'écran */
+  const ncDot = (cls = "") => {
+    const h = SITE.home || {}, color = /^#[0-9a-f]{6}$/i.test(h.ncColor || "") ? h.ncColor : "#E5484D", text = h.ncLabel || "Licence non commerciale";
+    return `<span class="pg-nc${cls ? " " + cls : ""}" style="--nc:${color}" role="img" aria-label="${esc(text)}" title="${esc(text)}"></span>`;
+  };
   const cat = (slug) => CATEGORIES.find((c) => c.slug === slug);
   /* Sous-catégories : une catégorie peut indiquer  parent: "slug-de-la-catégorie-parente" */
   const parentOf = (c) => (c && c.parent ? cat(c.parent) : null);
@@ -163,7 +169,7 @@
     return `<div class="cell" data-reveal style="--i:${i % 4}">
       <article class="card" data-tilt style="--c:${c.color}">
         <a class="card-link" href="produit.html?id=${p.id}" data-cursor="Voir">
-          <div class="card-media">${media(p)}${badge}</div>
+          <div class="card-media">${media(p)}${badge}${p.nonCommercial ? ncDot("nc-card") : ""}</div>
           <div class="card-body">
             <p class="card-cat">${esc(c.name)}</p>
             <h3>${esc(p.name)}</h3>
@@ -435,7 +441,7 @@
   }
 
   /* ---------- API partagée avec pages.js ---------- */
-  window.UI = { $, $$, esc, euro, cat, roots, subcats, catFamily, lineage, product, icon, art, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM, FINE, consent: () => store.get("gforge-cookies") };
+  window.UI = { $, $$, esc, euro, ncDot, cat, roots, subcats, catFamily, lineage, product, icon, art, media, card, storeLogo, extAttrs, Cart, toast, confirmRemove, stepQty, qtyHTML, flyToCart, enhance, jsonLd, setMeta, RM, FINE, consent: () => store.get("gforge-cookies") };
 
   /* ---------- Démarrage ---------- */
   initEntrance();

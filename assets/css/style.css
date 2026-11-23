@@ -420,6 +420,9 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 }
 .pg-thumb .pg-nc { position: absolute; top: 8px; left: 8px; }
 .pg-fnc { width: 12px; height: 12px; }
+.card-media .nc-card { position: absolute; top: 14px; right: 14px; z-index: 2; }       /* vignettes boutique et catégories (l'étiquette Nouveau est à gauche) */
+.fc-card .nc-fc { position: absolute; top: 14px; left: 14px; z-index: 2; }             /* cartes « Les univers » de l'accueil */
+.pg-nc.nc-title { width: max(12px, .36em); height: max(12px, .36em); margin-left: .4em; vertical-align: .3em; } /* à côté du titre : fiche produit, page catégorie */
 @media (max-width: 640px) { .pg-thumb .pg-nc { top: 6px; left: 6px; width: 11px; height: 11px; } }
 .pg-dim, .pg-spot, .pg-vig { position: absolute; inset: 0; pointer-events: none; }
 .pg-dim { background: rgba(0, 0, 0, .38); transition: background .45s var(--ease); }

@@ -532,7 +532,7 @@
         <rect width="48" height="48" fill="#14141c"/><rect width="48" height="48" fill="url(#${id})" opacity=".22"/><circle cx="24" cy="24" r="17" fill="url(#${id})"/>
         <g transform="translate(14 14) scale(.83)" fill="none" stroke="#fff" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">${ICONS[c.icon] || ""}</g></svg>`;
     };
-    const univSub = (c) => { const n = inTree(c).length; return `${n} création${n > 1 ? "s" : ""} · ${c.image ? "photo choisie" : "pas de photo : visuel d'illustration"}`; };
+    const univSub = (c) => { const n = inTree(c).length; return `${n} création${n > 1 ? "s" : ""} · ${c.image ? "photo choisie" : "pas de photo : visuel d'illustration"}${c.nonCommercial ? " · pastille licence non commerciale" : ""}`; };
     function univCards() {
       return `<p class="hint">Les cartes de la section, dans l'ordre du site. « Modifier » pour changer la photo ou le nom d'un univers (l'ordre se règle dans le Catalogue)</p>
         <div class="li-list" style="margin-top:12px">${rootsA().map((c) => `<details class="li-card li-fold" data-ufold="${esc(c.slug)}"${st.ufolds.has(c.slug) ? " open" : ""}>
@@ -541,6 +541,7 @@
           <div class="form">
             <div class="fg full"><label for="u-img-${esc(c.slug)}">Photo de la carte <small>(facultatif)</small></label><div class="rowline img">${c.image ? `<img src="../${esc(c.image)}" alt="">` : `<img alt="">`}<input class="input" id="u-img-${esc(c.slug)}" data-ucat="${esc(c.slug)}" data-uk="image" value="${esc(c.image || "")}" placeholder="assets/img/produits/…"><button class="rm" type="button" data-uup="${esc(c.slug)}" title="Envoyer une image" aria-label="Envoyer une image" ${st.canSave ? "" : "disabled"}>${icon("plus")}</button></div>
               <p class="hint">Photo fixe : elle ne change pas quand vous ajoutez des objets. Vide : le visuel d'illustration aux couleurs de la catégorie</p></div>
+            <div class="fg full"><label class="check"><input type="checkbox" data-ucat="${esc(c.slug)}" data-uk="nc"${c.nonCommercial ? " checked" : ""}><span><i class="nc-dot" style="--nc:${ncCol()}"></i>Pastille licence non commerciale sur cette carte</span></label></div>
             <div class="fg full"><label for="u-name-${esc(c.slug)}">Nom de l'univers</label><input class="input" id="u-name-${esc(c.slug)}" data-ucat="${esc(c.slug)}" data-uk="name" value="${esc(c.name)}" autocomplete="off">
               <p class="hint">C'est le nom de la catégorie : il change aussi dans le menu et sur sa page</p></div>
           </div></details>`).join("")}</div>
@@ -587,6 +588,7 @@
           <div class="t-row t-head" draggable="true" data-kind="cat" data-i="${ci}" aria-current="${c === st.sel}">
             <button class="t-tog" type="button" data-tog="${ci}" aria-expanded="${open}" aria-label="Déplier ou replier ${name}">${icon("chevron")}</button>
             <button class="t-pick" type="button" data-pick="cat" data-i="${ci}"><span class="dd-ic" style="--c:${esc(c.color)}">${icon(c.icon)}</span><b>${name}</b><span class="num">${inTree(c).length}</span></button>
+            <button class="t-nc" type="button" data-ncc="${ci}" aria-pressed="${!!c.nonCommercial}" style="--nc:${ncCol()}" title="${c.nonCommercial ? "Pastille licence non commerciale activée sur la carte de la catégorie (cliquer pour la retirer)" : "Activer la pastille licence non commerciale sur la carte de la catégorie"}" aria-label="Pastille licence non commerciale : ${name}"><i></i></button>
             <button class="t-add" type="button" data-addin="${ci}" title="Ajouter un objet dans ${name}" aria-label="Ajouter un objet dans ${name}">${icon("plus")}</button>
           </div>
           ${open ? `<div class="t-kids">${subs.map(node).join("")}${kids.map(leaf).join("")}${subs.length || kids.length ? "" : `<p class="t-none">Vide. Utilisez le + ou glissez un élément ici</p>`}</div>` : ""}
@@ -599,8 +601,8 @@
       const b = e.target.closest("button"); if (!b) return;
       if (b.dataset.tog !== undefined) { const c = st.cats[+b.dataset.tog]; st.open.has(c) ? st.open.delete(c) : st.open.add(c); return list(); }
       if (b.dataset.addin !== undefined) return addProduct(st.cats[+b.dataset.addin]);
-      if (b.dataset.nc !== undefined) { // pastille licence non commerciale, d'un clic
-        const p = st.prods[+b.dataset.nc]; if (!p) return;
+      if (b.dataset.nc !== undefined || b.dataset.ncc !== undefined) { // pastille licence non commerciale, d'un clic (pièce ou catégorie)
+        const p = b.dataset.ncc !== undefined ? st.cats[+b.dataset.ncc] : st.prods[+b.dataset.nc]; if (!p) return;
         if (p.nonCommercial) delete p.nonCommercial; else p.nonCommercial = true;
         touch(); list(); if (st.sel === p) form(); return;
       }
@@ -767,6 +769,8 @@
           <div class="fg full"><label for="f-parent">Rangée dans</label><select class="select" id="f-parent" data-k="parent"><option value="">Aucune : c'est une catégorie principale</option>${st.cats.filter((x) => !below(c).includes(x)).map((x) => `<option value="${esc(x.slug)}"${x.slug === c.parent ? " selected" : ""}>${esc(pathName(x))}</option>`).join("")}</select>
             <p class="hint">Une sous-catégorie apparaît comme filtre sur la page de sa catégorie parente, qui affiche aussi ses objets</p></div>
           ${F("short", "Résumé", { v: c.short, full: 1, ph: "Pions, rangements, accessoires", hint: "Affiché sur la carte de la catégorie, à l'accueil" })}
+          <div class="fg full nc-box"><label class="check"><input type="checkbox" data-k="nonCommercial"${c.nonCommercial ? " checked" : ""}><span><i class="nc-dot" style="--nc:${ncCol()}"></i>Pastille licence non commerciale</span></label>
+            <p class="hint">Cochée : un point de couleur s'affiche sur la carte de cette catégorie dans « Les univers » à l'accueil, et à côté de son nom sur sa page. Pour les pièces, cochez la case sur chaque fiche</p></div>
           ${F("description", "Description", { v: c.description, full: 1, area: 1, hint: "Affichée en haut de la page de la catégorie" })}
         </div></section>
         <section class="a-sec"><h2>Photo de la carte (accueil)</h2><div class="form">
@@ -1225,6 +1229,7 @@
         const v = t.value, k = t.dataset.uk;
         if (k === "image") { if (v.trim()) c.image = v.trim(); else delete c.image; }
         if (k === "name") c.name = v;
+        if (k === "nc") { if (t.checked) c.nonCommercial = true; else delete c.nonCommercial; }
         const card = t.closest(".li-fold");
         if (card) { $(".li-thumb", card).innerHTML = univThumb(c); $("[data-uname]", card).textContent = c.name || "Sans nom"; $("[data-usub]", card).textContent = univSub(c); if (k === "image") { const img = t.parentElement.querySelector("img"); if (img) img.src = v.trim() ? "../" + v.trim() : ""; } }
         touch(); return;
