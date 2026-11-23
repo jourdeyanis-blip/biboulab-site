@@ -130,6 +130,25 @@
     .li-head b { flex: 1; min-width: 0; font-weight: 500; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .li-head .rm { width: 36px; height: 36px; }
     .li-head .up .ic { transform: rotate(180deg); }
+    /* Liste dépliable (ex. photos de la galerie) : une ligne par élément, dépliée pour le modifier */
+    .li-fold { padding: 0; }
+    .li-fold > summary { list-style: none; cursor: pointer; margin: 0; padding: 10px 12px 10px 10px; border-radius: var(--r); }
+    .li-fold > summary::-webkit-details-marker { display: none; }
+    .li-fold > summary:hover { background: var(--surface-2); }
+    .li-fold > summary:focus-visible { outline: 2px solid currentColor; outline-offset: 2px; }
+    .li-fold[open] > summary { border-bottom: 1px solid var(--line); border-radius: var(--r) var(--r) 0 0; }
+    .li-fold > .form { padding: 16px; }
+    .li-thumb { flex: none; width: 48px; height: 48px; border-radius: 8px; overflow: hidden; background: var(--surface-2); display: grid; place-items: center; color: var(--faint); }
+    .li-thumb img { width: 100%; height: 100%; object-fit: cover; }
+    .li-thumb .ic { width: 20px; height: 20px; }
+    .li-fold .li-sub { display: block; font-size: .8125rem; color: var(--muted); font-weight: 400; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .li-chev { flex: none; display: inline-flex; align-items: center; gap: 6px; height: 36px; padding: 0 12px; margin-left: 8px; border-radius: var(--r-s); border: 1px solid var(--line); font-size: .8125rem; color: var(--text); }
+    .li-fold > summary:hover .li-chev { border-color: var(--line-2); }
+    .li-chev .ic { width: 16px; height: 16px; transition: transform .2s var(--ease); }
+    .li-fold[open] .li-chev .ic { transform: rotate(180deg); }
+    .li-chev-c, .li-fold[open] .li-chev-o { display: none; }
+    .li-fold[open] .li-chev-c { display: inline; }
+    @media (max-width: 560px) { .li-chev-o, .li-fold[open] .li-chev-c { display: none; } .li-chev { padding: 0 9px; } }
     .li-solo { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 8px; align-items: start; }
     .li-solo > .fg { grid-column: auto; }
     .li-solo .acts { display: flex; flex-direction: column; }
@@ -475,7 +494,8 @@
       dirty: false, canSave: false,
       mode: "cat", panel: null, // onglet affiché : catalogue, pages ou réglages
       site: structuredClone(SITE), about: structuredClone(ABOUT), pages: structuredClone(PAGES || {}), reviews: structuredClone(REVIEWS || []),
-      fils: Object.entries(FILAMENTS).map(([key, f]) => ({ key, ...f }))  // couleurs de filament, sous forme de liste
+      fils: Object.entries(FILAMENTS).map(([key, f]) => ({ key, ...f })), // couleurs de filament, sous forme de liste
+      folds: new WeakSet()  // éléments dépliés dans les listes dépliables (gardés si on les déplace)
     };
     st.cats.forEach((c) => st.open.add(c));
     const catOf = (slug) => st.cats.find((c) => c.slug === slug);
@@ -953,8 +973,9 @@
             { k: "home.latest.title", label: "Titre", full: 1, hint: "Les mots entre *étoiles* sont en dégradé" },
             { k: "home.latest.gallery", type: "list", label: "Photos de la galerie", itemName: "photo", add: "Ajouter une photo",
               hint: "Les photos du mur à faire glisser, dans cet ordre. Aucune photo : la galerie montre automatiquement les 8 dernières créations du catalogue",
+              fold: 1, thumb: "src", sub: (g) => [g.meta, g.text].filter(Boolean).join(" · ") || (g.src ? "Cliquez pour modifier le texte et la photo" : "Pas encore de photo"),
               title: (g, i) => g.title || `Photo ${i + 1}`, make: () => ({ src: "", title: "", meta: "", text: "", link: "", cta: "" }), item: [
-              { k: "src", label: "Photo", type: "photo", hint: "Format carré conseillé" },
+              { k: "src", label: "Photo de couverture", type: "photo", hint: "Format carré conseillé" },
               { k: "title", label: "Titre", opt: 1, ph: "Dragon articulé" },
               { k: "meta", label: "Petit texte à droite du titre", opt: 1, ph: "18,90 € · 2026" },
               { k: "text", label: "Description", type: "area", opt: 1, hint: "Tapée à la machine quand on ouvre la photo" },
@@ -1091,7 +1112,15 @@
         case "list": {
           const arr = v || [], lp = esc(JSON.stringify(p)), n = arr.length;
           const acts = (i) => f.fixed ? "" : `<button class="rm up" type="button" data-op="up" data-lp="${lp}" data-i="${i}" ${i ? "" : "disabled"} aria-label="Monter">${icon("chevron")}</button><button class="rm" type="button" data-op="down" data-lp="${lp}" data-i="${i}" ${i < n - 1 ? "" : "disabled"} aria-label="Descendre">${icon("chevron")}</button><button class="rm" type="button" data-op="del" data-lp="${lp}" data-i="${i}" aria-label="Supprimer">${icon("trash")}</button>`;
-          const items = arr.map((it, i) => Array.isArray(f.item)
+          const fold = (it, i) => { // ligne repliée : vignette, nom, petit texte ; dépliée : le formulaire
+            const src = f.thumb && it[f.thumb], sub = f.sub ? f.sub(it) : "";
+            return `<details class="li-card li-fold" data-fold="${esc(JSON.stringify([...p, i]))}"${st.folds.has(it) ? " open" : ""}><summary class="li-head">
+              ${f.thumb ? `<span class="li-thumb">${src ? `<img src="../${esc(src)}" alt="">` : icon("plus")}</span>` : ""}
+              <b><span data-title="${i}">${esc(f.title ? f.title(it, i) : `${f.itemName} ${i + 1}`)}</span>${f.sub ? `<span class="li-sub" data-sub="${i}">${esc(sub)}</span>` : ""}</b>
+              ${acts(i)}<span class="li-chev" aria-hidden="true"><span class="li-chev-o">Modifier</span><span class="li-chev-c">Replier</span>${icon("chevron")}</span></summary>
+              <div class="form">${f.item.map((sf) => fld(sf, [...p, i])).join("")}</div></details>`;
+          };
+          const items = arr.map((it, i) => f.fold ? fold(it, i) : Array.isArray(f.item)
             ? `<div class="li-card"><div class="li-head"><b data-title="${i}">${esc(f.title ? f.title(it, i) : `${f.itemName} ${i + 1}`)}</b>${acts(i)}</div><div class="form">${f.item.map((sf) => fld(sf, [...p, i])).join("")}</div></div>`
             : `<div class="li-solo">${fld({ k: i, type: f.item, label: "" }, p)}<div class="acts">${acts(i)}</div></div>`).join("");
           return `<div class="fg full">${label}${hint}<div class="li-list">${items || `<p class="hint">Aucun élément</p>`}</div>
@@ -1151,7 +1180,12 @@
       if (type === "color") $$(`[data-p="${CSS.escape(t.dataset.p)}"]`, $("#main")).forEach((x) => { if (x !== t && (x.type !== "color" || /^#[0-9a-f]{6}$/i.test(v))) x.value = v; });
       if (type === "photo") { const img = t.parentElement.querySelector("img"); if (img) img.src = v ? "../" + v : ""; }
       /* titre de la carte de liste mis à jour en direct */
-      const card = t.closest(".li-card"); if (card) { const lp = p.slice(0, -1), f = fieldAt(lp.slice(0, -1)), b = $("[data-title]", card); if (f && f.title && b) b.textContent = f.title(getP(lp), lp[lp.length - 1]); }
+      const card = t.closest(".li-card"); if (card) {
+        const lp = p.slice(0, -1), f = fieldAt(lp.slice(0, -1)), b = $("[data-title]", card), it = getP(lp);
+        if (f && f.title && b) b.textContent = f.title(it, lp[lp.length - 1]);
+        const sb = $("[data-sub]", card); if (f && f.sub && sb) sb.textContent = f.sub(it);
+        const th = $(".li-thumb", card); if (f && f.thumb && th && p[p.length - 1] === f.thumb) th.innerHTML = v ? `<img src="../${esc(v)}" alt="">` : icon("plus");
+      }
       if (PANELS[st.panel].legal && p[p.length - 1] !== "updated" && st.site.legal.updated !== frDate()) { st.site.legal.updated = frDate(); }
       touch(); panelPreview();
       if (["title", "menu"].includes(p[0])) panelNav();
@@ -1165,10 +1199,11 @@
         a.dispatchEvent(new Event("input", { bubbles: true })); return;
       }
       const b = e.target.closest("button"); if (!b) return;
+      if (b.closest("summary")) e.preventDefault(); // Monter / Descendre / Supprimer sans plier ni déplier la ligne
       if (b.dataset.up) { upTo = { p: JSON.parse(b.dataset.up), folder: b.dataset.folder }; return $("#pfile").click(); }
       if (!b.dataset.op) return;
       const lp = JSON.parse(b.dataset.lp), arr = getP(lp), i = +b.dataset.i, f = fieldAt(lp);
-      if (b.dataset.op === "add") { const it = f.make(arr); arr.push(it); if (it && typeof it === "object") st.fresh.add(it); }
+      if (b.dataset.op === "add") { const it = f.make(arr); arr.push(it); if (it && typeof it === "object") { st.fresh.add(it); st.folds.add(it); } }
       if (b.dataset.op === "del") { const it = arr[i], has = typeof it === "string" ? it.trim() : Object.values(it).some((x) => x && String(x).trim());
         if (has && !confirm(`Supprimer cet élément (${f.itemName}) ?\nLa suppression est effective après « Enregistrer ».`)) return;
         arr.splice(i, 1); }
@@ -1200,6 +1235,11 @@
       catch (err) { status("bad", err.message || "Envoi de l'image impossible"); }
       e.target.value = "";
     }
+    $("#main").addEventListener("toggle", (e) => {
+      const d = e.target; if (!d.dataset || !d.dataset.fold) return;
+      const it = getP(JSON.parse(d.dataset.fold)); if (!it || typeof it !== "object") return;
+      if (d.open) st.folds.add(it); else st.folds.delete(it);
+    }, true);
     $("#main").addEventListener("focusin", (e) => { if (e.target.matches("textarea, input.input")) lastArea = e.target; });
     $("#list").addEventListener("click", (e) => {
       const b = e.target.closest("[data-panel]"); if (!b) return;
