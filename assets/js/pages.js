@@ -122,11 +122,7 @@
       <section class="section" aria-labelledby="cats-t">
         <div class="wrap"><header class="sec-h" data-reveal><div><p class="kicker">Les univers</p><h2 id="cats-t">Huit catégories, <span class="grad-text">mille idées</span></h2></div>
           <a class="btn btn-ghost btn-sm" href="boutique.html">Toute la boutique ${icon("arrow", "ic-arrow")}</a></header></div>
-        ${pgStage("pg-univ", "Galerie des créations")}
-        <div class="wrap"><nav class="pg-univers" aria-label="Les univers">${roots().map((c) => {
-          const n = PRODUCTS.filter((p) => catFamily(c.slug).includes(p.category)).length;
-          return `<a class="chip" href="categorie.html?c=${c.slug}" style="--c:${c.color}"><i class="pg-dot" aria-hidden="true"></i>${esc(c.name)} <span class="muted">${n}</span></a>`;
-        }).join("")}</nav></div>
+        <div class="wrap"><ul class="fc" role="list">${roots().map(focusCard).join("")}</ul></div>
       </section>
 
       <section class="section" style="padding-top:0" aria-labelledby="new-t">
@@ -161,9 +157,24 @@
       ${extBlock()}`;
 
     $$(".hp").forEach((svg, i) => heroPrinter(svg, i * 6.5)); // pingouin en haut, figurine dans « L'atelier » (démarrage décalé)
-    phantomGallery($("#pg-univ"));   // toutes les créations, mélangées par univers
     phantomGallery($("#pg-new"), latest); // les 8 dernières, de la plus récente à la plus ancienne
     jsonLd({ "@context": "https://schema.org", "@type": "Store", name: SITE.name, url: SITE.url, slogan: SITE.slogan, email: SITE.email, sameAs: SITE.stores.map((s) => s.url) });
+  }
+
+  /* Carte « focus » d'un univers (accueil) : au survol, les autres cartes se floutent
+     et le nom apparaît sur un voile sombre. Adapté du composant « Focus Cards » (Aceternity UI).
+     Visuel : c.image si renseignée, sinon la 1re photo d'un produit de l'univers,
+     sinon un visuel d'illustration aux couleurs de la catégorie. */
+  function focusCard(c, i) {
+    const fam = catFamily(c.slug), prods = PRODUCTS.filter((p) => fam.includes(p.category)), n = prods.length;
+    const photo = c.image || (prods.find((p) => p.images && p.images[0]) || { images: [] }).images[0];
+    const visual = photo
+      ? `<img src="${esc(photo)}" alt="" loading="lazy" decoding="async">`
+      : art({ id: `univers-${c.slug}`, name: c.name, category: c.slug }).replace('role="img"', 'aria-hidden="true"');
+    return `<li data-reveal style="--i:${i % 4}"><a class="fc-card" href="categorie.html?c=${c.slug}" style="--c:${c.color}">
+      ${visual}
+      <span class="fc-veil"><span class="fc-title">${esc(c.name)}</span><span class="fc-n">${n} création${n > 1 ? "s" : ""} ${icon("arrow")}</span></span>
+    </a></li>`;
   }
 
   function catCard(c, i) {

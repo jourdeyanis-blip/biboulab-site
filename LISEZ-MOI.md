@@ -295,7 +295,8 @@ Sans photo, un visuel d'illustration aux couleurs de la catégorie est généré
 | Hero : vase imprimé en temps réel, particules, sol en perspective | `pages.js` `heroCanvas` | `cycle` (durée), `N` (nombre de couches), `profile` (forme) |
 | Titre mot par mot, mots en dégradé | `data.js` `hero.title` | entourez les mots d'`*étoiles*` |
 | Bouton magnétique | attribut `data-magnetic` | force : `0.3` / `0.4` dans `magnetic()` |
-| Galerie des univers (accueil) : mur infini de créations à faire glisser, projecteur, carte mise en avant au clic | `pages.js` `phantomGallery` (aussi pour « Tout juste sortis du plateau » : les 8 dernières créations) | objet `CFG` (taille des cases, courbure, inertie). Utilise la 1re photo de chaque produit |
+| Cartes des univers (accueil) : au survol, les autres se floutent et le nom apparaît | `pages.js` `focusCard`, `style.css` section 8 ter | visuel : `image` de la catégorie, sinon 1re photo d'un de ses produits |
+| « Tout juste sortis du plateau » (accueil) : mur infini des 8 dernières créations à faire glisser, carte mise en avant au clic | `pages.js` `phantomGallery` | objet `CFG` (taille des cases, courbure, inertie) |
 | Cartes inclinées en 3D + reflet | attribut `data-tilt` | amplitude : `12` (degrés) dans `tilt()` |
 | Révélations au défilement | attribut `data-reveal` (`left`, `right`, `scale`) | `style.css` section 15 |
 | Parallaxe | attribut `data-parallax="0.25"` | la valeur règle l'intensité |

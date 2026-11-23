@@ -8,7 +8,7 @@
     5. En-tête & navigation
     6. Hero (accueil)
     7. Bandeau défilant
-    8. Catégories (+ effets flocons / brouillard / plan, galerie des univers)
+    8. Catégories (+ effets flocons / brouillard / plan, cartes des univers, galerie infinie)
     9. Cartes produits & grilles
    10. Catalogue (filtres), page catégorie
    11. Fiche produit
@@ -422,9 +422,6 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
 .pg-stage.focused .pg-dim { background: rgba(0, 0, 0, .6); }
 .pg-hint { position: absolute; left: 50%; bottom: 18px; transform: translateX(-50%); margin: 0; pointer-events: none; white-space: nowrap;
   font-size: .8125rem; color: rgba(238, 240, 245, .7); padding: 6px 12px; border-radius: 999px; background: rgba(11, 12, 16, .6); backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
-.pg-univers { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 20px; }
-.pg-dot { width: 8px; height: 8px; border-radius: 50%; background: var(--c); }
-.pg-univers .muted { font-variant-numeric: tabular-nums; }
 
 /* Carte mise en avant (ajoutée à la fin de <body>) */
 .pg-fdim { position: fixed; inset: 0; z-index: 140; background: rgba(5, 6, 9, .72); opacity: 0; pointer-events: none; transition: opacity .45s var(--ease); }
@@ -458,6 +455,35 @@ ul, ol { margin: 0; padding: 0; list-style: none; }
   .pg-meta { font-size: .6875rem; }
 }
 @media (prefers-reduced-motion: reduce) { .pg-cell { transition: none; } }
+
+/* ---------- 8 ter. Cartes « focus » des univers (accueil) ----------
+   Au survol d'une carte, les autres se floutent et reculent légèrement ; le nom de
+   l'univers apparaît sur un voile sombre. Sur écran tactile, le nom est toujours visible. */
+.fc { list-style: none; margin: 0; padding: 0; display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+@media (max-width: 1000px) { .fc { grid-template-columns: repeat(2, 1fr); gap: 16px; } }
+.fc-card {
+  position: relative; display: block; overflow: hidden; height: clamp(240px, 30vw, 384px); border-radius: 12px;
+  background: var(--surface-2); isolation: isolate;
+  transition: filter .3s var(--ease), transform .3s var(--ease);
+}
+.fc-card > img, .fc-card > svg { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+.fc-veil {
+  position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; gap: 6px; padding: 32px 16px;
+  background: rgba(0, 0, 0, .5); opacity: 0; transition: opacity .3s var(--ease);
+}
+.fc-title {
+  font-family: var(--font-sub); font-weight: 500; font-size: clamp(1.125rem, 1.6vw, 1.5rem); line-height: 1.2;
+  background: linear-gradient(#FAFAFA, #E5E5E5); -webkit-background-clip: text; background-clip: text; color: transparent;
+}
+.fc-n { display: inline-flex; align-items: center; gap: 8px; font-size: .8125rem; color: rgba(238, 240, 245, .75); }
+.fc-n .ic { width: 1em; height: 1em; transition: transform .3s var(--ease); }
+.fc-card:hover .fc-veil, .fc-card:focus-visible .fc-veil { opacity: 1; }
+.fc-card:hover .fc-n .ic { transform: translateX(4px); }
+.fc:has(.fc-card:hover) .fc-card:not(:hover), .fc:has(.fc-card:focus-visible) .fc-card:not(:focus-visible) { filter: blur(4px); transform: scale(.98); }
+@media (hover: none) {
+  .fc-veil { opacity: 1; background: linear-gradient(transparent 40%, rgba(0, 0, 0, .65)); padding: 16px 14px; }
+}
+@media (max-width: 480px) { .fc-card { height: 200px; } .fc-title { font-size: 1rem; } }
 
 /* ---------- 9. Cartes produits & grilles ---------- */
 .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 24px; }
