@@ -203,9 +203,12 @@
     .o-card:has(.o-open:focus-visible) { outline: 2px solid var(--accent); outline-offset: 2px; }
     .o-card.dragging { opacity: .4; }
     .o-card.drop-before::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--accent); z-index: 2; }
-    .o-cover { display: grid; grid-template-columns: repeat(var(--n), 1fr); gap: 2px; height: 112px; background: var(--line); }
-    .o-cv { width: 100%; height: 100%; object-fit: cover; }
-    .o-cb { padding: 10px 12px 12px; }
+    .o-cb { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 10px 12px 12px; }
+    .o-main { min-width: 0; }
+    /* Vignettes : petites, dans la zone libre à droite, juste au-dessus du bouton d'étape */
+    .o-cover { grid-column: 2; grid-row: 1; align-self: end; justify-self: end; display: flex; gap: 4px; }
+    .o-cv { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex: none; border: 1px solid var(--line); }
+    .o-foot { grid-column: 1 / -1; }
     .o-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
     .o-lab { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 4px; font-size: .75rem; font-weight: 500; background: var(--line); color: var(--muted); }
     .o-lab.ok { background: color-mix(in oklab, var(--ok) 18%, transparent); color: color-mix(in oklab, var(--ok) 72%, var(--text)); }
@@ -245,8 +248,6 @@
     .o-art::before { content: ""; position: absolute; inset: 14%; border-radius: 50%; background: linear-gradient(140deg, var(--c), var(--c2)); opacity: .92; }
     .o-art .ic { position: relative; width: 38%; height: 38%; color: #fff; }
     .o-art.o-none { background: var(--surface-2); } .o-art.o-none::before { display: none; } .o-art.o-none .ic { color: var(--faint); }
-    .o-cover .o-art .ic { width: 40px; height: 40px; }
-    .o-cover .o-art::before { inset: auto; width: 84px; height: 84px; }
 
     /* Fiche d'une commande (s'ouvre au clic, comme le dos d'une carte Trello) */
     .o-dlg { width: min(940px, 100% - 32px); max-height: calc(100% - 48px); padding: 0; border: 1px solid var(--line-2); border-radius: var(--r); background: var(--bg); color: var(--text); box-shadow: var(--shadow); }
@@ -1572,12 +1573,14 @@
       const prods = [...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).slice(0, 3);
       const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
-          ${prods.length ? `<div class="o-cover" style="--n:${prods.length}">${prods.map((p) => pThumb(p, "o-cv")).join("")}</div>` : ""}
           <div class="o-cb">
+            <div class="o-main">
             ${labels ? `<div class="o-labels">${labels}</div>` : ""}
             <h3><button class="o-open" type="button" data-open="${esc(o.id)}">${esc(o.client) || "Client à renseigner"}</button></h3>
             <p class="o-sub">${o.ref ? `${esc(o.ref)} · ` : ""}${esc(shortDate(o.date))}${o.status === "livrer" && o.shipping ? ` · ${esc(o.shipping)}` : ""}</p>
             ${o.items.length ? `<ul class="o-items">${o.items.map((it) => `<li><span class="o-q">${+it.qty || 0} ×</span><span>${esc(it.name) || "Objet"}${optsOf(it) ? ` <small>${esc(optsOf(it))}</small>` : ""}</span></li>`).join("")}</ul>` : `<p class="o-sub">Aucun objet</p>`}
+            </div>
+            ${prods.length ? `<div class="o-cover">${prods.map((p) => pThumb(p, "o-cv")).join("")}</div>` : ""}
             <div class="o-foot"><b>${euro(orderTotal(o))}</b>${nextLabel ? `<button class="o-next" type="button" data-next="${esc(o.id)}">${esc(nextLabel)} ${icon(o.status === "livrer" ? "check" : "arrow")}</button>` : ""}</div>
           </div></article>`;
     }
