@@ -14,6 +14,7 @@ urlpatterns = [
     path("api/photo/", views.api_photo, name="api_photo"),
     path("api/deconnexion/", views.api_deconnexion, name="api_deconnexion"),
     path("api/suivi/", views.api_suivi, name="api_suivi"),
+    path("api/suivi-photo/", views.api_suivi_photo, name="api_suivi_photo"),
     # Paiement Stripe, appelé par la boutique publique (www.biboulab.fr/admin/paiement/…)
     path("paiement/session/", paiement.creer_session, name="paiement_session"),
     path("paiement/etat/", paiement.etat_session, name="paiement_etat"),

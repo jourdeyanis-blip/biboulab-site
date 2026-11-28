@@ -40,6 +40,9 @@ if DEBUG:
 SITE_ROOT = Path(os.environ.get("SITE_ROOT", REPO_DIR)).resolve()
 # Page de gestion (la même que l'outil local).
 PANNEAU_HTML = REPO_DIR / "outils" / "admin.html"
+# Photos ajoutées aux tickets du « Suivi commande » : hors du dossier public, lues seulement
+# par un administrateur connecté (jamais sur GitHub, voir .gitignore).
+SUIVI_PHOTOS = Path(os.environ.get("SUIVI_PHOTOS", BASE_DIR / "suivi-photos")).resolve()
 
 INSTALLED_APPS = [
     "django.contrib.auth",

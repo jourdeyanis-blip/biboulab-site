@@ -15,6 +15,7 @@ const port = process.env.PORT || 4173;
 const dataFile = path.join(root, "assets/js/data.js");
 const backupDir = path.join(__dirname, "sauvegardes");
 const suiviFile = path.join(__dirname, "suivi.json"); // tableau « Suivi commande » (noms et adresses : jamais sur GitHub)
+const photosDir = path.join(__dirname, "suivi-photos"); // photos ajoutées aux tickets (privées : jamais sur GitHub)
 const types = { ".html": "text/html; charset=utf-8", ".css": "text/css; charset=utf-8", ".js": "text/javascript; charset=utf-8", ".svg": "image/svg+xml", ".xml": "application/xml", ".txt": "text/plain; charset=utf-8", ".webp": "image/webp", ".png": "image/png", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".glb": "model/gltf-binary", ".woff2": "font/woff2", ".woff": "font/woff" };
 
 /* ---------- Écriture de data.js ---------- */
@@ -188,6 +189,37 @@ const trusted = (req) => ["127.0.0.1", "::1", "::ffff:127.0.0.1"].includes(req.s
 /* ---------- Tableau « Suivi commande » ---------- */
 const ETAPES = ["commande", "impression", "livrer", "livree"];
 const COULEURS = ["vert", "jaune", "orange", "rouge", "rose", "violet", "bleu", "cyan", "gris"];
+const NOM_PHOTO = /^[a-z0-9][a-z0-9-]{0,80}\.(webp|png|jpe?g)$/;
+const photosOk = (p) => p === undefined || (Array.isArray(p) && p.length <= 30 && p.every((n) => typeof n === "string" && NOM_PHOTO.test(n)));
+/* Efface les photos retirées des tickets ; celles de moins d'un jour sont gardées (envoyées, pas encore enregistrées dans le tableau) */
+function rangerPhotos(tickets) {
+  const gardees = new Set(tickets.flatMap((t) => t.photos || [])), limite = Date.now() - 86400e3;
+  try {
+    for (const n of fs.readdirSync(photosDir)) {
+      const f = path.join(photosDir, n);
+      if (NOM_PHOTO.test(n) && !gardees.has(n) && fs.statSync(f).mtimeMs < limite) fs.unlinkSync(f);
+    }
+  } catch (e) {}
+}
+async function suiviPhoto(req, res, url) {
+  if (!trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
+  const nom = url.searchParams.get("nom") || "";
+  if (!NOM_PHOTO.test(nom)) return send(res, 400, { erreur: "Nom de photo invalide." });
+  const file = path.join(photosDir, nom);
+  if (req.method === "GET") {
+    return fs.readFile(file, (err, data) => {
+      if (err) return send(res, 404, { erreur: "Photo introuvable." });
+      res.writeHead(200, { "Content-Type": types[path.extname(nom)], "Cache-Control": "no-store" }); res.end(data);
+    });
+  }
+  if (req.method !== "POST") return send(res, 405, { erreur: "Action inconnue." });
+  try {
+    const data = await read(req, 12e6);
+    fs.mkdirSync(photosDir, { recursive: true });
+    fs.writeFileSync(file, data);
+    send(res, 200, { ok: true, nom });
+  } catch (e) { send(res, 400, { erreur: e.message || "Envoi impossible." }); }
+}
 async function suivi(req, res) {
   if (!trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
   let cur = { tickets: [], etiquettes: [], version: 0 };
@@ -199,7 +231,7 @@ async function suivi(req, res) {
     const { tickets, etiquettes, version } = JSON.parse((await read(req, 4e6)).toString("utf8"));
     const ids = new Set(), tags = new Set();
     const ok = Array.isArray(tickets) && tickets.every((t) => t && typeof t.id === "string" && t.id && !ids.has(t.id) && ids.add(t.id) && ETAPES.includes(t.status) && Array.isArray(t.items)
-      && (t.labels === undefined || (Array.isArray(t.labels) && t.labels.every((x) => typeof x === "string"))));
+      && (t.labels === undefined || (Array.isArray(t.labels) && t.labels.every((x) => typeof x === "string"))) && photosOk(t.photos));
     const okTags = etiquettes === undefined || (Array.isArray(etiquettes) && etiquettes.length <= 200 && etiquettes.every((e) => e && typeof e.id === "string" && e.id && !tags.has(e.id)
       && tags.add(e.id) && typeof e.name === "string" && e.name.length <= 40 && COULEURS.includes(e.color)));
     if (!ok || !okTags) return send(res, 400, { erreur: "Tableau invalide." });
@@ -207,6 +239,7 @@ async function suivi(req, res) {
     const next = { tickets, etiquettes: etiquettes === undefined ? cur.etiquettes || [] : etiquettes, version: cur.version + 1 };
     fs.writeFileSync(suiviFile + ".tmp", JSON.stringify(next, null, 2) + "\n");
     fs.renameSync(suiviFile + ".tmp", suiviFile); // jamais de fichier à moitié écrit
+    rangerPhotos(tickets);
     send(res, 200, { ok: true, version: next.version });
   } catch (e) { send(res, 400, { erreur: e.message || "Enregistrement impossible." }); }
 }
@@ -214,6 +247,7 @@ async function suivi(req, res) {
 async function api(req, res, url) {
   if (url.pathname === "/api/etat" && req.method === "GET") return send(res, 200, { ok: true });
   if (url.pathname === "/api/suivi") return suivi(req, res);
+  if (url.pathname === "/api/suivi-photo") return suiviPhoto(req, res, url);
   if (req.method !== "POST" || !trusted(req)) return send(res, 403, { erreur: "Action réservée à la page de gestion locale." });
   try {
     if (url.pathname === "/api/sauver") {

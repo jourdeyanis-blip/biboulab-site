@@ -14,3 +14,6 @@ backend/deploiement.log
 backend/erreurs.log*
 outils/suivi.json
 outils/suivi.json.tmp
+# Photos des tickets du « Suivi commande » (commandes de clients : jamais sur GitHub)
+outils/suivi-photos/
+backend/suivi-photos/

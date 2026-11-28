@@ -1,7 +1,9 @@
 """Tests de l'administration :  DJANGO_SECRET_KEY=test python manage.py test"""
 import json
+import os
 import shutil
 import tempfile
+import time
 from pathlib import Path
 
 from django.conf import settings
@@ -223,6 +225,39 @@ class AdminTests(TestCase):
         for mauvaises in ([{**etiquette, "color": "#123456"}], [etiquette, etiquette], [{**etiquette, "name": "x" * 41}], {"e1": etiquette}):
             self.assertEqual(envoyer({"tickets": [ticket], "etiquettes": mauvaises, "version": 2}).status_code, 400, mauvaises)
         self.assertEqual(envoyer({"tickets": [{**ticket, "labels": "e1"}], "version": 2}).status_code, 400)
+
+    def test_photos_du_tableau_de_suivi(self):
+        """Photos d'un ticket : réservées à l'administrateur, rangées hors du site public, vérifiées,
+        et effacées quand plus aucun ticket ne les garde (après un jour)."""
+        dossier = Path(tempfile.mkdtemp())
+        self.addCleanup(shutil.rmtree, dossier)
+        webp = b"RIFF\x00\x00\x00\x00WEBPVP8 0000"
+        with override_settings(SUIVI_PHOTOS=dossier):
+            self.assertEqual(self.c.get("/api/suivi-photo/?nom=t1-a.webp", **HOTE).status_code, 401)
+            self.connecter()
+            jeton = self.jeton()
+            poster = lambda nom, data: self.c.post(f"/api/suivi-photo/?nom={nom}", data=data, content_type="application/octet-stream", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+            self.assertEqual(self.c.post("/api/suivi-photo/?nom=t1-a.webp", data=webp, content_type="application/octet-stream", **HOTE).status_code, 403)  # sans CSRF
+            self.assertEqual(poster("t1-a.webp", webp).json(), {"ok": True, "nom": "t1-a.webp"})
+            self.assertEqual((dossier / "t1-a.webp").read_bytes(), webp)
+            self.assertFalse(any(self.site.rglob("t1-a.webp")))                       # jamais dans le dossier public
+            r = self.c.get("/api/suivi-photo/?nom=t1-a.webp", **HOTE)
+            self.assertEqual((r.status_code, r["Content-Type"], b"".join(r.streaming_content)), (200, "image/webp", webp))
+            self.assertEqual(poster("t1-b.png", webp).status_code, 400)               # contenu ≠ extension
+            self.assertEqual(poster("..%2Fx.webp", webp).status_code, 400)
+            self.assertEqual(self.c.get("/api/suivi-photo/?nom=absente.webp", **HOTE).status_code, 404)
+            envoyer = lambda corps: self.c.post("/api/suivi/", data=json.dumps(corps), content_type="application/json", HTTP_X_CSRFTOKEN=jeton, **HOTE)
+            ticket = {"id": "t1", "status": "commande", "items": [], "photos": ["t1-a.webp"]}
+            self.assertEqual(envoyer({"tickets": [{**ticket, "photos": ["../x.webp"]}], "version": 0}).status_code, 400)
+            self.assertEqual(envoyer({"tickets": [{**ticket, "photos": "t1-a.webp"}], "version": 0}).status_code, 400)
+            self.assertEqual(envoyer({"tickets": [ticket], "version": 0}).status_code, 200)
+            poster("t1-c.webp", webp)
+            vieux = time.time() - 2 * 86400
+            for n in ("t1-a.webp", "t1-c.webp"):
+                os.utime(dossier / n, (vieux, vieux))
+            poster("t1-d.webp", webp)                                                  # récente, pas encore dans le tableau
+            self.assertEqual(envoyer({"tickets": [ticket], "version": 1}).status_code, 200)
+            self.assertEqual(sorted(f.name for f in dossier.iterdir()), ["t1-a.webp", "t1-d.webp"])
 
     def test_adresses_api_sous_admin(self):
         """En ligne, l'application est montée sous /admin : l'API doit pointer vers /admin/api/."""

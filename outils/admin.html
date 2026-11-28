@@ -204,11 +204,15 @@
     .o-card.dragging { opacity: .4; }
     .o-card.drop-before::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--accent); z-index: 2; }
     .o-cb { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 10px 12px 12px; }
-    .o-main { min-width: 0; }
+    .o-head { grid-column: 1 / -1; min-width: 0; }
+    .o-main { grid-column: 1; grid-row: 2; min-width: 0; }
     /* Vignettes : petites, dans la zone libre à droite, juste au-dessus du bouton d'étape */
-    .o-cover { grid-column: 2; grid-row: 1; align-self: end; justify-self: end; display: flex; gap: 4px; }
-    .o-cv { width: 36px; height: 36px; border-radius: 6px; object-fit: cover; flex: none; border: 1px solid var(--line); }
+    .o-cover { grid-column: 2; grid-row: 2; align-self: end; justify-self: end; display: flex; margin-top: 8px; }
+    .o-cover > * + * { margin-left: -8px; } /* vignettes légèrement superposées, comme une pile de photos */
+    .o-cv { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex: none; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
     .o-foot { grid-column: 1 / -1; }
+    .o-ph { background: var(--surface-2); }
+    .o-more { display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: .75rem; font-weight: 500; font-variant-numeric: tabular-nums; }
     .o-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
     .o-lab { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 4px; font-size: .75rem; font-weight: 500; background: var(--line); color: var(--muted); }
     .o-lab.ok { background: color-mix(in oklab, var(--ok) 18%, transparent); color: color-mix(in oklab, var(--ok) 72%, var(--text)); }
@@ -322,6 +326,17 @@
 
     /* Lignes de la commande */
     .o-lines { display: grid; gap: 8px; }
+    /* Photos personnelles d'un ticket */
+    .o-phs { display: grid; grid-template-columns: repeat(auto-fill, minmax(88px, 1fr)); gap: 8px; margin-bottom: 12px; }
+    .o-phs:empty { display: none; }
+    .o-phi { position: relative; aspect-ratio: 1; }
+    .o-phi > button:first-child { width: 100%; height: 100%; border-radius: 8px; overflow: hidden; cursor: zoom-in; }
+    .o-phi img { width: 100%; height: 100%; object-fit: cover; display: block; }
+    .o-phi .rm { position: absolute; top: 4px; right: 4px; width: 32px; height: 32px; background: color-mix(in oklab, var(--card) 82%, transparent); }
+    .o-phi .rm .ic { width: 16px; height: 16px; }
+    .o-phdrop { border-radius: 10px; transition: box-shadow .18s var(--ease); }
+    .o-phdrop.over { box-shadow: 0 0 0 2px var(--accent); }
+    .o-phbtn { display: inline-flex; align-items: center; gap: 8px; min-height: 40px; }
     .o-line { display: grid; grid-template-columns: 56px 1fr auto 40px; gap: 4px 12px; align-items: center; padding: 10px; border: 1px solid var(--line); border-radius: 12px; background: var(--surface); }
     .o-lname { min-width: 0; }
     .o-lname b { display: block; font-weight: 500; font-size: .9375rem; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
@@ -1468,7 +1483,7 @@
     const shortDate = (d) => (d ? new Date(d + "T12:00").toLocaleDateString("fr-FR", { day: "numeric", month: "short" }) : "");
     const hhmm = () => new Date().toLocaleTimeString("fr-FR", { hour: "2-digit", minute: "2-digit" });
     const ticketId = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
-    const isEmpty = (o) => !o.items.length && !o.client.trim() && !o.email.trim() && !o.adresse.trim() && !o.note.trim() && !(o.labels || []).length;
+    const isEmpty = (o) => !o.items.length && !o.client.trim() && !o.email.trim() && !o.adresse.trim() && !o.note.trim() && !(o.labels || []).length && !(o.photos || []).length;
     const blank = (step) => {
       const m = st.site.shipping.methods[0];
       return { id: ticketId(), ref: "", status: step, date: today(), moved: today(), client: "", email: "", adresse: "", items: [],
@@ -1483,6 +1498,19 @@
       const c = catOf(p.category) || st.cats[0] || {};
       return `<span class="${cls} o-art" style="--c:${esc(c.color)};--c2:${esc(c.color2)}" aria-hidden="true">${icon(c.icon)}</span>`;
     }
+
+    /* Photos personnelles des tickets : rangées dans un dossier privé du serveur, chargées avec la session
+       (jamais par une adresse publique), puis gardées en mémoire le temps de la page */
+    const PH = new Map(); // nom → adresse locale de l'image ("" : en cours de chargement ou introuvable)
+    const MAX_PH = 30;
+    function loadPh(n) {
+      if (PH.has(n)) return; PH.set(n, "");
+      call("suivi-photo", {}, `&nom=${encodeURIComponent(n)}`).then((r) => (r.ok ? r.blob() : null)).then((b) => {
+        if (!b) return; const u = URL.createObjectURL(b); PH.set(n, u);
+        $$("img[data-ph]").forEach((i) => { if (i.dataset.ph === n) i.src = u; });
+      }).catch(() => {});
+    }
+    function phImg(n, cls) { loadPh(n); const u = PH.get(n); return `<img class="${cls} o-ph" data-ph="${esc(n)}"${u ? ` src="${u}"` : ""} alt="">`; }
 
     /* ---------- Enregistrement automatique ---------- */
     function saveNow() { // enregistre tout de suite ; la promesse échoue si l'écriture échoue
@@ -1570,17 +1598,21 @@
     function ticket(o) {
       const labels = tagsOf(o).map(tagChip).join("") + (o.paid ? `<span class="o-lab ok">Payée</span>` : "")
         + (o.freeShipping ? `<span class="o-lab">Livraison offerte</span>` : "") + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
-      const prods = [...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).slice(0, 3);
+      const thumbs = [...[...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).map((p) => () => pThumb(p, "o-cv")),
+        ...(o.photos || []).map((n) => () => phImg(n, "o-cv"))]; // objets du site, puis vos photos : 4 vignettes au plus
+      const shown = thumbs.length > 4 ? [...thumbs.slice(0, 3).map((f) => f()), `<span class="o-cv o-more" title="${thumbs.length - 3} autres vignettes">+${thumbs.length - 3}</span>`] : thumbs.map((f) => f());
       const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
           <div class="o-cb">
-            <div class="o-main">
+            <div class="o-head">
             ${labels ? `<div class="o-labels">${labels}</div>` : ""}
             <h3><button class="o-open" type="button" data-open="${esc(o.id)}">${esc(o.client) || "Client à renseigner"}</button></h3>
             <p class="o-sub">${o.ref ? `${esc(o.ref)} · ` : ""}${esc(shortDate(o.date))}${o.status === "livrer" && o.shipping ? ` · ${esc(o.shipping)}` : ""}</p>
+            </div>
+            <div class="o-main">
             ${o.items.length ? `<ul class="o-items">${o.items.map((it) => `<li><span class="o-q">${+it.qty || 0} ×</span><span>${esc(it.name) || "Objet"}${optsOf(it) ? ` <small>${esc(optsOf(it))}</small>` : ""}</span></li>`).join("")}</ul>` : `<p class="o-sub">Aucun objet</p>`}
             </div>
-            ${prods.length ? `<div class="o-cover">${prods.map((p) => pThumb(p, "o-cv")).join("")}</div>` : ""}
+            ${shown.length ? `<div class="o-cover">${shown.join("")}</div>` : ""}
             <div class="o-foot"><b>${euro(orderTotal(o))}</b>${nextLabel ? `<button class="o-next" type="button" data-next="${esc(o.id)}">${esc(nextLabel)} ${icon(o.status === "livrer" ? "check" : "arrow")}</button>` : ""}</div>
           </div></article>`;
     }
@@ -1710,6 +1742,12 @@
               <div class="o-lines" id="o-lines">${lines(o)}</div>
               <dl class="o-tot"><div><dt>Objets</dt><dd id="o-subt"></dd></div><div><dt>Livraison</dt><dd id="o-feet"></dd></div><div class="t"><dt>Total</dt><dd id="o-total"></dd></div></dl>
             </section>
+            <section class="o-ds o-phdrop" id="o-phsec"><h3>Photos</h3>
+              <div class="o-phs" id="o-phs">${photosGrid(o)}</div>
+              <button class="btn btn-ghost o-phbtn" type="button" data-ph-add>${icon("plus")} Ajouter des photos</button>
+              <input type="file" id="o-phfile" accept="image/*" multiple hidden>
+              <p class="hint" style="margin:8px 0 0">Vos propres photos (modèle envoyé par le client, pièce imprimée, colis…), en plus des objets du site ci-dessus. Vous pouvez aussi les glisser ici. Elles restent privées : visibles seulement dans l'administration</p>
+            </section>
             <section class="o-ds"><h3><label for="o-note">Note</label></h3><textarea class="textarea" id="o-note" data-o="note" placeholder="Précision du client, idée de finition, rappel…">${esc(o.note)}</textarea></section>
           </div>
           <aside class="o-side">
@@ -1734,6 +1772,32 @@
             <section>${F2("date", "Date de la commande", 'type="date"')}
               <button class="btn btn-ghost btn-danger" type="button" data-del>${icon("trash")} Supprimer le ticket</button></section>
           </aside></div>`;
+    }
+    function photosGrid(o) {
+      return (o.photos || []).map((n, i) => `<div class="o-phi"><button type="button" data-ph-view="${esc(n)}" aria-label="Agrandir la photo ${i + 1}">${phImg(n, "")}</button>
+        <button class="rm" type="button" data-ph-rm="${i}" aria-label="Retirer la photo ${i + 1}">${icon("trash")}</button></div>`).join("");
+    }
+    function refreshPhotos() { const box = $("#o-phs", dlg); if (box && O.open) box.innerHTML = photosGrid(O.open); }
+    /* Envoi : réduites à 1200 px et converties en WebP (comme les photos du catalogue), puis ajoutées au ticket */
+    async function addPhotos(o, files) {
+      files = files.filter((f) => f.type.startsWith("image/")); if (!files.length) return;
+      o.photos = o.photos || [];
+      const room = MAX_PH - o.photos.length;
+      if (room <= 0) return alert(`${MAX_PH} photos au plus par ticket.`);
+      if (files.length > room) { alert(`${MAX_PH} photos au plus par ticket : seules les ${room} premières sont ajoutées.`); files = files.slice(0, room); }
+      status("dirty", files.length > 1 ? "Envoi des photos…" : "Envoi de la photo…", "suivi");
+      try {
+        for (const f of files) {
+          const blob = await webpPhoto(await createImageBitmap(f));
+          const nom = `${slugify(o.id).slice(0, 30) || "ticket"}-${ticketId()}.${blob.type === "image/webp" ? "webp" : "png"}`;
+          const r = await call("suivi-photo", { method: "POST", headers: { "Content-Type": "application/octet-stream" }, body: blob }, `&nom=${encodeURIComponent(nom)}`);
+          const out = await r.json().catch(() => ({}));
+          if (!r.ok) throw new Error(out.erreur || `Envoi impossible (erreur ${r.status})`);
+          PH.set(nom, URL.createObjectURL(blob)); o.photos.push(nom);
+          if (O.open === o) refreshPhotos();
+          changed();
+        }
+      } catch (err) { status("bad", (err.message || "Envoi de la photo impossible").replace(/\.$/, ""), "suivi"); }
     }
     function mailto(o) { const a = $("#o-mailto", dlg); if (!a) return; a.hidden = !o.email; a.href = `mailto:${o.email}?subject=${encodeURIComponent(`Votre commande${o.ref ? " " + o.ref : ""} — ${st.site.name}`)}`; }
     /* Étiquettes : un clic les pose ou les retire du ticket ; on en crée d'autres, on les renomme,
@@ -1881,12 +1945,24 @@
       if (b.dataset.tagAdd !== undefined) return addTag();
       if (b.dataset.tagEdit !== undefined) { O.tagEdit = !O.tagEdit; return refreshTags("[data-tag-edit]"); }
       if (b.dataset.tagDel) return deleteTag(b.dataset.tagDel);
+      if (b.dataset.phAdd !== undefined) return $("#o-phfile", dlg).click();
+      if (b.dataset.phView) { const u = PH.get(b.dataset.phView); if (u) window.open(u, "_blank", "noopener"); return; }
+      if (b.dataset.phRm !== undefined) { O.open.photos.splice(+b.dataset.phRm, 1); refreshPhotos(); return changed(); }
       if (b.dataset.rmLine !== undefined) { O.open.items.splice(+b.dataset.rmLine, 1); refreshLines(); return changed(); }
       if (b.dataset.del !== undefined) {
         if (!confirm(`Supprimer le ticket ${O.open.client ? `de ${O.open.client} ` : ""}?\nIl disparaît du tableau définitivement.`)) return;
         O.list.splice(O.list.indexOf(O.open), 1); O.open = null; dlg.close(); changed();
       }
     });
+    dlg.addEventListener("change", (e) => {
+      if (e.target.id !== "o-phfile" || !O.open) return;
+      const files = [...e.target.files]; e.target.value = ""; addPhotos(O.open, files);
+    });
+    /* Glisser des photos depuis l'ordinateur sur la section « Photos » */
+    const phDrag = (e) => e.dataTransfer && [...e.dataTransfer.types].includes("Files") && e.target.closest && e.target.closest("#o-phsec");
+    dlg.addEventListener("dragover", (e) => { const sec = phDrag(e); if (!sec) return; e.preventDefault(); sec.classList.add("over"); });
+    dlg.addEventListener("dragleave", (e) => { const sec = phDrag(e); if (sec && !sec.contains(e.relatedTarget)) sec.classList.remove("over"); });
+    dlg.addEventListener("drop", (e) => { const sec = phDrag(e); if (!sec || !O.open) return; e.preventDefault(); sec.classList.remove("over"); addPhotos(O.open, [...e.dataTransfer.files]); });
     dlg.addEventListener("pointerdown", (e) => { if (e.target.closest(".o-opt")) e.preventDefault(); }); // garde le curseur dans la recherche
     dlg.addEventListener("focusin", (e) => { if (e.target.id === "o-find") showResults(); });
     dlg.addEventListener("focusout", (e) => { if (e.target.id === "o-find" && !(e.relatedTarget && e.relatedTarget.closest(".o-find"))) hideResults(); });

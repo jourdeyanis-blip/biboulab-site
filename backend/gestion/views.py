@@ -1,5 +1,6 @@
 """Administration en ligne : connexion (identifiant + mot de passe) et actions du panneau."""
 import json
+import os
 import re
 import secrets
 import time
@@ -16,7 +17,7 @@ from django.views.decorators.http import require_GET, require_http_methods, requ
 
 from . import emails as courriels
 from . import contenu as contenus
-from .catalogue import Invalide, enregistrer, enregistrer_photo, verifier
+from .catalogue import Invalide, enregistrer, enregistrer_photo, type_image, verifier
 from django.utils import timezone
 
 from django.db import transaction
@@ -271,6 +272,9 @@ def api_photo(request):
 
 # ---------- Tableau « Suivi commande » (tickets personnels, enregistrés automatiquement) ----------
 ETAPES_SUIVI = {"commande", "impression", "livrer", "livree"}
+NOM_PHOTO_SUIVI = re.compile(r"^[a-z0-9][a-z0-9-]{0,80}\.(webp|png|jpe?g)$")
+TYPES_PHOTO = {"webp": "image/webp", "png": "image/png", "jpeg": "image/jpeg"}
+PHOTOS_PAR_TICKET = 30
 COULEURS_ETIQUETTES = {"vert", "jaune", "orange", "rouge", "rose", "violet", "bleu", "cyan", "gris"}
 
 
@@ -285,6 +289,9 @@ def _tickets_valides(tickets) -> bool:
             return False
         etiquettes = t.get("labels", [])
         if not isinstance(etiquettes, list) or not all(isinstance(e, str) for e in etiquettes):
+            return False
+        photos = t.get("photos", [])
+        if not isinstance(photos, list) or len(photos) > PHOTOS_PAR_TICKET or not all(isinstance(n, str) and NOM_PHOTO_SUIVI.match(n) for n in photos):
             return False
         vus.add(t["id"])
     return True
@@ -329,7 +336,52 @@ def api_suivi(request):
         if etiquettes is not None:
             suivi.etiquettes = etiquettes
         suivi.save()
+    _ranger_photos_suivi(tickets)
     return JsonResponse({"ok": True, "version": suivi.version})
+
+
+def _ranger_photos_suivi(tickets) -> None:
+    """Efface les photos retirées des tickets (ou de tickets supprimés). Une photo tout juste envoyée
+    n'est pas encore dans le tableau enregistré : on ne touche qu'à celles de plus d'un jour."""
+    gardees = {n for t in tickets for n in t.get("photos", [])}
+    limite = time.time() - 86400
+    try:
+        for f in settings.SUIVI_PHOTOS.iterdir():
+            if f.is_file() and NOM_PHOTO_SUIVI.match(f.name) and f.name not in gardees and f.stat().st_mtime < limite:
+                f.unlink()
+    except OSError:
+        pass
+
+
+@require_http_methods(["GET", "POST"])
+@admin_requis(api=True)
+def api_suivi_photo(request):
+    """Photo d'un ticket du « Suivi commande » : GET la renvoie, POST l'enregistre (dossier privé)."""
+    nom = request.GET.get("nom", "")
+    if not NOM_PHOTO_SUIVI.match(nom):
+        return JsonResponse({"erreur": "Nom de photo invalide."}, status=400)
+    ext = nom.rsplit(".", 1)[1].replace("jpg", "jpeg")
+    chemin = settings.SUIVI_PHOTOS / nom
+    if request.method == "GET":
+        if not chemin.is_file():
+            return JsonResponse({"erreur": "Photo introuvable."}, status=404)
+        r = FileResponse(open(chemin, "rb"), content_type=TYPES_PHOTO[ext])
+        r["Cache-Control"] = "private, no-store"
+        return r
+    data = request.body
+    if not data or len(data) > 12_000_000:
+        return JsonResponse({"erreur": "Photo trop lourde (12 Mo maximum)."}, status=400)
+    if type_image(data) != ext:
+        return JsonResponse({"erreur": "Ce fichier n'est pas une image valide."}, status=400)
+    try:
+        settings.SUIVI_PHOTOS.mkdir(parents=True, exist_ok=True)
+        tmp = chemin.with_name(f".{nom}.{secrets.token_hex(4)}.tmp")
+        tmp.write_bytes(data)
+        os.chmod(tmp, 0o600)
+        os.replace(tmp, chemin)
+    except OSError:
+        return JsonResponse({"erreur": "Écriture impossible sur le serveur."}, status=500)
+    return JsonResponse({"ok": True, "nom": nom})
 
 
 @require_POST
