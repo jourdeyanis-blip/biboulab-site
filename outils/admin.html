@@ -208,11 +208,11 @@
     .o-main { grid-column: 1; grid-row: 2; min-width: 0; }
     /* Vignettes : petites, dans la zone libre à droite, juste au-dessus du bouton d'étape */
     .o-cover { grid-column: 2; grid-row: 2; align-self: end; justify-self: end; display: flex; margin-top: 8px; }
-    .o-cover > * + * { margin-left: -8px; } /* vignettes légèrement superposées, comme une pile de photos */
-    .o-cv { width: 36px; height: 36px; border-radius: 8px; object-fit: cover; flex: none; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
+    .o-cover > * + * { margin-left: -12px; } /* vignettes légèrement superposées, comme une pile de photos */
+    .o-cv { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; flex: none; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
     .o-foot { grid-column: 1 / -1; }
     .o-ph { background: var(--surface-2); }
-    .o-more { display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: .75rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .o-more { display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: .875rem; font-weight: 500; font-variant-numeric: tabular-nums; }
     .o-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
     .o-lab { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 4px; font-size: .75rem; font-weight: 500; background: var(--line); color: var(--muted); }
     .o-lab.ok { background: color-mix(in oklab, var(--ok) 18%, transparent); color: color-mix(in oklab, var(--ok) 72%, var(--text)); }
@@ -1599,8 +1599,8 @@
       const labels = tagsOf(o).map(tagChip).join("") + (o.paid ? `<span class="o-lab ok">Payée</span>` : "")
         + (o.freeShipping ? `<span class="o-lab">Livraison offerte</span>` : "") + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
       const thumbs = [...[...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).map((p) => () => pThumb(p, "o-cv")),
-        ...(o.photos || []).map((n) => () => phImg(n, "o-cv"))]; // objets du site, puis vos photos : 4 vignettes au plus
-      const shown = thumbs.length > 4 ? [...thumbs.slice(0, 3).map((f) => f()), `<span class="o-cv o-more" title="${thumbs.length - 3} autres vignettes">+${thumbs.length - 3}</span>`] : thumbs.map((f) => f());
+        ...(o.photos || []).map((n) => () => phImg(n, "o-cv"))]; // objets du site, puis vos photos : 3 vignettes au plus
+      const shown = thumbs.length > 3 ? [...thumbs.slice(0, 2).map((f) => f()), `<span class="o-cv o-more" title="${thumbs.length - 2} autres vignettes">+${thumbs.length - 2}</span>`] : thumbs.map((f) => f());
       const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
           <div class="o-cb">
