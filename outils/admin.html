@@ -360,6 +360,7 @@
     .o-mini .input { width: 72px; }
     .o-mini.p .input { width: 88px; }
     .o-lctl .o-opts { flex: 1 1 160px; }
+    .o-lctl .o-color { flex: 1 1 140px; min-width: 120px; }
     .o-tot { margin: 16px 0 0; display: grid; gap: 4px; font-size: .875rem; }
     .o-tot div { display: flex; justify-content: space-between; color: var(--muted); }
     .o-tot dd { margin: 0; font-variant-numeric: tabular-nums; }
@@ -1714,7 +1715,8 @@
     function lines(o) {
       if (!o.items.length) return `<p class="hint" style="margin:0">Aucun objet pour l'instant. Cherchez-le ci-dessus par son nom, ou tapez le nom d'un objet qui n'est pas sur le site</p>`;
       return o.items.map((it, i) => {
-        const p = prodOf(it.product), sizes = p ? p.sizes : [], colors = p ? [...new Set([...p.colors, ...(it.color ? [it.color] : [])])] : [];
+        const p = prodOf(it.product), sizes = p ? p.sizes : [];
+        const colors = p && p.colors.length ? p.colors : st.fils.map((f) => f.key); // suggestions ; on peut taper n'importe quelle couleur
         return `<div class="o-line">
             ${pThumb(p, "o-lth")}
             <div class="o-lname">${p ? `<b>${esc(it.name) || "Objet"}</b><a href="../produit.html?id=${esc(p.id)}" target="_blank" rel="noopener">Voir sur le site</a>`
@@ -1722,9 +1724,10 @@
             <b class="o-ltot" data-ltot="${i}">${euro(lineTotal(it))}</b>
             <button class="rm" type="button" data-rm-line="${i}" aria-label="Retirer ${esc(it.name)}">${icon("trash")}</button>
             <div class="o-lctl">
-              ${colors.length ? `<select class="select" data-it="${i}" data-f="color" aria-label="Couleur de ${esc(it.name)}"><option value="">Couleur ?</option>${colors.map((k) => `<option value="${esc(k)}"${k === it.color ? " selected" : ""}>${esc(filName(k))}</option>`).join("")}</select>` : ""}
+              <input class="input o-color" list="o-cl-${i}" data-it="${i}" data-f="color" value="${esc(it.color ? filName(it.color) : "")}" placeholder="Couleur" maxlength="50" autocomplete="off" aria-label="Couleur de ${esc(it.name)}">
+              <datalist id="o-cl-${i}">${colors.map((k) => `<option value="${esc(filName(k))}"></option>`).join("")}</datalist>
               ${sizes.length ? `<select class="select" data-it="${i}" data-f="size" aria-label="Taille de ${esc(it.name)}">${options(sizes.map((z) => z.label), it.size)}</select>` : ""}
-              ${p ? "" : `<input class="input o-opts" data-it="${i}" data-f="options" value="${esc(it.options || "")}" placeholder="Couleur, taille…" aria-label="Options de ${esc(it.name)}">`}
+              ${p ? "" : `<input class="input o-opts" data-it="${i}" data-f="options" value="${esc(it.options || "")}" placeholder="Taille, options…" aria-label="Options de ${esc(it.name)}">`}
               <label class="o-mini">Qté <input class="input" type="number" min="1" step="1" inputmode="numeric" data-it="${i}" data-f="qty" value="${esc(it.qty)}"></label>
               <label class="o-mini p">Prix unitaire <input class="input" type="number" min="0" step="0.1" inputmode="decimal" data-it="${i}" data-f="price" value="${esc(it.price)}"></label>
             </div></div>`;
@@ -1929,7 +1932,11 @@
         const i = +t.dataset.it, it = o.items[i], f = t.dataset.f, p = prodOf(it.product);
         if (f === "qty") it.qty = Math.max(1, Math.round(+t.value) || 1);
         else if (f === "price") it.price = t.value === "" ? 0 : round(t.value.replace(",", "."));
-        else if (f === "color") it.color = t.value || null;
+        else if (f === "color") { // couleur libre ; un nom de filament connu est enregistré par sa clé, comme sur le site
+          const v = t.value.trim().slice(0, 50), low = v.toLowerCase();
+          const fil = st.fils.find((x) => x.name.toLowerCase() === low) || Object.entries(FILAMENTS).map(([key, x]) => ({ key, ...x })).find((x) => (x.name || "").toLowerCase() === low);
+          it.color = !v ? null : fil ? fil.key : v;
+        }
         else if (f === "options") it.options = t.value;
         else if (f === "name") it.name = t.value.slice(0, 120);
         else if (f === "size") { // le prix suit la taille choisie
