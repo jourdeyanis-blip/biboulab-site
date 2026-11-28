@@ -191,7 +191,7 @@
     .o-ch .num { color: var(--faint); font-size: .8125rem; font-variant-numeric: tabular-nums; }
     .o-amt { margin-left: auto; padding: 3px 10px; border-radius: 999px; background: var(--surface-2); border: 1px solid var(--line-2); font-size: .8125rem; font-weight: 500; font-variant-numeric: tabular-nums; white-space: nowrap; }
     .o-done h2 .o-amt { margin-left: 10px; vertical-align: middle; font-family: var(--font-b); letter-spacing: 0; }
-    .o-list { flex: 1; min-height: 48px; overflow-y: auto; padding: 4px 8px; display: grid; gap: 8px; align-content: start; }
+    .o-list { flex: 1; min-height: 48px; overflow-y: auto; padding: 4px 8px; display: grid; grid-auto-rows: max-content; gap: 8px; align-content: start; } /* max-content : quand la colonne déborde, elle défile au lieu d’écraser les cartes */
     .o-list.drop-end::after { content: ""; height: 2px; border-radius: 1px; background: var(--accent); }
     .o-empty { margin: 0; padding: 14px 8px; border: 1px dashed var(--line-2); border-radius: 10px; color: var(--faint); font-size: .8125rem; text-align: center; }
     .o-add { display: flex; align-items: center; gap: 8px; min-height: 40px; margin: 4px 8px 8px; padding: 0 8px; border-radius: 8px; color: var(--muted); font-size: .875rem; transition: background-color .18s var(--ease), color .18s var(--ease); }
@@ -205,14 +205,22 @@
     .o-card.drop-before::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 3px; background: var(--accent); z-index: 2; }
     .o-cb { display: grid; grid-template-columns: minmax(0, 1fr) auto; column-gap: 10px; padding: 10px 12px 12px; }
     .o-head { grid-column: 1 / -1; min-width: 0; }
+    .o-hasc .o-head { grid-column: 1; }
     .o-main { grid-column: 1; grid-row: 2; min-width: 0; }
-    /* Vignettes : petites, dans la zone libre à droite, juste au-dessus du bouton d'étape */
-    .o-cover { grid-column: 2; grid-row: 2; align-self: end; justify-self: end; display: flex; margin-top: 8px; }
-    .o-cover > * + * { margin-left: -12px; } /* vignettes légèrement superposées, comme une pile de photos */
-    .o-cv { width: 52px; height: 52px; border-radius: 10px; object-fit: cover; flex: none; border: 2px solid var(--card); box-shadow: 0 0 0 1px var(--line); }
+    /* Vignettes : un carré qui remplit la zone libre à droite, du nom jusqu'au bouton d'étape.
+       1 image : tout le carré ; 2 : deux moitiés ; 3 : une grande et deux petites ; 4 et plus : 2 × 2 */
+    .o-cover { position: relative; grid-column: 2; grid-row: 1 / 3; align-self: end; width: 104px; height: 104px;
+      display: grid; grid-template: 1fr / 1fr; gap: 2px; border-radius: 10px; overflow: hidden; background: var(--line); }
+    .o-cover[data-n="2"] { grid-template: 1fr / 1fr 1fr; }
+    .o-cover[data-n="3"], .o-cover[data-n="4"] { grid-template: 1fr 1fr / 1fr 1fr; }
+    .o-cover[data-n="3"] > :first-child { grid-row: span 2; }
+    .o-cover .o-art::before { inset: auto; width: 40px; height: 40px; } /* visuel rond, même dans une case en hauteur */
+    .o-cover[data-n="1"] .o-art::before { width: 76px; height: 76px; }
+    .o-cover .o-art .ic { width: 18px; height: 18px; } .o-cover[data-n="1"] .o-art .ic { width: 32px; height: 32px; }
+    .o-cv { width: 100%; height: 100%; min-width: 0; min-height: 0; object-fit: cover; display: block; }
     .o-foot { grid-column: 1 / -1; }
     .o-ph { background: var(--surface-2); }
-    .o-more { display: grid; place-items: center; background: var(--surface-2); color: var(--muted); font-size: .875rem; font-weight: 500; font-variant-numeric: tabular-nums; }
+    .o-more { position: absolute; right: 4px; bottom: 4px; padding: 1px 7px; border-radius: 999px; background: color-mix(in oklab, #000 62%, transparent); color: #fff; font-size: .75rem; font-weight: 500; font-variant-numeric: tabular-nums; }
     .o-labels { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
     .o-lab { display: inline-flex; align-items: center; min-height: 20px; padding: 0 8px; border-radius: 4px; font-size: .75rem; font-weight: 500; background: var(--line); color: var(--muted); }
     .o-lab.ok { background: color-mix(in oklab, var(--ok) 18%, transparent); color: color-mix(in oklab, var(--ok) 72%, var(--text)); }
@@ -1599,11 +1607,11 @@
       const labels = tagsOf(o).map(tagChip).join("") + (o.paid ? `<span class="o-lab ok">Payée</span>` : "")
         + (o.freeShipping ? `<span class="o-lab">Livraison offerte</span>` : "") + (o.note.trim() ? `<span class="o-lab">Note</span>` : "") + (o.tracking ? `<span class="o-lab">Suivi</span>` : "");
       const thumbs = [...[...new Set(o.items.map((it) => it.product))].map(prodOf).filter(Boolean).map((p) => () => pThumb(p, "o-cv")),
-        ...(o.photos || []).map((n) => () => phImg(n, "o-cv"))]; // objets du site, puis vos photos : 3 vignettes au plus
-      const shown = thumbs.length > 3 ? [...thumbs.slice(0, 2).map((f) => f()), `<span class="o-cv o-more" title="${thumbs.length - 2} autres vignettes">+${thumbs.length - 2}</span>`] : thumbs.map((f) => f());
+        ...(o.photos || []).map((n) => () => phImg(n, "o-cv"))]; // objets du site, puis vos photos : 4 au plus dans le carré
+      const shown = thumbs.slice(0, 4).map((f) => f()), more = thumbs.length - shown.length;
       const nextLabel = STEPS.find((x) => x.id === o.status)?.next;
       return `<article class="o-card" draggable="true" data-id="${esc(o.id)}">
-          <div class="o-cb">
+          <div class="o-cb${shown.length ? " o-hasc" : ""}">
             <div class="o-head">
             ${labels ? `<div class="o-labels">${labels}</div>` : ""}
             <h3><button class="o-open" type="button" data-open="${esc(o.id)}">${esc(o.client) || "Client à renseigner"}</button></h3>
@@ -1612,7 +1620,7 @@
             <div class="o-main">
             ${o.items.length ? `<ul class="o-items">${o.items.map((it) => `<li><span class="o-q">${+it.qty || 0} ×</span><span>${esc(it.name) || "Objet"}${optsOf(it) ? ` <small>${esc(optsOf(it))}</small>` : ""}</span></li>`).join("")}</ul>` : `<p class="o-sub">Aucun objet</p>`}
             </div>
-            ${shown.length ? `<div class="o-cover">${shown.join("")}</div>` : ""}
+            ${shown.length ? `<div class="o-cover" data-n="${shown.length}">${shown.join("")}${more ? `<span class="o-more" title="${more} autres vignettes dans la fiche">+${more}</span>` : ""}</div>` : ""}
             <div class="o-foot"><b>${euro(orderTotal(o))}</b>${nextLabel ? `<button class="o-next" type="button" data-next="${esc(o.id)}">${esc(nextLabel)} ${icon(o.status === "livrer" ? "check" : "arrow")}</button>` : ""}</div>
           </div></article>`;
     }
